@@ -1,0 +1,54 @@
+modules = ["nodejs-20", "web"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-25_05"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[env]
+PORT = "5000"
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["node", "./dist/index.cjs"]
+build = ["npm", "run", "build"]
+publicDir = "dist/public"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[agent]
+integrations = ["javascript_object_storage:2.0.0"]
+expertMode = true
+
+[userenv]
+
+[userenv.shared]
+FROM_EMAIL = "notifications@mentalyc.io"
+NOTION_API_KEY = "ntn_D59464807576YOhHmXKjFtX07wS35JZUiDXxwilyssb8Rh"
+RESEND_API_KEY = "re_UP9pe1oo_EWNRxgdVArnoxRosysyEpy7C"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-a574b5c8-816e-42ff-ad9b-932337729135"

@@ -1,0 +1,2429 @@
+import type { Express, Request, Response, NextFunction } from "express";
+import { createServer, type Server } from "http";
+import { storage, comparePassword } from "./storage";
+import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
+import type { User, UserRoleType } from "@shared/schema";
+import { syncInvoiceToNotionAsync } from "./notion-service";
+import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { createMigrateFilesRouter } from "./migrate-files";
+import { randomUUID } from "crypto";
+
+// Helper function to check if a date is a weekend (Saturday or Sunday)
+function isWeekend(dateString: string): boolean {
+  const date = new Date(dateString);
+  const day = date.getUTCDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
+
+const objectStorageService = new ObjectStorageService();
+
+// Helper function to normalize file URLs - converts absolute URLs to relative paths
+function normalizeFileUrl(fileUrl: string | null | undefined): string | null {
+  if (!fileUrl) return null;
+  
+  // If it's a base64 data URL, return as-is (client can display directly)
+  if (fileUrl.startsWith("data:")) {
+    return fileUrl;
+  }
+  
+  // If it's already a relative path, return as-is
+  if (fileUrl.startsWith("/")) {
+    return fileUrl;
+  }
+  
+  // If it's an absolute URL, extract just the path
+  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+    try {
+      const url = new URL(fileUrl);
+      return url.pathname; // Return just the path portion
+    } catch {
+      return fileUrl; // If URL parsing fails, return as-is
+    }
+  }
+  
+  return fileUrl;
+}
+
+// Helper function to upload base64 data URL to Object Storage and return public URL
+async function uploadBase64ToObjectStorage(
+  base64DataUrl: string,
+  fileName: string
+): Promise<string | null> {
+  try {
+    const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      console.error("[ObjectStorage] Invalid base64 data URL format");
+      return null;
+    }
+
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const { Client } = await import("@replit/object-storage");
+    const storageClient = new Client();
+    const objectId = randomUUID();
+    const storagePath = `.private/uploads/${objectId}`;
+
+    const uploadResult = await storageClient.uploadFromBytes(storagePath, buffer);
+    if (!uploadResult.ok) {
+      console.error("[ObjectStorage] Failed to upload file:", uploadResult.error);
+      return null;
+    }
+
+    const objectPath = `/objects/uploads/${objectId}`;
+    console.log(`[ObjectStorage] Uploaded ${fileName} to ${objectPath}`);
+    return objectPath;
+  } catch (error: any) {
+    console.error("[ObjectStorage] Upload error:", error?.message || error);
+    return null;
+  }
+}
+
+// Extend Express Request to include authenticated user
+declare global {
+  namespace Express {
+    interface Request {
+      authenticatedUser?: User;
+    }
+  }
+}
+
+// Rate limiting state
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_LOGIN_ATTEMPTS = 5;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const attempts = loginAttempts.get(ip);
+  
+  if (!attempts || (now - attempts.lastAttempt) > RATE_LIMIT_WINDOW) {
+    loginAttempts.set(ip, { count: 1, lastAttempt: now });
+    return true;
+  }
+  
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    return false;
+  }
+  
+  attempts.count++;
+  attempts.lastAttempt = now;
+  return true;
+}
+
+function resetRateLimit(ip: string): void {
+  loginAttempts.delete(ip);
+}
+
+// Get current user from token (helper function)
+async function getCurrentUser(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = authHeader.substring(7);
+  const userId = await getUserIdFromToken(token);
+  if (!userId) {
+    return null;
+  }
+  return storage.getUser(userId);
+}
+
+// Authentication middleware - validates token and attaches user to request
+async function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const user = await getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized - Invalid or missing token" });
+  }
+  if (!user.isActive) {
+    return res.status(403).json({ error: "Account is disabled" });
+  }
+  req.authenticatedUser = user;
+  next();
+}
+
+// Role-based authorization middleware
+function requireRole(...allowedRoles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.authenticatedUser;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    next();
+  };
+}
+
+// Check if user has supervisor privileges (either admin or IC with direct reports)
+async function hasSupervisorPrivileges(userId: string): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  
+  // Check if this IC has direct reports
+  const directReports = await storage.getUsersBySupervisor(userId);
+  return directReports.length > 0;
+}
+
+// Get the list of team member IDs for a supervisor
+async function getTeamMemberIds(supervisorId: string): Promise<string[]> {
+  const members = await storage.getUsersBySupervisor(supervisorId);
+  return members.map(m => m.id);
+}
+
+// Centralized error handler
+function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch((error) => {
+      console.error(`[API Error] ${req.method} ${req.path}:`, error.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  };
+}
+import {
+  notifyOOOSubmitted,
+  notifyOOOApproved,
+  notifyOOORejected,
+  notifyTimesheetSubmitted,
+  notifyTimesheetApproved,
+  notifyTimesheetRejected,
+  notifyOvertimeSubmitted,
+  notifyOvertimeApproved,
+  notifyOvertimeRejected,
+  notifyInvoiceUploaded,
+  notifyInvoiceApproved,
+  notifyInvoiceRejected,
+  notifyInvoiceRevisionRequested,
+  notifyUserCreated,
+  createNotification,
+} from "./notificationService";
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+  // Register Object Storage routes for serving uploaded files
+  registerObjectStorageRoutes(app);
+
+  // Temporary migration file upload route (no auth - remove after migration)
+  app.use(createMigrateFilesRouter());
+
+  // Auth routes (no auth middleware - public endpoints)
+  app.post("/api/auth/login", async (req, res) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    
+    if (!checkRateLimit(clientIp)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
+    }
+    
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password required" });
+    }
+
+    const user = await storage.getUserByUsername(username);
+    
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const isValidPassword = await comparePassword(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Account is disabled" });
+    }
+
+    // Successful login - reset rate limit
+    resetRateLimit(clientIp);
+
+    const sessionToken = await createSession(user.id, user.username);
+
+    try {
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "User logged in",
+        details: `${user.firstName} ${user.lastName} logged in`,
+        entityType: "user",
+        entityId: user.id,
+      });
+    } catch (e) {
+      console.error("Failed to create login activity log:", e);
+    }
+
+    // Check if user has direct reports (for dynamic supervisor privileges)
+    const directReports = await storage.getUsersBySupervisor(user.id);
+    const hasDirectReports = directReports.length > 0;
+    
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ ...userWithoutPassword, sessionToken, hasDirectReports });
+  });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    const { sessionToken } = req.body;
+    if (sessionToken) {
+      await invalidateSession(sessionToken);
+    }
+    res.json({ success: true });
+  });
+
+  // User routes - protected with auth middleware
+  app.get("/api/users", authMiddleware, requireRole("admin"), async (req, res) => {
+    const users = await storage.getAllUsers();
+    const usersWithoutPasswords = users.map(({ password: _, ...u }) => u);
+    res.json(usersWithoutPasswords);
+  });
+
+  app.get("/api/users/managers", authMiddleware, async (req, res) => {
+    const managers = await storage.getManagers();
+    const managersWithoutPasswords = managers.map(({ password: _, ...u }) => u);
+    res.json(managersWithoutPasswords);
+  });
+
+  app.get("/api/users/supervisors", authMiddleware, async (req, res) => {
+    const supervisors = await storage.getSupervisors();
+    const supervisorsWithoutPasswords = supervisors.map(({ password: _, ...u }) => u);
+    res.json(supervisorsWithoutPasswords);
+  });
+
+  // Basic user info for evaluation displays - accessible by all authenticated users
+  // Non-supervisors only get limited info (themselves and their supervisor)
+  app.get("/api/users/basic", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    
+    const users = await storage.getAllUsers();
+    // Return only essential info for display purposes
+    const basicUsers = users.map(({ id, firstName, lastName, jobTitle, role }) => ({
+      id,
+      firstName,
+      lastName,
+      jobTitle,
+      role,
+    }));
+    
+    if (isSupervisor) {
+      // Supervisors get all users
+      res.json(basicUsers);
+    } else {
+      // Non-supervisors get themselves and their supervisor for evaluation displays
+      // Always include current user even if supervisorId is null
+      const relevantUsers = basicUsers.filter(u => 
+        u.id === currentUser.id || 
+        (currentUser.supervisorId && u.id === currentUser.supervisorId)
+      );
+      res.json(relevantUsers);
+    }
+  });
+
+  app.get("/api/team/members", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const { supervisorId } = req.query;
+    if (supervisorId) {
+      const members = await storage.getUsersBySupervisor(supervisorId as string);
+      const membersWithoutPasswords = members.map(({ password: _, ...u }) => u);
+      res.json(membersWithoutPasswords);
+    } else {
+      const ics = await storage.getUsersByRole("ic");
+      const icsWithoutPasswords = ics.map(({ password: _, ...u }) => u);
+      res.json(icsWithoutPasswords);
+    }
+  });
+
+  // Get single user by ID - for supervisors viewing team member details
+  app.get("/api/users/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.id;
+    
+    // Users can view their own profile
+    const isAdmin = currentUser.role === "admin";
+    const isSelf = currentUser.id === targetUserId;
+    
+    // Check if supervisor and target is in their direct reports
+    let isDirectReport = false;
+    if (!isAdmin && !isSelf) {
+      const directReports = await storage.getUsersBySupervisor(currentUser.id);
+      isDirectReport = directReports.some(u => u.id === targetUserId);
+    }
+    
+    if (!isAdmin && !isSelf && !isDirectReport) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    
+    const user = await storage.getUser(targetUserId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  app.post("/api/users", authMiddleware, requireRole("admin"), async (req, res) => {
+    try {
+      // Check for existing username
+      const existingByUsername = await storage.getUserByUsername(req.body.username);
+      if (existingByUsername) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      
+      // Check for existing email
+      const allUsers = await storage.getAllUsers();
+      const existingByEmail = allUsers.find(u => u.email === req.body.email);
+      if (existingByEmail) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+      
+      const user = await storage.createUser(req.body);
+      
+      try {
+        await storage.createActivityLog({
+          userId: req.body.createdBy || user.id,
+          action: "User created",
+          details: `Created user ${user.firstName} ${user.lastName}`,
+          entityType: "user",
+          entityId: user.id,
+        });
+        await notifyUserCreated(user, req.body.createdBy);
+      } catch (e) {
+        console.error("Failed to create activity log or notification:", e);
+      }
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  app.patch("/api/users/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.id;
+    
+    // Users can only edit their own profile unless they're admin
+    const isAdmin = currentUser.role === "admin";
+    const isSelf = currentUser.id === targetUserId;
+    
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ error: "Cannot edit other users' profiles" });
+    }
+    
+    // Restrict sensitive fields for non-admins
+    if (!isAdmin) {
+      const sensitiveFields = ["role", "isActive", "managerId", "hourlyRate", "monthlyCap"];
+      for (const field of sensitiveFields) {
+        if (field in req.body) {
+          return res.status(403).json({ error: `Cannot modify ${field} - admin only` });
+        }
+      }
+    }
+    
+    const user = await storage.updateUser(targetUserId, req.body);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  // Password change endpoint - used for forced password changes and profile updates
+  app.patch("/api/users/:id/password", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.id;
+    
+    // Users can only change their own password unless they're admin
+    const isAdmin = currentUser.role === "admin";
+    const isSelf = currentUser.id === targetUserId;
+    
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ error: "Cannot change other users' passwords" });
+    }
+    
+    const { newPassword, currentPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // If currentPassword is provided (voluntary change via profile), verify it
+    if (currentPassword) {
+      const userRecord = await storage.getUser(targetUserId);
+      if (!userRecord) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const isValid = await comparePassword(currentPassword, userRecord.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+    }
+    
+    // Update password and set mustChangePassword to false
+    const user = await storage.updateUser(targetUserId, { 
+      password: newPassword,
+      mustChangePassword: false 
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: targetUserId,
+        action: "Password changed",
+        details: `Password changed successfully`,
+        entityType: "user",
+        entityId: targetUserId,
+      });
+    } catch (e) {
+      console.error("Failed to create activity log:", e);
+    }
+    
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  // Onboarding tour completion endpoint
+  app.patch("/api/users/:id/onboarding", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.id;
+    
+    // Users can only update their own onboarding status
+    const isSelf = currentUser.id === targetUserId;
+    if (!isSelf) {
+      return res.status(403).json({ error: "Cannot update other users' onboarding status" });
+    }
+    
+    const { tour, completed } = req.body;
+    const validTours = ["portal", "timesheets", "invoices", "ooo", "supervisor"];
+    
+    if (!tour || !validTours.includes(tour)) {
+      return res.status(400).json({ error: "Invalid tour name. Must be one of: portal, timesheets, invoices, ooo, supervisor" });
+    }
+    
+    if (typeof completed !== "boolean") {
+      return res.status(400).json({ error: "completed must be a boolean" });
+    }
+    
+    const user = await storage.getUser(targetUserId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    // Update the completedOnboarding JSONB field
+    const currentOnboarding = (user.completedOnboarding as Record<string, boolean>) || {};
+    const updatedOnboarding = { ...currentOnboarding, [tour]: completed };
+    
+    const updatedUser = await storage.updateUser(targetUserId, {
+      completedOnboarding: updatedOnboarding
+    });
+    
+    if (!updatedUser) {
+      return res.status(500).json({ error: "Failed to update onboarding status" });
+    }
+    
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    res.json(userWithoutPassword);
+  });
+
+  app.delete("/api/users/:id", authMiddleware, requireRole("admin"), async (req, res) => {
+    const success = await storage.deleteUser(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: req.params.id,
+        action: "User deleted",
+        details: `User account removed`,
+        entityType: "user",
+        entityId: req.params.id,
+      });
+    } catch (e) {
+      console.error("Failed to create activity log:", e);
+    }
+
+    res.status(204).send();
+  });
+
+  app.post("/api/users/bulk", authMiddleware, requireRole("admin"), async (req, res) => {
+    try {
+      const { users } = req.body;
+      if (!Array.isArray(users) || users.length === 0) {
+        return res.status(400).json({ error: "No users provided" });
+      }
+
+      const createdUsers = [];
+      for (const userData of users) {
+        try {
+          const user = await storage.createUser({
+            ...userData,
+            isActive: true,
+          });
+          createdUsers.push(user);
+        } catch (e) {
+          console.error("Failed to create user:", userData.email, e);
+        }
+      }
+
+      res.status(201).json({ 
+        created: createdUsers.length,
+        total: users.length 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to bulk create users" });
+    }
+  });
+
+  app.post("/api/users/:id/reset-password", authMiddleware, requireRole("admin"), async (req, res) => {
+    const user = await storage.getUser(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const tempPassword = "temp" + Math.random().toString(36).slice(2, 8);
+    await storage.updateUser(req.params.id, { password: tempPassword, mustChangePassword: true });
+
+    try {
+      await storage.createActivityLog({
+        userId: req.params.id,
+        action: "Password reset",
+        details: `Password reset for ${user.firstName} ${user.lastName}`,
+        entityType: "user",
+        entityId: req.params.id,
+      });
+    } catch (e) {
+      console.error("Failed to create activity log:", e);
+    }
+
+    res.json({ message: "Password reset successfully", tempPassword });
+  });
+
+  // OOO Request routes - protected
+  app.get("/api/ooo-requests", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId } = req.query;
+    
+    // Users can only see their own requests unless admin or dynamic supervisor
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    
+    if (userId) {
+      if (!isSupervisor && userId !== currentUser.id) {
+        return res.status(403).json({ error: "Cannot view other users' requests" });
+      }
+      const requests = await storage.getOOORequestsByUser(userId as string);
+      res.json(requests);
+    } else {
+      if (!isSupervisor) {
+        const requests = await storage.getOOORequestsByUser(currentUser.id);
+        return res.json(requests);
+      }
+      const requests = await storage.getAllOOORequests();
+      res.json(requests);
+    }
+  });
+
+  app.get("/api/leave-requests", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    
+    const requests = await storage.getAllOOORequests();
+    
+    // Enrich with user information
+    const enrichedRequests = await Promise.all(
+      requests.map(async (r) => {
+        const user = await storage.getUser(r.userId);
+        return {
+          ...r,
+          userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+          userEmail: user?.email || "",
+        };
+      })
+    );
+    
+    res.json(enrichedRequests);
+  });
+
+  app.get("/api/leave-requests/pending", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { managerId } = req.query;
+    
+    let requests = await storage.getPendingOOORequests();
+    
+    // Filter based on role - admins see all, IC supervisors see their team only
+    if (currentUser.role === "admin") {
+      // Admins see all pending requests
+    } else if (managerId) {
+      // Filter to only show requests for this manager
+      requests = requests.filter(r => r.managerId === managerId);
+    } else {
+      return res.status(400).json({ error: "managerId is required" });
+    }
+    
+    // Enrich with user information
+    const enrichedRequests = await Promise.all(
+      requests.map(async (r) => {
+        const user = await storage.getUser(r.userId);
+        return {
+          ...r,
+          userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+          userEmail: user?.email || "",
+        };
+      })
+    );
+    
+    res.json(enrichedRequests);
+  });
+
+  // Count endpoints for sidebar badges
+  app.get("/api/leave-requests/pending-count", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    let requests = await storage.getPendingOOORequests();
+    
+    // Filter based on user role - only admins see all, IC supervisors see their team
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (isSupervisor && currentUser.role !== "admin") {
+      requests = requests.filter(r => r.managerId === currentUser.id);
+    }
+    
+    res.json({ count: requests.length });
+  });
+
+  app.post("/api/ooo-requests", authMiddleware, async (req, res) => {
+    try {
+      const currentUser = req.authenticatedUser!;
+      
+      // Users can only create requests for themselves
+      if (req.body.userId !== currentUser.id) {
+        return res.status(403).json({ error: "Cannot create requests for other users" });
+      }
+      
+      const request = await storage.createOOORequest(req.body);
+      const submitter = await storage.getUser(req.body.userId);
+
+      try {
+        await storage.createActivityLog({
+          userId: req.body.userId,
+          action: "OOO request created",
+          details: `Requested time off from ${req.body.startDate} to ${req.body.endDate}`,
+          entityType: "ooo_request",
+          entityId: request.id,
+        });
+
+        if (submitter) {
+          await notifyOOOSubmitted(request, submitter);
+        }
+      } catch (e) {
+        console.error("Failed to create activity log or notification:", e);
+      }
+
+      res.status(201).json(request);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create OOO request" });
+    }
+  });
+
+  app.patch("/api/ooo-requests/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const existingRequest = await storage.getOOORequest(req.params.id);
+    if (!existingRequest) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (req.body.reviewedBy) {
+      req.body.reviewedBy = currentUser.id;
+    }
+
+    if (currentUser.id === existingRequest.userId && 
+        (req.body.status === "approved" || req.body.status === "rejected") &&
+        currentUser.role !== "admin") {
+      return res.status(403).json({ error: "You cannot approve or reject your own request" });
+    }
+
+    const request = await storage.updateOOORequest(req.params.id, {
+      ...req.body,
+      reviewedAt: new Date(),
+    });
+
+    if (!request) {
+      return res.status(500).json({ error: "Failed to update request" });
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: req.body.reviewedBy,
+        action: `OOO request ${req.body.status}`,
+        details: `Leave request was ${req.body.status}`,
+        entityType: "ooo_request",
+        entityId: request.id,
+      });
+
+      if (req.body.reviewedBy && req.body.status) {
+        const reviewer = await storage.getUser(req.body.reviewedBy);
+        if (reviewer) {
+          if (req.body.status === "approved") {
+            await notifyOOOApproved(request, reviewer);
+          } else if (req.body.status === "rejected") {
+            await notifyOOORejected(request, reviewer, req.body.reviewNote);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to create activity log or notification:", e);
+    }
+
+    res.json(request);
+  });
+
+  // Timesheet routes
+  app.get("/api/timesheets", authMiddleware, async (req, res) => {
+    const { userId, month, year } = req.query;
+    
+    if (userId && month && year) {
+      const timesheet = await storage.getTimesheetByUserAndMonth(
+        userId as string,
+        parseInt(month as string),
+        parseInt(year as string)
+      );
+      res.json(timesheet || null);
+    } else if (userId) {
+      const timesheets = await storage.getTimesheetsByUser(userId as string);
+      res.json(timesheets);
+    } else {
+      const timesheets = await storage.getAllTimesheets();
+      // Enrich with user information
+      const enrichedTimesheets = await Promise.all(
+        timesheets.map(async (t) => {
+          const user = await storage.getUser(t.userId);
+          return {
+            ...t,
+            userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+            userEmail: user?.email || "",
+          };
+        })
+      );
+      res.json(enrichedTimesheets);
+    }
+  });
+
+  app.get("/api/team/timesheets", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+
+    const statusFilter = req.query.status as string | undefined;
+    
+    let timesheets = statusFilter
+      ? (await storage.getAllTimesheets()).filter(t => t.status === statusFilter)
+      : await storage.getSubmittedTimesheets();
+    
+    // Filter based on role - IC supervisors only see their team's timesheets, admins see all
+    if (currentUser.role !== "admin") {
+      const teamMembers = await storage.getUsersBySupervisor(currentUser.id);
+      const teamMemberIds = teamMembers.map(m => m.id);
+      timesheets = timesheets.filter(t => teamMemberIds.includes(t.userId));
+    }
+    
+    // Enrich with user information
+    const enrichedTimesheets = await Promise.all(
+      timesheets.map(async (t) => {
+        const user = await storage.getUser(t.userId);
+        return {
+          ...t,
+          userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+          userEmail: user?.email || "",
+        };
+      })
+    );
+    
+    res.json(enrichedTimesheets);
+  });
+
+  app.get("/api/timesheets/pending-count", authMiddleware, async (req, res) => {
+    const currentUser = await getCurrentUser(req);
+    if (!currentUser) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    let timesheets = await storage.getSubmittedTimesheets();
+    
+    // Filter based on role - IC supervisors only see their team's timesheets, admins see all
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (isSupervisor && currentUser.role !== "admin") {
+      const teamMembers = await storage.getUsersBySupervisor(currentUser.id);
+      const teamMemberIds = teamMembers.map(m => m.id);
+      timesheets = timesheets.filter(t => teamMemberIds.includes(t.userId));
+    }
+    
+    res.json({ count: timesheets.length });
+  });
+
+  app.get("/api/timesheets/:id/entries", authMiddleware, async (req, res) => {
+    const entries = await storage.getDailyEntriesByTimesheet(req.params.id);
+    res.json(entries);
+  });
+
+  app.post("/api/timesheets/save", authMiddleware, async (req, res) => {
+    const { userId, month, year, entries } = req.body;
+    
+    let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
+    
+    // Prevent editing approved timesheets
+    if (timesheet && timesheet.status === "approved") {
+      return res.status(403).json({ error: "Cannot edit an approved timesheet" });
+    }
+    
+    // Prevent editing submitted timesheets (they're locked until invoice is reviewed)
+    if (timesheet && timesheet.status === "submitted") {
+      return res.status(403).json({ error: "Cannot edit a submitted timesheet. It will be unlocked if the invoice is rejected." });
+    }
+    
+    const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
+    
+    if (timesheet) {
+      await storage.deleteDailyEntriesByTimesheet(timesheet.id);
+      const updated = await storage.updateTimesheet(timesheet.id, {
+        totalHours,
+        status: "draft",
+      });
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update timesheet" });
+      }
+      timesheet = updated;
+    } else {
+      timesheet = await storage.createTimesheet({
+        userId,
+        month,
+        year,
+        totalHours,
+        status: "draft",
+      });
+    }
+
+    for (const entry of entries) {
+      await storage.createDailyEntry({
+        timesheetId: timesheet.id,
+        date: entry.date,
+        hours: entry.hours,
+        activityLog: entry.activityLog,
+      });
+      
+      // Auto-create overtime request for entries > 8 hours OR weekend work
+      const STANDARD_HOURS = 8;
+      const isWeekendEntry = isWeekend(entry.date);
+      const isOvertime = entry.hours > STANDARD_HOURS;
+      
+      if ((isOvertime || isWeekendEntry) && entry.hours > 0) {
+        const existingOT = await storage.getOvertimeRequestByTimesheetAndDate(timesheet.id, entry.date);
+        if (!existingOT) {
+          await storage.createOvertimeRequest({
+            userId,
+            timesheetId: timesheet.id,
+            date: entry.date,
+            requestedHours: entry.hours,
+            status: "pending",
+            isWeekendWork: isWeekendEntry,
+          });
+        } else if (existingOT.isWeekendWork !== isWeekendEntry) {
+          // Update existing request if weekend status changed
+          await storage.updateOvertimeRequest(existingOT.id, {
+            isWeekendWork: isWeekendEntry,
+          });
+        }
+      }
+    }
+
+    res.json(timesheet);
+  });
+
+  app.post("/api/timesheets/submit", authMiddleware, async (req, res) => {
+    const { userId, month, year, entries } = req.body;
+    
+    let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
+    
+    const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
+    
+    if (timesheet) {
+      await storage.deleteDailyEntriesByTimesheet(timesheet.id);
+      const updated = await storage.updateTimesheet(timesheet.id, {
+        totalHours,
+        status: "submitted",
+        submittedAt: new Date(),
+      });
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update timesheet" });
+      }
+      timesheet = updated;
+    } else {
+      const created = await storage.createTimesheet({
+        userId,
+        month,
+        year,
+        totalHours,
+        status: "submitted",
+      });
+      const updated = await storage.updateTimesheet(created.id, {
+        submittedAt: new Date(),
+      });
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update timesheet" });
+      }
+      timesheet = updated;
+    }
+
+    for (const entry of entries) {
+      await storage.createDailyEntry({
+        timesheetId: timesheet.id,
+        date: entry.date,
+        hours: entry.hours,
+        activityLog: entry.activityLog,
+      });
+      
+      // Auto-create overtime request for entries > 8 hours OR weekend work
+      const STANDARD_HOURS = 8;
+      const isWeekendEntry = isWeekend(entry.date);
+      const isOvertime = entry.hours > STANDARD_HOURS;
+      
+      if ((isOvertime || isWeekendEntry) && entry.hours > 0) {
+        const existingOT = await storage.getOvertimeRequestByTimesheetAndDate(timesheet.id, entry.date);
+        if (!existingOT) {
+          await storage.createOvertimeRequest({
+            userId,
+            timesheetId: timesheet.id,
+            date: entry.date,
+            requestedHours: entry.hours,
+            status: "pending",
+            isWeekendWork: isWeekendEntry,
+          });
+        } else if (existingOT.isWeekendWork !== isWeekendEntry) {
+          // Update existing request if weekend status changed
+          await storage.updateOvertimeRequest(existingOT.id, {
+            isWeekendWork: isWeekendEntry,
+          });
+        }
+      }
+    }
+
+    await storage.createActivityLog({
+      userId,
+      action: "Timesheet submitted",
+      details: `Submitted timesheet for ${month}/${year} with ${totalHours} hours`,
+      entityType: "timesheet",
+      entityId: timesheet.id,
+    });
+
+    const submitter = await storage.getUser(userId);
+    if (submitter) {
+      await notifyTimesheetSubmitted(timesheet, submitter);
+    }
+
+    res.json(timesheet);
+  });
+
+  app.patch("/api/timesheets/:id", authMiddleware, async (req, res) => {
+    const existingTimesheet = await storage.getTimesheet(req.params.id);
+    
+    if (!existingTimesheet) {
+      return res.status(404).json({ error: "Timesheet not found" });
+    }
+
+    if (req.body.reviewedBy && req.body.reviewedBy === existingTimesheet.userId && 
+        (req.body.status === "approved" || req.body.status === "rejected")) {
+      return res.status(403).json({ error: "You cannot approve or reject your own timesheet" });
+    }
+
+    const timesheet = await storage.updateTimesheet(req.params.id, {
+      ...req.body,
+      reviewedAt: new Date(),
+    });
+
+    if (!timesheet) {
+      return res.status(500).json({ error: "Failed to update timesheet" });
+    }
+
+    if (req.body.reviewedBy && req.body.status) {
+      const reviewer = await storage.getUser(req.body.reviewedBy);
+      if (reviewer) {
+        if (req.body.status === "approved") {
+          await notifyTimesheetApproved(timesheet, existingTimesheet.userId, reviewer);
+        } else if (req.body.status === "rejected") {
+          await notifyTimesheetRejected(timesheet, existingTimesheet.userId, reviewer, req.body.reviewNote);
+        }
+      }
+    }
+
+    res.json(timesheet);
+  });
+
+  // Unlock approved timesheet for revision (supervisor only)
+  app.post("/api/timesheets/:id/unlock", authMiddleware, async (req, res) => {
+    try {
+      const currentUser = req.authenticatedUser!;
+      const { note } = req.body;
+
+      if (!note || !note.trim()) {
+        return res.status(400).json({ error: "A reason for unlocking is required" });
+      }
+
+      const timesheet = await storage.getTimesheet(req.params.id);
+      if (!timesheet) {
+        return res.status(404).json({ error: "Timesheet not found" });
+      }
+
+      if (timesheet.status !== "approved") {
+        return res.status(400).json({ error: "Only approved timesheets can be unlocked" });
+      }
+
+      // Verify the user is a supervisor of the timesheet owner
+      const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+      if (!isSupervisor) {
+        return res.status(403).json({ error: "Only supervisors can unlock timesheets" });
+      }
+
+      // Update timesheet to draft status and add unlock note
+      const updatedTimesheet = await storage.updateTimesheet(req.params.id, {
+        status: "draft",
+        reviewNote: `Unlocked for revision by ${currentUser.firstName} ${currentUser.lastName}: ${note}`,
+        reviewedAt: new Date(),
+        reviewedBy: currentUser.id,
+      });
+
+      // Log the activity
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        action: "Timesheet unlocked for revision",
+        details: `Unlocked timesheet for ${timesheet.month}/${timesheet.year} for user ${timesheet.userId}. Reason: ${note}`,
+        entityType: "timesheet",
+        entityId: timesheet.id,
+      });
+
+      // Also unlock any associated invoice by setting it back to pending_review
+      const invoices = await storage.getInvoicesByUser(timesheet.userId);
+      const linkedInvoice = invoices.find(
+        (inv) => inv.month === timesheet.month && inv.year === timesheet.year
+      );
+      if (linkedInvoice) {
+        await storage.updateInvoice(linkedInvoice.id, {
+          status: "pending_review",
+        });
+        await storage.createActivityLog({
+          userId: currentUser.id,
+          action: "Invoice returned for revision",
+          details: `Invoice ${linkedInvoice.fileName} returned for revision due to timesheet unlock`,
+          entityType: "invoice",
+          entityId: linkedInvoice.id,
+        });
+      }
+
+      // Notify the IC user
+      const icUser = await storage.getUser(timesheet.userId);
+      if (icUser) {
+        // Notification would go here (using existing notification patterns)
+      }
+
+      res.json(updatedTimesheet);
+    } catch (error: any) {
+      console.error("Unlock timesheet error:", error?.message || error);
+      res.status(500).json({ error: "Failed to unlock timesheet" });
+    }
+  });
+
+  app.get("/api/timesheets-report", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const timesheets = await storage.getAllTimesheets();
+    const enrichedTimesheets = await Promise.all(
+      timesheets.map(async (t) => {
+        const user = await storage.getUser(t.userId);
+        return {
+          ...t,
+          userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+          userEmail: user?.email || "",
+        };
+      })
+    );
+    res.json(enrichedTimesheets);
+  });
+
+  // Overtime request routes - protected
+  app.get("/api/overtime-requests", authMiddleware, async (req, res) => {
+    const { userId, timesheetId, status } = req.query;
+    
+    let requests: Awaited<ReturnType<typeof storage.getAllOvertimeRequests>> = [];
+    
+    if (userId) {
+      requests = await storage.getOvertimeRequestsByUser(userId as string);
+    } else if (timesheetId) {
+      requests = await storage.getOvertimeRequestsByTimesheet(timesheetId as string);
+    } else if (status === "pending") {
+      requests = await storage.getPendingOvertimeRequests();
+    } else {
+      requests = await storage.getAllOvertimeRequests();
+    }
+    
+    // Enrich overtime requests with activity log from daily entries
+    const enrichedRequests = await Promise.all(
+      requests.map(async (r) => {
+        const dailyEntry = await storage.getDailyEntryByTimesheetAndDate(r.timesheetId, r.date);
+        return {
+          ...r,
+          activityLog: dailyEntry?.activityLog || null,
+        };
+      })
+    );
+    res.json(enrichedRequests);
+  });
+
+  app.get("/api/overtime-requests/pending-count", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const requests = await storage.getPendingOvertimeRequests();
+    res.json({ count: requests.length });
+  });
+
+  app.post("/api/overtime-requests", authMiddleware, async (req, res) => {
+    try {
+      // Check for existing overtime request to prevent duplicates
+      const existingRequest = await storage.getOvertimeRequestByTimesheetAndDate(
+        req.body.timesheetId,
+        req.body.date
+      );
+      
+      if (existingRequest) {
+        // Return existing request instead of creating a duplicate
+        return res.json(existingRequest);
+      }
+      
+      const request = await storage.createOvertimeRequest(req.body);
+      const submitter = await storage.getUser(req.body.userId);
+
+      try {
+        await storage.createActivityLog({
+          userId: req.body.userId,
+          action: "Overtime request created",
+          details: `Requested ${req.body.requestedHours - 8} overtime hours for ${req.body.date}`,
+          entityType: "overtime_request",
+          entityId: request.id,
+        });
+
+        if (submitter) {
+          await notifyOvertimeSubmitted(request, submitter);
+        }
+      } catch (e) {
+        console.error("Failed to create activity log or notification:", e);
+      }
+
+      res.status(201).json(request);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create overtime request" });
+    }
+  });
+
+  app.patch("/api/overtime-requests/:id", authMiddleware, async (req, res) => {
+    const existingRequest = await storage.getOvertimeRequest(req.params.id);
+    
+    if (!existingRequest) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (req.body.reviewedBy && req.body.reviewedBy === existingRequest.userId && 
+        (req.body.status === "approved" || req.body.status === "rejected")) {
+      return res.status(403).json({ error: "You cannot approve or reject your own overtime request" });
+    }
+
+    // Validate approvedHours if provided
+    if (req.body.status === "approved" && req.body.approvedHours !== undefined) {
+      const approvedHours = Number(req.body.approvedHours);
+      if (isNaN(approvedHours) || approvedHours < 1 || approvedHours > existingRequest.requestedHours) {
+        return res.status(400).json({ 
+          error: `Approved hours must be between 1 and ${existingRequest.requestedHours}` 
+        });
+      }
+    }
+
+    const request = await storage.updateOvertimeRequest(req.params.id, {
+      ...req.body,
+      reviewedAt: new Date(),
+    });
+
+    if (!request) {
+      return res.status(500).json({ error: "Failed to update overtime request" });
+    }
+
+    // If overtime is rejected, reset the daily entry hours to 8 (max normal hours)
+    // and recalculate the timesheet total from all entries for accuracy
+    if (req.body.status === "rejected") {
+      try {
+        const dailyEntry = await storage.getDailyEntryByTimesheetAndDate(
+          existingRequest.timesheetId,
+          existingRequest.date
+        );
+        if (dailyEntry && dailyEntry.hours > 8) {
+          await storage.updateDailyEntry(dailyEntry.id, { hours: 8 });
+          // Recalculate the timesheet's total hours from all entries for accuracy
+          const allEntries = await storage.getDailyEntriesByTimesheet(existingRequest.timesheetId);
+          const newTotal = allEntries.reduce((sum, entry) => {
+            // Use 8 for the just-updated entry, actual hours for others
+            return sum + (entry.id === dailyEntry.id ? 8 : entry.hours);
+          }, 0);
+          await storage.updateTimesheet(existingRequest.timesheetId, {
+            totalHours: newTotal
+          });
+        }
+      } catch (e) {
+        console.error("Failed to reset daily entry hours after overtime rejection:", e);
+      }
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: req.body.reviewedBy,
+        action: `Overtime request ${req.body.status}`,
+        details: `Overtime request was ${req.body.status}`,
+        entityType: "overtime_request",
+        entityId: request.id,
+      });
+
+      if (req.body.reviewedBy && req.body.status) {
+        const reviewer = await storage.getUser(req.body.reviewedBy);
+        if (reviewer) {
+          if (req.body.status === "approved") {
+            await notifyOvertimeApproved(request, reviewer);
+          } else if (req.body.status === "rejected") {
+            await notifyOvertimeRejected(request, reviewer, req.body.reviewNote);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to create activity log or notification:", e);
+    }
+
+    res.json(request);
+  });
+
+  // Get approved OOO dates for a user within a month
+  app.get("/api/ooo-requests/approved-dates", authMiddleware, async (req, res) => {
+    const { userId, month, year } = req.query;
+    if (!userId || !month || !year) {
+      return res.status(400).json({ error: "userId, month, and year are required" });
+    }
+
+    const requests = await storage.getOOORequestsByUser(userId as string);
+    const approvedRequests = requests.filter(r => r.status === "approved");
+
+    const monthInt = parseInt(month as string);
+    const yearInt = parseInt(year as string);
+
+    const datesInMonth: { date: string; oooType: string }[] = [];
+
+    approvedRequests.forEach(request => {
+      const startDate = new Date(request.startDate);
+      const endDate = new Date(request.endDate);
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (d.getMonth() + 1 === monthInt && d.getFullYear() === yearInt) {
+          datesInMonth.push({
+            date: d.toISOString().split('T')[0],
+            oooType: request.oooType,
+          });
+        }
+      }
+    });
+
+    res.json(datesInMonth);
+  });
+
+  // Invoice routes - protected
+  app.get("/api/invoices", authMiddleware, async (req, res) => {
+    const { userId } = req.query;
+    let invoices;
+    if (userId) {
+      invoices = await storage.getInvoicesByUser(userId as string);
+    } else {
+      invoices = await storage.getAllInvoices();
+    }
+    
+    // Enrich invoices with user data and normalize file URLs
+    const enrichedInvoices = await Promise.all(
+      invoices.map(async (invoice) => {
+        const invoiceUser = await storage.getUser(invoice.userId);
+        const timesheet = invoice.timesheetId 
+          ? await storage.getTimesheet(invoice.timesheetId)
+          : null;
+        return {
+          ...invoice,
+          fileUrl: normalizeFileUrl(invoice.fileUrl),
+          user: invoiceUser ? {
+            id: invoiceUser.id,
+            firstName: invoiceUser.firstName,
+            lastName: invoiceUser.lastName,
+            email: invoiceUser.email,
+          } : null,
+          timesheet,
+        };
+      })
+    );
+    
+    res.json(enrichedInvoices);
+  });
+
+  app.post("/api/invoices", authMiddleware, async (req, res) => {
+    try {
+      const { userId, month, year } = req.body;
+      
+      // Link invoice to timesheet if exists
+      const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
+      
+      const invoiceData = {
+        ...req.body,
+        status: "pending_review",
+        timesheetId: timesheet?.id || null,
+      };
+      
+      const invoice = await storage.createInvoice(invoiceData);
+
+      // When invoice is submitted, auto-submit timesheet if in draft status
+      if (timesheet && timesheet.status === "draft") {
+        await storage.updateTimesheet(timesheet.id, {
+          status: "submitted",
+          submittedAt: new Date(),
+        });
+
+        await storage.createActivityLog({
+          userId,
+          action: "Timesheet auto-submitted",
+          details: `Timesheet for ${month}/${year} submitted for approval with invoice`,
+          entityType: "timesheet",
+          entityId: timesheet.id,
+        });
+      }
+
+      await storage.createActivityLog({
+        userId: req.body.userId,
+        action: "Invoice submitted for review",
+        details: `Submitted invoice ${req.body.fileName} for approval`,
+        entityType: "invoice",
+        entityId: invoice.id,
+      });
+
+      const uploader = await storage.getUser(invoice.userId);
+      if (uploader) {
+        await notifyInvoiceUploaded(invoice, uploader);
+      }
+
+      // Upload to Object Storage immediately (but don't sync to Notion yet - that happens on approval)
+      res.status(201).json({
+        ...invoice,
+        fileUrl: normalizeFileUrl(invoice.fileUrl),
+      });
+
+      setImmediate(async () => {
+        try {
+          // Upload the invoice file to Object Storage if it's a base64 data URL
+          if (invoice.fileUrl && invoice.fileUrl.startsWith("data:")) {
+            const uploadedUrl = await uploadBase64ToObjectStorage(
+              invoice.fileUrl,
+              invoice.fileName
+            );
+            if (uploadedUrl) {
+              // Update the invoice with the public URL
+              await storage.updateInvoice(invoice.id, { fileUrl: uploadedUrl });
+            }
+          }
+        } catch (error: any) {
+          console.error("[Invoice] Object Storage upload error:", error?.message || error);
+        }
+      });
+    } catch (error: any) {
+      console.error("Invoice creation error:", error?.message || error);
+      res.status(500).json({ error: "Failed to upload invoice" });
+    }
+  });
+
+  app.get("/api/invoices/next-number/:userId", authMiddleware, async (req, res) => {
+    try {
+      const invoiceNumber = await storage.getNextInvoiceNumber(req.params.userId);
+      res.json({ invoiceNumber });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get next invoice number" });
+    }
+  });
+
+  app.get("/api/invoices/:id", authMiddleware, async (req, res) => {
+    const invoice = await storage.getInvoice(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+    res.json({
+      ...invoice,
+      fileUrl: normalizeFileUrl(invoice.fileUrl),
+    });
+  });
+
+  app.delete("/api/invoices/:id", authMiddleware, async (req, res) => {
+    const invoice = await storage.getInvoice(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+    
+    const user = req.authenticatedUser!;
+    
+    // Only allow deleting rejected invoices or pending ones by the owner
+    if (invoice.status === "approved") {
+      return res.status(403).json({ error: "Cannot delete approved invoices" });
+    }
+    
+    if (invoice.userId !== user.id && user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized to delete this invoice" });
+    }
+    
+    const success = await storage.deleteInvoice(req.params.id);
+    if (!success) {
+      return res.status(500).json({ error: "Failed to delete invoice" });
+    }
+    res.status(204).send();
+  });
+
+  // Invoice approval/rejection route (for supervisors)
+  app.patch("/api/invoices/:id", authMiddleware, async (req, res) => {
+    const invoice = await storage.getInvoice(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    const user = req.authenticatedUser!;
+    const { status, reviewNote } = req.body;
+
+    // Prevent self-approval
+    if (user.id === invoice.userId && (status === "approved" || status === "rejected")) {
+      return res.status(403).json({ error: "You cannot approve or reject your own invoice" });
+    }
+
+    // Check if user has supervisor privileges
+    const isSupervisor = await hasSupervisorPrivileges(user.id);
+    if (!isSupervisor && status) {
+      return res.status(403).json({ error: "Insufficient permissions to review invoices" });
+    }
+
+    // Prevent re-reviewing approved invoices
+    if (invoice.status === "approved" && status) {
+      return res.status(400).json({ error: "This invoice has already been approved and cannot be changed" });
+    }
+
+    const updates: any = {
+      ...req.body,
+      reviewedBy: user.id,
+      reviewedAt: new Date(),
+    };
+
+    const updatedInvoice = await storage.updateInvoice(req.params.id, updates);
+    if (!updatedInvoice) {
+      return res.status(500).json({ error: "Failed to update invoice" });
+    }
+
+    // Handle approval - sync to Notion
+    if (status === "approved") {
+      console.log("[Invoice] Processing approval for invoice:", invoice.invoiceNumber);
+      console.log("[Invoice] Invoice ID:", invoice.id);
+      console.log("[Invoice] File URL:", updatedInvoice.fileUrl);
+      
+      await notifyInvoiceApproved(updatedInvoice, invoice.userId, user);
+
+      // Also approve the linked timesheet if it exists
+      if (invoice.timesheetId) {
+        const timesheet = await storage.getTimesheet(invoice.timesheetId);
+        if (timesheet && timesheet.status !== "approved") {
+          await storage.updateTimesheet(invoice.timesheetId, {
+            status: "approved",
+            reviewedBy: user.id,
+            reviewedAt: new Date(),
+          });
+          await notifyTimesheetApproved(timesheet, invoice.userId, user);
+        }
+      }
+
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "Invoice approved",
+        details: `Approved invoice ${invoice.invoiceNumber}`,
+        entityType: "invoice",
+        entityId: invoice.id,
+      });
+
+      // Fire-and-forget: sync to Notion after approval
+      setImmediate(async () => {
+        try {
+          const uploader = await storage.getUser(invoice.userId);
+          const timesheetForHours = invoice.timesheetId
+            ? await storage.getTimesheet(invoice.timesheetId)
+            : null;
+          
+          const contractorName = uploader 
+            ? `${uploader.firstName} ${uploader.lastName}` 
+            : invoice.contractorName || "Unknown";
+          
+          // Construct absolute URL for Notion if we have a relative path
+          let absoluteFileUrl: string | undefined;
+          if (updatedInvoice.fileUrl) {
+            if (updatedInvoice.fileUrl.startsWith("http")) {
+              absoluteFileUrl = updatedInvoice.fileUrl;
+            } else if (updatedInvoice.fileUrl.startsWith("/")) {
+              // Construct absolute URL from relative path for external services
+              // Try multiple environment variables for different deployment contexts
+              let baseUrl: string | undefined;
+              
+              // For production deployments (REPLIT_DOMAINS contains comma-separated domains)
+              if (process.env.REPLIT_DOMAINS) {
+                const domains = process.env.REPLIT_DOMAINS.split(',');
+                const productionDomain = domains.find(d => d.includes('.replit.app')) || domains[0];
+                if (productionDomain) {
+                  baseUrl = `https://${productionDomain.trim()}`;
+                }
+              }
+              
+              // Fallback to dev domain
+              if (!baseUrl && process.env.REPLIT_DEV_DOMAIN) {
+                baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+              }
+              
+              // Last fallback to legacy format
+              if (!baseUrl && process.env.REPL_SLUG && process.env.REPL_OWNER) {
+                baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+              }
+              
+              if (baseUrl) {
+                absoluteFileUrl = `${baseUrl}${updatedInvoice.fileUrl}`;
+                console.log("[Invoice] Constructed absolute file URL:", absoluteFileUrl);
+              } else {
+                console.warn("[Invoice] Could not construct absolute URL - no domain env vars found");
+              }
+            }
+          }
+          
+          syncInvoiceToNotionAsync({
+            invoice: updatedInvoice,
+            contractorName,
+            totalHours: timesheetForHours?.totalHours || 0,
+            category: (uploader as any)?.contractorCategory || undefined,
+            fileUrl: absoluteFileUrl,
+          });
+        } catch (error: any) {
+          console.error("[Invoice] Notion sync error:", error?.message || error);
+        }
+      });
+    }
+
+    // Handle rejection
+    if (status === "rejected") {
+      await notifyInvoiceRejected(updatedInvoice, invoice.userId, user, reviewNote);
+
+      // Reset the linked timesheet back to draft so IC can make corrections
+      if (invoice.timesheetId) {
+        const timesheet = await storage.getTimesheet(invoice.timesheetId);
+        if (timesheet && timesheet.status === "submitted") {
+          await storage.updateTimesheet(invoice.timesheetId, {
+            status: "draft",
+            reviewedBy: null,
+            reviewedAt: null,
+          });
+          
+          await storage.createActivityLog({
+            userId: user.id,
+            action: "Timesheet unlocked for revision",
+            details: `Timesheet unlocked due to invoice rejection`,
+            entityType: "timesheet",
+            entityId: invoice.timesheetId,
+          });
+        }
+      }
+
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "Invoice rejected",
+        details: `Rejected invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
+        entityType: "invoice",
+        entityId: invoice.id,
+      });
+    }
+
+    // Handle revision request (admin can request revision without resetting timesheet)
+    if (status === "revision_requested") {
+      await notifyInvoiceRevisionRequested(updatedInvoice, invoice.userId, user, reviewNote);
+
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "Invoice revision requested",
+        details: `Requested revision for invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
+        entityType: "invoice",
+        entityId: invoice.id,
+      });
+    }
+
+    res.json({
+      ...updatedInvoice,
+      fileUrl: normalizeFileUrl(updatedInvoice.fileUrl),
+    });
+  });
+
+  // Get pending invoices for review (for supervisors)
+  app.get("/api/team/invoices", authMiddleware, async (req, res) => {
+    const user = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(user.id);
+    
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
+    // Get all pending invoices
+    const pendingInvoices = await storage.getPendingInvoices();
+    
+    // Enrich with user data and normalize file URLs
+    const enrichedInvoices = await Promise.all(
+      pendingInvoices.map(async (invoice) => {
+        const invoiceUser = await storage.getUser(invoice.userId);
+        const timesheet = invoice.timesheetId 
+          ? await storage.getTimesheet(invoice.timesheetId)
+          : null;
+        return {
+          ...invoice,
+          fileUrl: normalizeFileUrl(invoice.fileUrl),
+          user: invoiceUser ? {
+            id: invoiceUser.id,
+            firstName: invoiceUser.firstName,
+            lastName: invoiceUser.lastName,
+            email: invoiceUser.email,
+          } : null,
+          timesheet,
+        };
+      })
+    );
+
+    res.json(enrichedInvoices);
+  });
+
+  // Get pending invoice count for supervisor badge
+  app.get("/api/invoices/pending-count", authMiddleware, async (req, res) => {
+    const user = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(user.id);
+    
+    if (!isSupervisor) {
+      return res.json({ count: 0 });
+    }
+
+    const pendingInvoices = await storage.getPendingInvoices();
+    res.json({ count: pendingInvoices.length });
+  });
+
+  // Invoice Line Items routes - protected
+  app.get("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
+    const lineItems = await storage.getInvoiceLineItems(req.params.invoiceId);
+    res.json(lineItems);
+  });
+
+  app.post("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
+    try {
+      const lineItem = await storage.createInvoiceLineItem({
+        ...req.body,
+        invoiceId: req.params.invoiceId,
+      });
+      res.status(201).json(lineItem);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create line item" });
+    }
+  });
+
+  // IC Payment Details routes - protected
+  app.get("/api/ic-payment-details/:userId", authMiddleware, async (req, res) => {
+    const details = await storage.getIcPaymentDetails(req.params.userId);
+    if (!details) {
+      return res.json(null);
+    }
+    res.json(details);
+  });
+
+  app.post("/api/ic-payment-details", authMiddleware, async (req, res) => {
+    try {
+      const existing = await storage.getIcPaymentDetails(req.body.userId);
+      if (existing) {
+        const updated = await storage.updateIcPaymentDetails(req.body.userId, req.body);
+        return res.json(updated);
+      }
+      const details = await storage.createIcPaymentDetails(req.body);
+      res.status(201).json(details);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save payment details" });
+    }
+  });
+
+  app.patch("/api/ic-payment-details/:userId", authMiddleware, async (req, res) => {
+    const details = await storage.updateIcPaymentDetails(req.params.userId, req.body);
+    if (!details) {
+      return res.status(404).json({ error: "Payment details not found" });
+    }
+    res.json(details);
+  });
+
+  // IC Responsibilities routes - protected
+  app.get("/api/ic-responsibilities/:icId", authMiddleware, async (req, res) => {
+    const responsibilities = await storage.getIcResponsibilities(req.params.icId);
+    res.json(responsibilities);
+  });
+
+  app.post("/api/ic-responsibilities", authMiddleware, async (req, res) => {
+    try {
+      const responsibility = await storage.createIcResponsibility(req.body);
+      res.status(201).json(responsibility);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create responsibility" });
+    }
+  });
+
+  app.patch("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
+    const responsibility = await storage.updateIcResponsibility(req.params.id, req.body);
+    if (!responsibility) {
+      return res.status(404).json({ error: "Responsibility not found" });
+    }
+    res.json(responsibility);
+  });
+
+  app.delete("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
+    const success = await storage.deleteIcResponsibility(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: "Responsibility not found" });
+    }
+    res.status(204).send();
+  });
+
+  // Evaluation routes - protected
+  app.get("/api/evaluations", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    if (currentUser.role === "ic") {
+      const evaluations = await storage.getEvaluationsByIC(currentUser.id);
+      return res.json(evaluations);
+    }
+    
+    const { managerId, icId } = req.query;
+    if (managerId) {
+      const evaluations = await storage.getEvaluationsByManager(managerId as string);
+      res.json(evaluations);
+    } else if (icId) {
+      const evaluations = await storage.getEvaluationsByIC(icId as string);
+      res.json(evaluations);
+    } else {
+      const evaluations = await storage.getAllEvaluations();
+      res.json(evaluations);
+    }
+  });
+
+  app.get("/api/evaluations/pending-count", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    let count = 0;
+    
+    if (currentUser.role === "ic") {
+      // For ICs, count evaluations where they need to complete their self-evaluation
+      const evaluations = await storage.getEvaluationsByIC(currentUser.id);
+      count = evaluations.filter(e => e.status === "draft").length;
+    } else {
+      // For managers/admins, count evaluations pending their review
+      const evaluations = await storage.getEvaluationsByManager(currentUser.id);
+      count = evaluations.filter(e => e.status === "ic_submitted").length;
+    }
+    
+    res.json({ count });
+  });
+
+  app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    const evaluation = await storage.getEvaluation(req.params.id);
+    if (!evaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+    
+    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    res.json(evaluation);
+  });
+
+  app.get("/api/evaluations/:id/sections", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    const evaluation = await storage.getEvaluation(req.params.id);
+    if (!evaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+    
+    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const sections = await storage.getEvaluationSections(req.params.id);
+    res.json(sections);
+  });
+
+  app.get("/api/users/:id/last-evaluation", authMiddleware, async (req, res) => {
+    const evaluation = await storage.getLastCompletedEvaluation(req.params.id);
+    res.json(evaluation || null);
+  });
+
+  app.post("/api/evaluations", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    
+    // Allow ICs to create self-evaluations (where icId is themselves)
+    const isCreatingSelfEvaluation = req.body.icId === currentUser.id;
+    
+    if (!isSupervisor && !isCreatingSelfEvaluation) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    
+    // For self-evaluations, validate that a manager is specified and exists
+    if (isCreatingSelfEvaluation) {
+      if (!req.body.managerId) {
+        return res.status(400).json({ error: "Manager/supervisor is required for self-evaluations" });
+      }
+      
+      // Validate that the manager exists and has supervisor privileges
+      const manager = await storage.getUser(req.body.managerId);
+      if (!manager) {
+        return res.status(400).json({ error: "Selected supervisor does not exist" });
+      }
+      
+      const managerIsSupervisor = await hasSupervisorPrivileges(req.body.managerId);
+      if (!managerIsSupervisor && manager.role !== "admin") {
+        return res.status(400).json({ error: "Selected user is not a valid supervisor" });
+      }
+    }
+    
+    // Build evaluation data with validated fields
+    const evaluationData = {
+      icId: isCreatingSelfEvaluation ? currentUser.id : req.body.icId,
+      managerId: isCreatingSelfEvaluation ? req.body.managerId : (req.body.managerId || currentUser.id),
+      periodStart: req.body.periodStart,
+      periodEnd: req.body.periodEnd,
+      status: "draft",
+    };
+    
+    try {
+      const evaluation = await storage.createEvaluation(evaluationData);
+
+      await storage.createDefaultSectionsForEvaluation(evaluation.id);
+
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        action: isCreatingSelfEvaluation ? "Self-evaluation started" : "Evaluation created",
+        details: `Created performance evaluation for period ${req.body.periodStart} to ${req.body.periodEnd}`,
+        entityType: "evaluation",
+        entityId: evaluation.id,
+      });
+
+      if (isCreatingSelfEvaluation) {
+        // Notify the manager that an IC has started a self-evaluation
+        const manager = await storage.getUser(req.body.managerId);
+        if (manager) {
+          await createNotification(manager.id, {
+            type: "evaluation_created",
+            title: "Self-Evaluation Started",
+            message: `${currentUser.firstName} ${currentUser.lastName} has started a self-evaluation and will submit it for your review.`,
+            entityType: "evaluation",
+            entityId: evaluation.id,
+            actorId: currentUser.id,
+          });
+        }
+      } else {
+        // Notify IC that a manager created an evaluation for them
+        const ic = await storage.getUser(req.body.icId);
+        if (ic) {
+          await createNotification(ic.id, {
+            type: "evaluation_created",
+            title: "New Performance Evaluation",
+            message: `A new performance evaluation has been created for you. Please complete your self-assessment.`,
+            entityType: "evaluation",
+            entityId: evaluation.id,
+            actorId: currentUser.id,
+          });
+        }
+      }
+
+      res.status(201).json(evaluation);
+    } catch (error) {
+      console.error("Error creating evaluation:", error);
+      res.status(500).json({ error: "Failed to create evaluation" });
+    }
+  });
+
+  app.patch("/api/evaluations/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    const existingEvaluation = await storage.getEvaluation(req.params.id);
+    if (!existingEvaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+    
+    if (currentUser.role === "ic" && existingEvaluation.icId !== currentUser.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const updates = { ...req.body };
+    
+    if (req.body.status === "ic_submitted") {
+      updates.icSubmittedAt = new Date();
+    } else if (req.body.status === "manager_submitted" || req.body.status === "completed") {
+      updates.managerSubmittedAt = new Date();
+      if (req.body.status === "completed") {
+        updates.completedAt = new Date();
+      }
+    }
+
+    const evaluation = await storage.updateEvaluation(req.params.id, updates);
+    
+    if (!evaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+
+    if (req.body.status === "ic_submitted") {
+      const manager = await storage.getUser(evaluation.managerId);
+      const ic = await storage.getUser(evaluation.icId);
+      if (manager && ic) {
+        await createNotification(manager.id, {
+          type: "evaluation_ic_submitted",
+          title: "Self-Assessment Submitted",
+          message: `${ic.firstName} ${ic.lastName} has submitted their self-assessment. Please review and complete the evaluation.`,
+          entityType: "evaluation",
+          entityId: evaluation.id,
+          actorId: ic.id,
+        });
+      }
+    }
+
+    if (req.body.status === "completed") {
+      await storage.createActivityLog({
+        userId: evaluation.managerId,
+        action: "Evaluation completed",
+        details: `Completed performance evaluation for period ${evaluation.periodStart} to ${evaluation.periodEnd}`,
+        entityType: "evaluation",
+        entityId: evaluation.id,
+      });
+
+      const ic = await storage.getUser(evaluation.icId);
+      const manager = await storage.getUser(evaluation.managerId);
+      if (ic && manager) {
+        await createNotification(ic.id, {
+          type: "evaluation_completed",
+          title: "Evaluation Finalized",
+          message: `Your performance evaluation has been completed by ${manager.firstName} ${manager.lastName}.`,
+          entityType: "evaluation",
+          entityId: evaluation.id,
+          actorId: manager.id,
+        });
+
+        if (evaluation.newExperienceLevel && evaluation.newExperienceLevel !== ic.experienceLevel) {
+          await storage.updateUser(ic.id, { experienceLevel: evaluation.newExperienceLevel });
+        }
+      }
+    }
+
+    res.json(evaluation);
+  });
+
+  // Evaluation sections routes - protected
+  app.patch("/api/evaluation-sections/:id", authMiddleware, async (req, res) => {
+    const section = await storage.updateEvaluationSection(req.params.id, req.body);
+    if (!section) {
+      return res.status(404).json({ error: "Section not found" });
+    }
+    res.json(section);
+  });
+
+  app.post("/api/evaluations/:id/sections/bulk-update", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    const evaluation = await storage.getEvaluation(req.params.id);
+    if (!evaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+    
+    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    try {
+      const { sections } = req.body;
+      const updatedSections = [];
+      
+      for (const sectionUpdate of sections) {
+        const updated = await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+        if (updated) {
+          updatedSections.push(updated);
+        }
+      }
+      
+      res.json(updatedSections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update sections" });
+    }
+  });
+
+  // Finalize evaluation with all data in one call (no save draft required)
+  app.post("/api/evaluations/:id/finalize", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    
+    const existingEvaluation = await storage.getEvaluation(req.params.id);
+    if (!existingEvaluation) {
+      return res.status(404).json({ error: "Evaluation not found" });
+    }
+    
+    const isIC = currentUser.role === "ic";
+    const isManager = await hasSupervisorPrivileges(currentUser.id);
+    
+    if (isIC && existingEvaluation.icId !== currentUser.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    if (!isIC && !isManager) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    try {
+      const { sections, evaluationUpdates, finalizeAs } = req.body;
+      
+      // Save all sections first
+      if (sections && sections.length > 0) {
+        for (const sectionUpdate of sections) {
+          await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+        }
+      }
+      
+      // Determine new status and timestamps
+      const updates: Record<string, any> = { ...evaluationUpdates };
+      
+      if (finalizeAs === "ic") {
+        updates.status = "ic_submitted";
+        updates.icSubmittedAt = new Date();
+      } else if (finalizeAs === "manager") {
+        updates.status = "completed";
+        updates.managerSubmittedAt = new Date();
+        updates.completedAt = new Date();
+        
+        // Calculate overall score from section ratings
+        const allSections = await storage.getEvaluationSections(req.params.id);
+        const managerRatings = allSections
+          .map(s => s.managerRating)
+          .filter((r): r is number => r !== null && r !== undefined);
+        
+        if (managerRatings.length > 0) {
+          const avgScore = Math.round(managerRatings.reduce((a, b) => a + b, 0) / managerRatings.length);
+          updates.overallScore = avgScore;
+        }
+        
+        // Update IC's experience level if newExperienceLevel is set
+        if (updates.newExperienceLevel) {
+          await storage.updateUser(existingEvaluation.icId, {
+            experienceLevel: updates.newExperienceLevel,
+          });
+        }
+      }
+      
+      const updatedEvaluation = await storage.updateEvaluation(req.params.id, updates);
+      
+      if (!updatedEvaluation) {
+        return res.status(500).json({ error: "Failed to update evaluation" });
+      }
+      
+      // Create notifications
+      if (finalizeAs === "ic") {
+        const manager = await storage.getUser(existingEvaluation.managerId);
+        const ic = await storage.getUser(existingEvaluation.icId);
+        if (manager && ic) {
+          await createNotification(manager.id, {
+            type: "evaluation_ic_submitted",
+            title: "Self-Assessment Submitted",
+            message: `${ic.firstName} ${ic.lastName} has submitted their self-assessment. Please review and complete the evaluation.`,
+            entityType: "evaluation",
+            entityId: existingEvaluation.id,
+            actorId: ic.id,
+          });
+        }
+      } else if (finalizeAs === "manager") {
+        const ic = await storage.getUser(existingEvaluation.icId);
+        const manager = await storage.getUser(existingEvaluation.managerId);
+        if (ic && manager) {
+          await createNotification(ic.id, {
+            type: "evaluation_completed",
+            title: "Evaluation Completed",
+            message: `Your performance evaluation for ${existingEvaluation.periodStart} to ${existingEvaluation.periodEnd} has been completed by ${manager.firstName} ${manager.lastName}.`,
+            entityType: "evaluation",
+            entityId: existingEvaluation.id,
+            actorId: manager.id,
+          });
+        }
+      }
+      
+      // Create activity log
+      try {
+        await storage.createActivityLog({
+          userId: currentUser.id,
+          action: finalizeAs === "ic" ? "Self-assessment submitted" : "Evaluation completed",
+          details: `${finalizeAs === "ic" ? "Submitted self-assessment" : "Finalized evaluation"} for period ${existingEvaluation.periodStart} to ${existingEvaluation.periodEnd}`,
+          entityType: "evaluation",
+          entityId: existingEvaluation.id,
+        });
+      } catch (e) {
+        console.error("Failed to create activity log:", e);
+      }
+      
+      res.json(updatedEvaluation);
+    } catch (error) {
+      console.error("Finalization error:", error);
+      res.status(500).json({ error: "Failed to finalize evaluation" });
+    }
+  });
+
+  // Feedback invitation routes - protected
+  app.get("/api/feedback-invitations", authMiddleware, async (req, res) => {
+    const { evaluationId } = req.query;
+    if (evaluationId) {
+      const invitations = await storage.getFeedbackInvitationsByEvaluation(evaluationId as string);
+      res.json(invitations);
+    } else {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/feedback-invitations", authMiddleware, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const invitedUser = users.find(u => u.email === req.body.email);
+      
+      const invitation = await storage.createFeedbackInvitation({
+        ...req.body,
+        invitedUserId: invitedUser?.id || "unknown",
+      });
+
+      try {
+        await storage.createActivityLog({
+          userId: req.body.invitedById,
+          action: "Feedback invitation sent",
+          details: `Invited ${req.body.email} to provide feedback`,
+          entityType: "evaluation",
+          entityId: req.body.evaluationId,
+        });
+      } catch (e) {
+        console.error("Failed to create activity log:", e);
+      }
+
+      res.status(201).json(invitation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.patch("/api/feedback-invitations/:id", authMiddleware, async (req, res) => {
+    const invitation = await storage.updateFeedbackInvitation(req.params.id, {
+      ...req.body,
+      completedAt: req.body.status === "completed" ? new Date() : undefined,
+    });
+    
+    if (!invitation) {
+      return res.status(404).json({ error: "Invitation not found" });
+    }
+    res.json(invitation);
+  });
+
+  // Activity logs routes - admin only
+  app.get("/api/activity-logs", authMiddleware, requireRole("admin"), async (req, res) => {
+    const logs = await storage.getActivityLogs();
+    res.json(logs);
+  });
+
+  // Notification routes - protected with ownership verification
+  app.get("/api/notifications", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId, status } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    // Users can only access their own notifications (admins/cofounders can access any)
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    if (status === "unread") {
+      const notifications = await storage.getUnreadNotificationsByUser(userId as string);
+      res.json(notifications);
+    } else {
+      const notifications = await storage.getNotificationsByUser(userId as string);
+      res.json(notifications);
+    }
+  });
+
+  // Path parameter route for notifications (used by frontend queryKey pattern)
+  app.get("/api/notifications/count/:userId", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const userId = req.params.userId;
+    
+    // Users can only access their own notification count
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const count = await storage.getUnreadNotificationCount(userId);
+    res.json({ count });
+  });
+
+  app.get("/api/notifications/count", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    // Users can only access their own notification count
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const count = await storage.getUnreadNotificationCount(userId as string);
+    res.json({ count });
+  });
+
+  // Path parameter route for notifications by userId (used by frontend queryKey pattern)
+  app.get("/api/notifications/:userId", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const userId = req.params.userId;
+    // Don't match if it looks like a notification ID action
+    if (userId === "count" || userId === "read-all") {
+      return res.status(404).json({ error: "Not found" });
+    }
+    
+    // Users can only access their own notifications
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const notifications = await storage.getNotificationsByUser(userId);
+    res.json(notifications);
+  });
+
+  app.patch("/api/notifications/:id/read", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const notification = await storage.getNotification(req.params.id);
+    
+    if (!notification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+    
+    // Users can only mark their own notifications as read
+    if (notification.userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const updated = await storage.markNotificationAsRead(req.params.id);
+    res.json(updated);
+  });
+
+  app.post("/api/notifications/read-all", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    // Users can only mark their own notifications as read
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    await storage.markAllNotificationsAsRead(userId);
+    res.json({ success: true });
+  });
+
+  // Notification preferences routes - protected with ownership verification
+  app.get("/api/notification-preferences", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    // Users can only access their own preferences
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    let prefs = await storage.getNotificationPreferences(userId as string);
+    if (!prefs) {
+      prefs = await storage.createNotificationPreferences({
+        userId: userId as string,
+        inAppEnabled: true,
+        emailEnabled: false,
+        oooNotifications: true,
+        timesheetNotifications: true,
+        overtimeNotifications: true,
+        invoiceNotifications: true,
+        deadlineReminders: true,
+        evaluationNotifications: true,
+      });
+    }
+    res.json(prefs);
+  });
+
+  app.patch("/api/notification-preferences", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { userId, ...updates } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    // Users can only update their own preferences
+    if (userId !== currentUser.id && currentUser.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    let prefs = await storage.getNotificationPreferences(userId);
+    if (!prefs) {
+      prefs = await storage.createNotificationPreferences({
+        userId,
+        inAppEnabled: true,
+        emailEnabled: false,
+        oooNotifications: true,
+        timesheetNotifications: true,
+        overtimeNotifications: true,
+        invoiceNotifications: true,
+        deadlineReminders: true,
+        evaluationNotifications: true,
+        ...updates,
+      });
+    } else {
+      prefs = await storage.updateNotificationPreferences(userId, updates);
+    }
+    res.json(prefs);
+  });
+
+  return httpServer;
+}
