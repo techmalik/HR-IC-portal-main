@@ -29,6 +29,10 @@ import {
   type InsertNotification,
   type NotificationPreferences,
   type InsertNotificationPreferences,
+  type Organization,
+  type InsertOrganization,
+  type Subscription,
+  type InsertSubscription,
   users,
   oooRequests,
   timesheets,
@@ -44,6 +48,8 @@ import {
   activityLogs,
   notifications,
   notificationPreferences,
+  organizations,
+  subscriptions,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
@@ -67,25 +73,25 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
-  getAllUsers(): Promise<User[]>;
-  getUsersByRole(role: string): Promise<User[]>;
+  getAllUsers(organizationId?: string): Promise<User[]>;
+  getUsersByRole(role: string, organizationId?: string): Promise<User[]>;
   getUsersBySupervisor(supervisorId: string): Promise<User[]>;
-  getManagers(): Promise<User[]>;
-  getSupervisors(): Promise<User[]>;
+  getManagers(organizationId?: string): Promise<User[]>;
+  getSupervisors(organizationId?: string): Promise<User[]>;
 
   getOOORequest(id: string): Promise<OOORequest | undefined>;
   getOOORequestsByUser(userId: string): Promise<OOORequest[]>;
   getOOORequestsByManager(managerId: string): Promise<OOORequest[]>;
-  getPendingOOORequests(): Promise<OOORequest[]>;
-  getAllOOORequests(): Promise<OOORequest[]>;
+  getPendingOOORequests(organizationId?: string): Promise<OOORequest[]>;
+  getAllOOORequests(organizationId?: string): Promise<OOORequest[]>;
   createOOORequest(request: InsertOOORequest): Promise<OOORequest>;
   updateOOORequest(id: string, updates: Partial<OOORequest>): Promise<OOORequest | undefined>;
 
   getTimesheet(id: string): Promise<Timesheet | undefined>;
   getTimesheetByUserAndMonth(userId: string, month: number, year: number): Promise<Timesheet | undefined>;
   getTimesheetsByUser(userId: string): Promise<Timesheet[]>;
-  getSubmittedTimesheets(): Promise<Timesheet[]>;
-  getAllTimesheets(): Promise<Timesheet[]>;
+  getSubmittedTimesheets(organizationId?: string): Promise<Timesheet[]>;
+  getAllTimesheets(organizationId?: string): Promise<Timesheet[]>;
   createTimesheet(timesheet: InsertTimesheet): Promise<Timesheet>;
   updateTimesheet(id: string, updates: Partial<Timesheet>): Promise<Timesheet | undefined>;
 
@@ -98,8 +104,8 @@ export interface IStorage {
   getOvertimeRequest(id: string): Promise<OvertimeRequest | undefined>;
   getOvertimeRequestsByUser(userId: string): Promise<OvertimeRequest[]>;
   getOvertimeRequestsByTimesheet(timesheetId: string): Promise<OvertimeRequest[]>;
-  getPendingOvertimeRequests(): Promise<OvertimeRequest[]>;
-  getAllOvertimeRequests(): Promise<OvertimeRequest[]>;
+  getPendingOvertimeRequests(organizationId?: string): Promise<OvertimeRequest[]>;
+  getAllOvertimeRequests(organizationId?: string): Promise<OvertimeRequest[]>;
   createOvertimeRequest(request: InsertOvertimeRequest): Promise<OvertimeRequest>;
   updateOvertimeRequest(id: string, updates: Partial<OvertimeRequest>): Promise<OvertimeRequest | undefined>;
   getOvertimeRequestByDateAndUser(userId: string, date: string): Promise<OvertimeRequest | undefined>;
@@ -107,8 +113,8 @@ export interface IStorage {
 
   getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoicesByUser(userId: string): Promise<Invoice[]>;
-  getAllInvoices(): Promise<Invoice[]>;
-  getPendingInvoices(): Promise<Invoice[]>;
+  getAllInvoices(organizationId?: string): Promise<Invoice[]>;
+  getPendingInvoices(organizationId?: string): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<boolean>;
@@ -130,7 +136,7 @@ export interface IStorage {
   getEvaluation(id: string): Promise<Evaluation | undefined>;
   getEvaluationsByManager(managerId: string): Promise<Evaluation[]>;
   getEvaluationsByIC(icId: string): Promise<Evaluation[]>;
-  getAllEvaluations(): Promise<Evaluation[]>;
+  getAllEvaluations(organizationId?: string): Promise<Evaluation[]>;
   createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation>;
   updateEvaluation(id: string, updates: Partial<Evaluation>): Promise<Evaluation | undefined>;
   getLastCompletedEvaluation(icId: string): Promise<Evaluation | undefined>;
@@ -145,7 +151,7 @@ export interface IStorage {
   createFeedbackInvitation(invitation: InsertFeedbackInvitation): Promise<FeedbackInvitation>;
   updateFeedbackInvitation(id: string, updates: Partial<FeedbackInvitation>): Promise<FeedbackInvitation | undefined>;
 
-  getActivityLogs(): Promise<ActivityLog[]>;
+  getActivityLogs(organizationId?: string): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
   getNotification(id: string): Promise<Notification | undefined>;
@@ -159,6 +165,18 @@ export interface IStorage {
   getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
   createNotificationPreferences(prefs: InsertNotificationPreferences): Promise<NotificationPreferences>;
   updateNotificationPreferences(userId: string, updates: Partial<NotificationPreferences>): Promise<NotificationPreferences | undefined>;
+
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  getOrganization(id: string): Promise<Organization | undefined>;
+  getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
+  updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization | undefined>;
+
+  createSubscription(sub: InsertSubscription): Promise<Subscription>;
+  getSubscriptionByOrganization(organizationId: string): Promise<Subscription | undefined>;
+  updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription | undefined>;
+
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserCountByOrganization(organizationId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -191,11 +209,17 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getAllUsers(): Promise<User[]> {
+  async getAllUsers(organizationId?: string): Promise<User[]> {
+    if (organizationId) {
+      return db.select().from(users).where(eq(users.organizationId, organizationId));
+    }
     return db.select().from(users);
   }
 
-  async getUsersByRole(role: string): Promise<User[]> {
+  async getUsersByRole(role: string, organizationId?: string): Promise<User[]> {
+    if (organizationId) {
+      return db.select().from(users).where(and(eq(users.role, role), eq(users.organizationId, organizationId)));
+    }
     return db.select().from(users).where(eq(users.role, role));
   }
 
@@ -203,24 +227,24 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users).where(eq(users.supervisorId, supervisorId));
   }
 
-  async getManagers(): Promise<User[]> {
-    // Get all admins and ICs who have direct reports
-    const allUsers = await db.select().from(users);
-    const admins = allUsers.filter(u => u.role === UserRole.ADMIN);
+  async getManagers(organizationId?: string): Promise<User[]> {
+    const allUsers = organizationId
+      ? await db.select().from(users).where(eq(users.organizationId, organizationId))
+      : await db.select().from(users);
+    const admins = allUsers.filter(u => u.role === UserRole.ADMIN || u.role === UserRole.OWNER);
     
-    // Find ICs who have people reporting to them (dynamic supervisors)
     const supervisorIds = new Set(allUsers.filter(u => u.supervisorId).map(u => u.supervisorId));
     const icSupervisors = allUsers.filter(u => u.role === UserRole.IC && supervisorIds.has(u.id));
     
-    // Combine and deduplicate
     const managerMap = new Map<string, User>();
     [...admins, ...icSupervisors].forEach(u => managerMap.set(u.id, u));
     return Array.from(managerMap.values());
   }
 
-  async getSupervisors(): Promise<User[]> {
-    // Return all users as potential supervisors
-    // Any user can be assigned as a supervisor for another user
+  async getSupervisors(organizationId?: string): Promise<User[]> {
+    if (organizationId) {
+      return db.select().from(users).where(eq(users.organizationId, organizationId));
+    }
     return db.select().from(users);
   }
 
@@ -237,11 +261,17 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(oooRequests).where(eq(oooRequests.managerId, managerId));
   }
 
-  async getPendingOOORequests(): Promise<OOORequest[]> {
+  async getPendingOOORequests(organizationId?: string): Promise<OOORequest[]> {
+    if (organizationId) {
+      return db.select().from(oooRequests).where(and(eq(oooRequests.status, "pending"), eq(oooRequests.organizationId, organizationId)));
+    }
     return db.select().from(oooRequests).where(eq(oooRequests.status, "pending"));
   }
 
-  async getAllOOORequests(): Promise<OOORequest[]> {
+  async getAllOOORequests(organizationId?: string): Promise<OOORequest[]> {
+    if (organizationId) {
+      return db.select().from(oooRequests).where(eq(oooRequests.organizationId, organizationId));
+    }
     return db.select().from(oooRequests);
   }
 
@@ -275,11 +305,17 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(timesheets).where(eq(timesheets.userId, userId));
   }
 
-  async getSubmittedTimesheets(): Promise<Timesheet[]> {
+  async getSubmittedTimesheets(organizationId?: string): Promise<Timesheet[]> {
+    if (organizationId) {
+      return db.select().from(timesheets).where(and(eq(timesheets.status, "submitted"), eq(timesheets.organizationId, organizationId)));
+    }
     return db.select().from(timesheets).where(eq(timesheets.status, "submitted"));
   }
 
-  async getAllTimesheets(): Promise<Timesheet[]> {
+  async getAllTimesheets(organizationId?: string): Promise<Timesheet[]> {
+    if (organizationId) {
+      return db.select().from(timesheets).where(eq(timesheets.organizationId, organizationId));
+    }
     return db.select().from(timesheets);
   }
 
@@ -334,11 +370,17 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(overtimeRequests).where(eq(overtimeRequests.timesheetId, timesheetId));
   }
 
-  async getPendingOvertimeRequests(): Promise<OvertimeRequest[]> {
+  async getPendingOvertimeRequests(organizationId?: string): Promise<OvertimeRequest[]> {
+    if (organizationId) {
+      return db.select().from(overtimeRequests).where(and(eq(overtimeRequests.status, "pending"), eq(overtimeRequests.organizationId, organizationId)));
+    }
     return db.select().from(overtimeRequests).where(eq(overtimeRequests.status, "pending"));
   }
 
-  async getAllOvertimeRequests(): Promise<OvertimeRequest[]> {
+  async getAllOvertimeRequests(organizationId?: string): Promise<OvertimeRequest[]> {
+    if (organizationId) {
+      return db.select().from(overtimeRequests).where(eq(overtimeRequests.organizationId, organizationId));
+    }
     return db.select().from(overtimeRequests);
   }
 
@@ -381,11 +423,17 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(invoices).where(eq(invoices.userId, userId)).orderBy(desc(invoices.uploadedAt));
   }
 
-  async getAllInvoices(): Promise<Invoice[]> {
+  async getAllInvoices(organizationId?: string): Promise<Invoice[]> {
+    if (organizationId) {
+      return db.select().from(invoices).where(eq(invoices.organizationId, organizationId)).orderBy(desc(invoices.uploadedAt));
+    }
     return db.select().from(invoices).orderBy(desc(invoices.uploadedAt));
   }
 
-  async getPendingInvoices(): Promise<Invoice[]> {
+  async getPendingInvoices(organizationId?: string): Promise<Invoice[]> {
+    if (organizationId) {
+      return db.select().from(invoices).where(and(eq(invoices.status, "pending_review"), eq(invoices.organizationId, organizationId))).orderBy(desc(invoices.uploadedAt));
+    }
     return db.select().from(invoices).where(eq(invoices.status, "pending_review")).orderBy(desc(invoices.uploadedAt));
   }
 
@@ -472,7 +520,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(evaluations).where(eq(evaluations.icId, icId));
   }
 
-  async getAllEvaluations(): Promise<Evaluation[]> {
+  async getAllEvaluations(organizationId?: string): Promise<Evaluation[]> {
+    if (organizationId) {
+      return db.select().from(evaluations).where(eq(evaluations.organizationId, organizationId));
+    }
     return db.select().from(evaluations);
   }
 
@@ -541,7 +592,10 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getActivityLogs(): Promise<ActivityLog[]> {
+  async getActivityLogs(organizationId?: string): Promise<ActivityLog[]> {
+    if (organizationId) {
+      return db.select().from(activityLogs).where(eq(activityLogs.organizationId, organizationId)).orderBy(desc(activityLogs.createdAt));
+    }
     return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt));
   }
 
@@ -597,6 +651,51 @@ export class DatabaseStorage implements IStorage {
   async updateNotificationPreferences(userId: string, updates: Partial<NotificationPreferences>): Promise<NotificationPreferences | undefined> {
     const result = await db.update(notificationPreferences).set(updates).where(eq(notificationPreferences.userId, userId)).returning();
     return result[0];
+  }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const result = await db.insert(organizations).values(org).returning();
+    return result[0];
+  }
+
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const result = await db.select().from(organizations).where(eq(organizations.id, id));
+    return result[0];
+  }
+
+  async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
+    const result = await db.select().from(organizations).where(eq(organizations.slug, slug));
+    return result[0];
+  }
+
+  async createSubscription(sub: InsertSubscription): Promise<Subscription> {
+    const result = await db.insert(subscriptions).values(sub).returning();
+    return result[0];
+  }
+
+  async getSubscriptionByOrganization(organizationId: string): Promise<Subscription | undefined> {
+    const result = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, organizationId));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization | undefined> {
+    const result = await db.update(organizations).set(updates).where(eq(organizations.id, id)).returning();
+    return result[0];
+  }
+
+  async updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription | undefined> {
+    const result = await db.update(subscriptions).set(updates).where(eq(subscriptions.id, id)).returning();
+    return result[0];
+  }
+
+  async getUserCountByOrganization(organizationId: string): Promise<number> {
+    const result = await db.select().from(users).where(eq(users.organizationId, organizationId));
+    return result.length;
   }
 }
 

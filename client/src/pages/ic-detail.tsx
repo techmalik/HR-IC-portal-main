@@ -71,7 +71,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/users", userId],
     queryFn: async () => {
       const res = await fetch(`/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json();
@@ -84,7 +84,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/timesheets", { userId }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();
@@ -97,7 +97,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/invoices", { userId }],
     queryFn: async () => {
       const res = await fetch(`/api/invoices?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch invoices");
       return res.json();
@@ -110,7 +110,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/ooo-requests", { userId }],
     queryFn: async () => {
       const res = await fetch(`/api/ooo-requests?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch OOO requests");
       return res.json();
@@ -123,7 +123,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/evaluations", { targetUserId: userId }],
     queryFn: async () => {
       const res = await fetch(`/api/evaluations?targetUserId=${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch evaluations");
       return res.json();
@@ -168,7 +168,7 @@ export default function ICDetailPage() {
     queryKey: ["/api/timesheets", selectedTimesheet?.id, "entries"],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${selectedTimesheet?.id}/entries`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch daily entries");
       return res.json();

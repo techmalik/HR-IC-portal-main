@@ -1,7 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("mentalyc_session_token");
+  const token = localStorage.getItem("teamflow_session_token");
   if (token) {
     return { "Authorization": `Bearer ${token}` };
   }
@@ -9,8 +9,8 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 function handleUnauthorized() {
-  localStorage.removeItem("mentalyc_session_token");
-  localStorage.removeItem("mentalyc_user");
+  localStorage.removeItem("teamflow_session_token");
+  localStorage.removeItem("teamflow_user");
   window.location.href = "/auth";
 }
 

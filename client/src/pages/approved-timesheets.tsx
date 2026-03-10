@@ -36,7 +36,7 @@ export default function ApprovedTimesheetsPage() {
     queryKey: ["/api/team/timesheets", "approved"],
     queryFn: async () => {
       const res = await fetch("/api/team/timesheets?status=approved", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch approved timesheets");
       return res.json();
@@ -51,7 +51,7 @@ export default function ApprovedTimesheetsPage() {
     queryKey: ["/api/timesheets", selectedTimesheet, "entries"],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${selectedTimesheet}/entries`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch entries");
       return res.json();

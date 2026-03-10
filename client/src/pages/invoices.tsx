@@ -40,8 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
-import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry } from "@shared/schema";
-import { ContractorCategory } from "@shared/schema";
+import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry, Organization } from "@shared/schema";
 import { OnboardingTour, invoicesTourConfig } from "@/components/onboarding-tour";
 
 interface LineItem {
@@ -83,8 +82,8 @@ export default function InvoicesPage() {
   const [contractorPhone, setContractorPhone] = useState("");
   const [contractorEmail, setContractorEmail] = useState("");
   const [contractorVatNo, setContractorVatNo] = useState("");
-  const [billToName, setBillToName] = useState("Mentalyc Inc.");
-  const [billToAddress, setBillToAddress] = useState("2261 Market Street #4569\nSan Francisco CA 94114");
+  const [billToName, setBillToName] = useState("");
+  const [billToAddress, setBillToAddress] = useState("");
   const [billToVatNo, setBillToVatNo] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([{ description: "", rate: "", quantity: "1" }]);
 
@@ -113,7 +112,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/invoices", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/invoices?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch invoices");
       return res.json();
@@ -125,7 +124,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/timesheets", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();
@@ -143,7 +142,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/overtime-requests", { timesheetId: selectedTimesheetId }],
     queryFn: async () => {
       const res = await fetch(`/api/overtime-requests?timesheetId=${selectedTimesheetId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch overtime requests");
       return res.json();
@@ -156,7 +155,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/timesheets", selectedTimesheetId, "entries"],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${selectedTimesheetId}/entries`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch daily entries");
       return res.json();
@@ -184,7 +183,19 @@ export default function InvoicesPage() {
     queryKey: ["/api/ic-payment-details", user?.id],
     queryFn: async () => {
       const res = await fetch(`/api/ic-payment-details/${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: organization } = useQuery<Organization | null>({
+    queryKey: ["/api/organization"],
+    queryFn: async () => {
+      const res = await fetch("/api/organization", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) return null;
       return res.json();
@@ -201,6 +212,20 @@ export default function InvoicesPage() {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (organization) {
+      if (organization.name) {
+        setBillToName(organization.name);
+      }
+      if (organization.address) {
+        setBillToAddress(organization.address);
+      }
+      if (organization.vatNumber) {
+        setBillToVatNo(organization.vatNumber);
+      }
+    }
+  }, [organization]);
 
   useEffect(() => {
     if (savedPaymentDetails) {
@@ -228,7 +253,7 @@ export default function InvoicesPage() {
   useEffect(() => {
     if (isDialogOpen && activeTab === "generate" && user?.id) {
       fetch(`/api/invoices/next-number/${user.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       })
         .then((res) => res.json())
         .then((data) => setInvoiceNumber(data.invoiceNumber))
@@ -780,11 +805,10 @@ export default function InvoicesPage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear - i);
 
-  const canUpload = selectedFile && selectedMonth && selectedYear && contractorCategory;
+  const canUpload = selectedFile && selectedMonth && selectedYear;
   const canGenerate =
     selectedMonth &&
     selectedYear &&
-    contractorCategory &&
     lineItems.some((item) => item.description && item.rate);
 
   const subtotalDisplay = formatCurrency(calculateSubtotal() / 100);
@@ -883,22 +907,6 @@ export default function InvoicesPage() {
                         placeholder="0.00"
                         data-testid="input-amount"
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Contractor Category <span className="text-destructive">*</span></Label>
-                      <Select value={contractorCategory} onValueChange={setContractorCategory}>
-                        <SelectTrigger data-testid="select-category">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.values(ContractorCategory).map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     <div className="space-y-2">
@@ -1024,22 +1032,6 @@ export default function InvoicesPage() {
                           data-testid="input-issue-date"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Contractor Category <span className="text-destructive">*</span></Label>
-                      <Select value={contractorCategory} onValueChange={setContractorCategory}>
-                        <SelectTrigger data-testid="select-category-gen">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.values(ContractorCategory).map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     <Separator />

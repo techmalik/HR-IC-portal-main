@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
-import { OnboardingTour, portalTourConfig, type TourStep } from "@/components/onboarding-tour";
+import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from "@/components/onboarding-tour";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import DashboardIC from "@/pages/dashboard-ic";
@@ -34,8 +34,11 @@ import AllTimesheetsPage from "@/pages/all-timesheets";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import MigrateFilesPage from "@/pages/migrate-files";
+import SignupPage from "@/pages/signup";
+import LandingPage from "@/pages/landing";
+import BillingPage from "@/pages/billing";
 
-type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor";
+type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
 interface TourContextType {
   activeTour: TourId | null;
@@ -85,6 +88,7 @@ function TourProvider({ children }: { children: ReactNode }) {
   // Map tour IDs to expected route prefixes for validation
   const tourRouteMap: Record<TourId, string[]> = {
     portal: ["/"],
+    owner: ["/"],
     timesheets: ["/timesheets"],
     invoices: ["/invoices"],
     ooo: ["/ooo-requests"],
@@ -311,6 +315,15 @@ function getRouteConfig(pathname: string, userRole?: string, hasDirectReports?: 
       backHref: "/users",
       backLabel: "Users",
     },
+    "/billing": {
+      title: "Billing & Subscription",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/" },
+        { label: "Billing" },
+      ],
+      backHref: "/",
+      backLabel: "Dashboard",
+    },
     "/activity-logs": {
       title: "Activity Logs",
       breadcrumbs: [
@@ -408,23 +421,25 @@ function PortalTourWrapper() {
   // Don't show tour while user needs to change password
   const isPasswordChangeRequired = user?.mustChangePassword === true;
 
+  const isOwner = user?.role === UserRole.OWNER;
+  const tourId = isOwner ? "owner" : "portal";
+  const tourConfig = isOwner ? ownerTourConfig : portalTourConfig;
+
   useEffect(() => {
-    // Wait until password change is complete before showing tour
     if (!user || hasCheckedOnboarding || isPasswordChangeRequired) return;
     
     const completedOnboarding = (user.completedOnboarding as Record<string, boolean>) || {};
-    const portalCompleted = completedOnboarding.portal === true;
+    const tourCompleted = completedOnboarding[tourId] === true;
     
-    if (!portalCompleted) {
+    if (!tourCompleted) {
       const timer = setTimeout(() => setShowPortalTour(true), 500);
       return () => clearTimeout(timer);
     }
     setHasCheckedOnboarding(true);
-  }, [user, hasCheckedOnboarding, isPasswordChangeRequired]);
+  }, [user, hasCheckedOnboarding, isPasswordChangeRequired, tourId]);
 
   useEffect(() => {
-    // Only start tour if password change is not required
-    if (activeTour === "portal" && !isPasswordChangeRequired) {
+    if ((activeTour === "portal" || activeTour === "owner") && !isPasswordChangeRequired) {
       setShowPortalTour(true);
     }
   }, [activeTour, isPasswordChangeRequired]);
@@ -439,11 +454,21 @@ function PortalTourWrapper() {
 
   return (
     <OnboardingTour
-      tourId="portal"
-      steps={portalTourConfig.steps}
+      tourId={tourId}
+      steps={tourConfig.steps}
       onComplete={handleComplete}
       onSkip={handleComplete}
     />
+  );
+}
+
+function PublicRoutes() {
+  return (
+    <Switch>
+      <Route path="/login" component={LoginPage} />
+      <Route path="/signup" component={SignupPage} />
+      <Route component={LandingPage} />
+    </Switch>
   );
 }
 
@@ -459,7 +484,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <PublicRoutes />;
   }
 
   const sidebarStyle = {
@@ -494,6 +519,7 @@ function ProtectedRoutes() {
                 <Route path="/users">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
                 <Route path="/users/new">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
                 <Route path="/roles">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
+                <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
                 <Route path="/settings" component={ProfilePage} />
                 <Route path="/profile" component={ProfilePage} />

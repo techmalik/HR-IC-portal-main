@@ -1,6 +1,6 @@
-# Mentalyc IC Portal
+# TeamFlow
 
-An HR management portal for Independent Contractors (ICs) and their supervisors at Mentalyc. It streamlines time tracking, leave management, invoicing, and performance evaluations in one place.
+A SaaS platform for managing Independent Contractors (ICs) and their supervisors. It streamlines time tracking, leave management, invoicing, and performance evaluations in one place.
 
 ## Features
 
@@ -14,7 +14,7 @@ An HR management portal for Independent Contractors (ICs) and their supervisors 
 ### For Supervisors
 - **Leave Approvals** — Review team time-off requests with teammate conflict detection
 - **Timesheet Reviews** — Approve or request revisions on submitted timesheets
-- **Invoice Reviews** — Manage team invoice submissions and Notion sync
+- **Invoice Reviews** — Manage team invoice submissions
 - **Overtime Approvals** — Approve extra hours with full work-description context
 - **Team Overview** — Dashboard with "Who's OOO Today", pending items, and direct report status
 
@@ -37,7 +37,6 @@ An HR management portal for Independent Contractors (ICs) and their supervisors 
 | Auth | Session-based (bcrypt, DB-backed tokens) |
 | Storage | Replit Object Storage (file uploads) |
 | Email | Resend |
-| Integrations | Notion (invoice sync) |
 
 ## Getting Started
 
@@ -51,8 +50,6 @@ An HR management portal for Independent Contractors (ICs) and their supervisors 
 DATABASE_URL=           # PostgreSQL connection string
 SESSION_SECRET=         # Secret for session signing
 RESEND_API_KEY=         # For email notifications
-NOTION_API_KEY=         # For invoice sync (optional)
-NOTION_DATABASE_ID=     # Notion database for invoices (optional)
 FROM_EMAIL=             # Sender address for notifications
 ```
 
@@ -83,8 +80,7 @@ npm run db:push   # Push schema to database
 ├── server/          # Express backend
 │   ├── routes.ts         # API route definitions
 │   ├── storage.ts        # Database access layer
-│   ├── emailService.ts   # Email notifications
-│   └── notion-service.ts # Notion integration
+│   └── emailService.ts   # Email notifications
 ├── shared/
 │   └── schema.ts         # Drizzle schema + Zod types (shared)
 └── drizzle.config.ts

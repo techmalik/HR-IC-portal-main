@@ -41,10 +41,11 @@ import {
   CheckSquare,
   Building2,
   BarChart3,
+  Layers,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import logoUrl from "@assets/Mentalyc_Logo_1766419352716.png";
 
 interface MenuItem {
   title: string;
@@ -69,7 +70,7 @@ export function AppSidebar() {
   const { data: pendingLeaveCount } = useQuery<number>({
     queryKey: ["/api/leave-requests/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("mentalyc_session_token");
+      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/leave-requests/pending-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -83,7 +84,7 @@ export function AppSidebar() {
   const { data: pendingOvertimeCount } = useQuery<number>({
     queryKey: ["/api/overtime-requests/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("mentalyc_session_token");
+      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/overtime-requests/pending-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -97,7 +98,7 @@ export function AppSidebar() {
   const { data: pendingTimesheetsCount } = useQuery<number>({
     queryKey: ["/api/timesheets/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("mentalyc_session_token");
+      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/timesheets/pending-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -111,7 +112,7 @@ export function AppSidebar() {
   const { data: pendingInvoicesCount } = useQuery<number>({
     queryKey: ["/api/invoices/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("mentalyc_session_token");
+      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/invoices/pending-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -125,7 +126,7 @@ export function AppSidebar() {
   const { data: pendingEvaluationsCount } = useQuery<number>({
     queryKey: ["/api/evaluations/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("mentalyc_session_token");
+      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/evaluations/pending-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -216,6 +217,7 @@ export function AppSidebar() {
           { title: "User Management", url: "/users", icon: Users },
           { title: "All Timesheets", url: "/all-timesheets", icon: Clock },
           { title: "Performance Reviews", url: "/evaluations", icon: Star },
+          { title: "Billing", url: "/billing", icon: CreditCard },
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
         ],
       });
@@ -257,10 +259,12 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="px-4 py-3 border-b border-sidebar-border flex flex-row items-center justify-between">
         <Link href="/" className="flex items-center gap-3 min-w-0">
-          <img src={logoUrl} alt="Mentalyc" className="w-10 h-10 rounded-md shrink-0" />
+          <div className="w-10 h-10 rounded-md shrink-0 bg-sidebar-primary flex items-center justify-center">
+            <Layers className="w-6 h-6 text-sidebar-primary-foreground" />
+          </div>
           <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-lg text-sidebar-foreground">Mentalyc</span>
-            <span className="text-xs text-sidebar-foreground/70">Independent Contractor Portal</span>
+            <span className="font-semibold text-lg text-sidebar-foreground">TeamFlow</span>
+            <span className="text-xs text-sidebar-foreground/70">Contractor Portal</span>
           </div>
         </Link>
         <SidebarTrigger

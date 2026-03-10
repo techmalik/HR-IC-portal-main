@@ -674,7 +674,7 @@ function EvaluationDetailView({
     queryKey: ["/api/evaluations", evaluation.id, "sections"],
     queryFn: async () => {
       const res = await fetch(`/api/evaluations/${evaluation.id}/sections`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch sections");
       return res.json();
@@ -685,7 +685,7 @@ function EvaluationDetailView({
     queryKey: ["/api/ic-responsibilities", { icId: evaluation.icId }],
     queryFn: async () => {
       const res = await fetch(`/api/ic-responsibilities?icId=${evaluation.icId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch responsibilities");
       return res.json();
@@ -696,7 +696,7 @@ function EvaluationDetailView({
     queryKey: ["/api/users", evaluation.icId, "last-evaluation"],
     queryFn: async () => {
       const response = await fetch(`/api/users/${evaluation.icId}/last-evaluation`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!response.ok) return null;
       return response.json();
@@ -708,7 +708,7 @@ function EvaluationDetailView({
     enabled: !!lastEvaluation?.id && lastEvaluation.id !== evaluation.id,
     queryFn: async () => {
       const response = await fetch(`/api/evaluations/${lastEvaluation!.id}/sections`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!response.ok) return [];
       return response.json();

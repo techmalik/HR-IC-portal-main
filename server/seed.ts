@@ -16,9 +16,9 @@ async function seedDatabase() {
   const adminUser = {
     username: "malik",
     password: "ChangeMe123!",
-    email: "malik@mentalyc.com",
-    firstName: "Malik",
-    lastName: "Kabir",
+    email: "admin@example.com",
+    firstName: "Admin",
+    lastName: "User",
     role: UserRole.ADMIN,
     isActive: true,
     mustChangePassword: true,

@@ -1,4 +1,4 @@
-# Mentalyc HR Management System - Design Guidelines
+# TeamFlow HR Management System - Design Guidelines
 
 ## Design Approach
 **Reference-Based Approach**: Drawing inspiration from BambooHR and Gusto's professional HR interfaces, emphasizing role-based dashboards, streamlined approval workflows, and clear information hierarchy.
@@ -50,13 +50,13 @@
   - Rejected: Red bg (#EF4444 at 10% opacity), red text
 
 ### Buttons
-- **Primary**: Mentalyc brand color extracted from logo, white text, 40px height
+- **Primary**: Indigo Blue brand color, white text, 40px height
 - **Secondary**: White bg, border, dark text
 - **Ghost**: Transparent, text only, for tertiary actions
 - **Sizes**: Default 40px height, Small 32px for table actions
 
 ## Color System
-Extract primary brand color from Mentalyc logo for all primary actions, CTAs, and active states. Supporting palette:
+Indigo Blue (hsl 220, 80%, 50%) for all primary actions, CTAs, and active states. Supporting palette:
 - Success/Approval: #10B981
 - Warning/Pending: #F59E0B
 - Error/Rejection: #EF4444

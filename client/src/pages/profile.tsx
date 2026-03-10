@@ -508,7 +508,7 @@ function NotificationPreferencesSection({ userId, isAdmin }: { userId: string; i
     queryKey: ["/api/notification-preferences", { userId }],
     queryFn: async () => {
       const res = await fetch(`/api/notification-preferences?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch preferences");
       return res.json();

@@ -16,7 +16,7 @@ export default function DashboardIC() {
     queryKey: ["/api/ooo-requests", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/ooo-requests?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch OOO requests");
       return res.json();
@@ -28,7 +28,7 @@ export default function DashboardIC() {
     queryKey: ["/api/timesheets", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();
@@ -40,7 +40,7 @@ export default function DashboardIC() {
     queryKey: ["/api/invoices", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/invoices?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch invoices");
       return res.json();
@@ -52,7 +52,7 @@ export default function DashboardIC() {
     queryKey: ["/api/overtime-requests/my"],
     queryFn: async () => {
       const res = await fetch(`/api/overtime-requests?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch overtime requests");
       return res.json();

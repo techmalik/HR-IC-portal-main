@@ -7,11 +7,8 @@ if (resend) {
   console.log(`[EMAIL] Using FROM_EMAIL: ${process.env.FROM_EMAIL || "notifications@resend.dev"}`);
 }
 
-const APP_NAME = "Mentalyc";
-const BRAND_COLOR = "#801a40"; // Derived from --sidebar (330 60% 25%) which is a deep burgundy/maroon
-const LOGO_URL = "https://raw.githubusercontent.com/mentalyc/assets/main/logo.png"; // Placeholder for actual mentalyc logo URL if needed, or use the app logo from replit assets if available publicly. 
-// For now, I'll use a data URL or just stick to the brand color and name since I can't easily host the local asset for email.
-// However, I can use the brand color for the header background.
+const APP_NAME = "TeamFlow";
+const BRAND_COLOR = "#2563EB";
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "notifications@resend.dev";
 

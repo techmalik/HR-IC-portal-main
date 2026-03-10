@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("mentalyc_theme") as Theme;
+      const saved = localStorage.getItem("teamflow_theme") as Theme;
       return saved || "light";
     }
     return "light";
@@ -25,7 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("mentalyc_theme", theme);
+    localStorage.setItem("teamflow_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

@@ -3,11 +3,83 @@ import { pgTable, text, varchar, integer, date, timestamp, boolean, jsonb } from
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User roles enum - simplified to 2 roles only
+// Subscription plan enum
+export const SubscriptionPlan = {
+  FREE: "free",
+  STARTER: "starter",
+  PRO: "pro",
+  ENTERPRISE: "enterprise",
+} as const;
+
+export type SubscriptionPlanType = (typeof SubscriptionPlan)[keyof typeof SubscriptionPlan];
+
+// Subscription status enum
+export const SubscriptionStatus = {
+  ACTIVE: "active",
+  CANCELED: "canceled",
+  PAST_DUE: "past_due",
+  TRIALING: "trialing",
+} as const;
+
+export type SubscriptionStatusType = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+
+// Plan limits
+export const PLAN_LIMITS: Record<SubscriptionPlanType, { maxSeats: number; price: number; name: string }> = {
+  free: { maxSeats: 3, price: 0, name: "Free" },
+  starter: { maxSeats: 10, price: 29, name: "Starter" },
+  pro: { maxSeats: 50, price: 79, name: "Pro" },
+  enterprise: { maxSeats: 999, price: 0, name: "Enterprise" },
+};
+
+// Organizations table
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  logoUrl: text("logo_url"),
+  billingEmail: text("billing_email"),
+  address: text("address"),
+  vatNumber: text("vat_number"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  plan: text("plan").notNull().default("free"),
+  status: text("status").notNull().default("active"),
+  seatCount: integer("seat_count").notNull().default(0),
+  maxSeats: integer("max_seats").notNull().default(3),
+  currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
+  currentPeriodEnd: timestamp("current_period_end"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+
+// User roles enum
 // Note: ICs dynamically gain supervisor features when assigned team members
 export const UserRole = {
   IC: "ic",
   ADMIN: "admin",
+  OWNER: "owner",
 } as const;
 
 export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
@@ -50,21 +122,10 @@ export const ContractorStatus = {
 
 export type ContractorStatusType = (typeof ContractorStatus)[keyof typeof ContractorStatus];
 
-// Contractor category enum (for Notion sync)
-export const ContractorCategory = {
-  SALES: "Sales Contractors",
-  MARKETING: "Marketing Contractors",
-  PRODUCT: "Product Contractors",
-  OPERATIONS: "Operations Contractors",
-  ENGINEERING: "Engineering Contractors",
-  CONTENT: "Content",
-} as const;
-
-export type ContractorCategoryType = (typeof ContractorCategory)[keyof typeof ContractorCategory];
-
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull(),
@@ -104,6 +165,7 @@ export type OOOTypeValue = (typeof OOOType)[keyof typeof OOOType];
 // Out of Office Requests table
 export const oooRequests = pgTable("ooo_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   managerId: varchar("manager_id").notNull(),
   startDate: date("start_date").notNull(),
@@ -129,6 +191,7 @@ export type OOORequest = typeof oooRequests.$inferSelect;
 // Timesheets table (monthly)
 export const timesheets = pgTable("timesheets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
@@ -154,6 +217,7 @@ export type Timesheet = typeof timesheets.$inferSelect;
 // Daily activity entries
 export const dailyEntries = pgTable("daily_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   timesheetId: varchar("timesheet_id").notNull(),
   date: date("date").notNull(),
   hours: integer("hours").notNull().default(0),
@@ -170,6 +234,7 @@ export type DailyEntry = typeof dailyEntries.$inferSelect;
 // Overtime requests table (also used for weekend work approval)
 export const overtimeRequests = pgTable("overtime_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   timesheetId: varchar("timesheet_id").notNull(),
   date: date("date").notNull(),
@@ -198,6 +263,7 @@ export type OvertimeRequest = typeof overtimeRequests.$inferSelect;
 // Invoices table
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   invoiceNumber: text("invoice_number").notNull(),
   month: integer("month").notNull(),
@@ -238,6 +304,7 @@ export type Invoice = typeof invoices.$inferSelect;
 // Invoice Line Items table
 export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   invoiceId: varchar("invoice_id").notNull(),
   description: text("description").notNull(),
   quantity: integer("quantity").notNull(),
@@ -256,6 +323,7 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 // IC Payment Details table (saveable bank details)
 export const icPaymentDetails = pgTable("ic_payment_details", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull().unique(),
   bankName: text("bank_name"),
   accountHolderFirstName: text("account_holder_first_name"),
@@ -290,6 +358,7 @@ export type EvaluationStatusType = (typeof EvaluationStatus)[keyof typeof Evalua
 // IC Responsibilities table (agreed expectations)
 export const icResponsibilities = pgTable("ic_responsibilities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   icId: varchar("ic_id").notNull(),
   responsibility: text("responsibility").notNull(),
   isActive: boolean("is_active").notNull().default(true),
@@ -322,6 +391,7 @@ export type EvaluationOutcome = typeof EVALUATION_OUTCOMES[number]["value"];
 // Performance Evaluations table (enhanced)
 export const evaluations = pgTable("evaluations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   icId: varchar("ic_id").notNull(),
   managerId: varchar("manager_id").notNull(),
   periodStart: date("period_start").notNull(),
@@ -422,6 +492,7 @@ export type Evaluation = typeof evaluations.$inferSelect;
 // Evaluation sections - individual rating categories
 export const evaluationSections = pgTable("evaluation_sections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   evaluationId: varchar("evaluation_id").notNull(),
   sectionNumber: integer("section_number").notNull(),
   sectionName: text("section_name").notNull(),
@@ -478,6 +549,7 @@ export const DEFAULT_EVALUATION_SECTIONS = [
 // Feedback invitations for performance evaluations
 export const feedbackInvitations = pgTable("feedback_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   evaluationId: varchar("evaluation_id").notNull(),
   invitedById: varchar("invited_by_id").notNull(),
   invitedUserId: varchar("invited_user_id").notNull(),
@@ -500,6 +572,7 @@ export type FeedbackInvitation = typeof feedbackInvitations.$inferSelect;
 // Activity logs for admin/cofounder visibility
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   action: text("action").notNull(),
   details: text("details"),
@@ -547,6 +620,7 @@ export type NotificationTypeValue = (typeof NotificationType)[keyof typeof Notif
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull(),
   actorId: varchar("actor_id"),
   type: text("type").notNull(),
@@ -570,6 +644,7 @@ export type Notification = typeof notifications.$inferSelect;
 // Notification preferences table
 export const notificationPreferences = pgTable("notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
   userId: varchar("user_id").notNull().unique(),
   inAppEnabled: boolean("in_app_enabled").notNull().default(true),
   emailEnabled: boolean("email_enabled").notNull().default(true),

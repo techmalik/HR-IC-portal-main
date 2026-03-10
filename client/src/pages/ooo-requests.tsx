@@ -89,7 +89,7 @@ export default function OOORequestsPage() {
     queryKey: ["/api/ooo-requests", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/ooo-requests?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch requests");
       return res.json();

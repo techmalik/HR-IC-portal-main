@@ -14,7 +14,7 @@ export interface TourStep {
 }
 
 interface OnboardingTourProps {
-  tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor";
+  tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
   steps: TourStep[];
   onComplete?: () => void;
   onSkip?: () => void;
@@ -353,7 +353,7 @@ export function OnboardingTour({ tourId, steps, onComplete, onSkip }: Onboarding
 }
 
 export interface TourConfig {
-  tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor";
+  tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
   steps: TourStep[];
 }
 
@@ -362,7 +362,7 @@ export const portalTourConfig: TourConfig = {
   steps: [
     {
       target: "tour-target-welcome",
-      title: "Welcome to Mentalyc HR Portal",
+      title: "Welcome to TeamFlow",
       description: "This is your central hub for managing timesheets, time off requests, invoices, and more. Let's take a quick tour!",
       placement: "bottom",
     },
@@ -495,7 +495,37 @@ export const supervisorApprovalsTourConfig: TourConfig = {
   ],
 };
 
-export function useTour(tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor") {
+export const ownerTourConfig: TourConfig = {
+  tourId: "owner",
+  steps: [
+    {
+      target: "tour-target-welcome",
+      title: "Welcome to TeamFlow!",
+      description: "Congratulations on setting up your organization! Let's walk you through the key steps to get your team up and running.",
+      placement: "bottom",
+    },
+    {
+      target: "tour-target-sidebar",
+      title: "Invite Your Contractors",
+      description: "Head to the Users section in the sidebar to add your team members. You can invite contractors, assign supervisors, and set hourly rates.",
+      placement: "right",
+    },
+    {
+      target: "tour-target-dashboard",
+      title: "Set Up Your First Timesheet",
+      description: "Once your contractors are added, they can start logging hours in Timesheets. You'll be able to review and approve their work right from your dashboard.",
+      placement: "bottom",
+    },
+    {
+      target: "tour-target-profile",
+      title: "Customize Your Organization",
+      description: "Visit your profile to update organization details, manage billing, and configure notification preferences. You're all set to go!",
+      placement: "left",
+    },
+  ],
+};
+
+export function useTour(tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner") {
   const { user } = useAuth();
   const [shouldShowTour, setShouldShowTour] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);

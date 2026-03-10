@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
 import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
 import type { User, UserRoleType } from "@shared/schema";
-import { syncInvoiceToNotionAsync } from "./notion-service";
+
 import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
 import { randomUUID } from "crypto";
@@ -156,11 +156,16 @@ function requireRole(...allowedRoles: string[]) {
   };
 }
 
+function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
+  if (!currentUser.organizationId) return true;
+  return currentUser.organizationId === targetUser.organizationId;
+}
+
 // Check if user has supervisor privileges (either admin or IC with direct reports)
 async function hasSupervisorPrivileges(userId: string): Promise<boolean> {
   const user = await storage.getUser(userId);
   if (!user) return false;
-  if (user.role === "admin") return true;
+  if (user.role === "admin" || user.role === "owner") return true;
   
   // Check if this IC has direct reports
   const directReports = await storage.getUsersBySupervisor(userId);
@@ -249,6 +254,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: user.id,
+        organizationId: user.organizationId,
         action: "User logged in",
         details: `${user.firstName} ${user.lastName} logged in`,
         entityType: "user",
@@ -266,6 +272,85 @@ export async function registerRoutes(
     res.json({ ...userWithoutPassword, sessionToken, hasDirectReports });
   });
 
+  app.post("/api/auth/register", async (req, res) => {
+    const { firstName, lastName, email, password, organizationName } = req.body;
+
+    if (!firstName || !lastName || !email || !password || !organizationName) {
+      return res.status(400).json({ error: "All fields are required: firstName, lastName, email, password, organizationName" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const existingByEmail = await storage.getUserByEmail(email);
+    if (existingByEmail) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const username = email;
+    const existingByUsername = await storage.getUserByUsername(username);
+    if (existingByUsername) {
+      return res.status(400).json({ error: "An account with this email already exists" });
+    }
+
+    const slug = organizationName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      || "org";
+    let uniqueSlug = slug;
+    let slugSuffix = 1;
+    while (await storage.getOrganizationBySlug(uniqueSlug)) {
+      uniqueSlug = `${slug}-${slugSuffix}`;
+      slugSuffix++;
+    }
+
+    const organization = await storage.createOrganization({
+      name: organizationName,
+      slug: uniqueSlug,
+      billingEmail: email,
+    });
+
+    const subscription = await storage.createSubscription({
+      organizationId: organization.id,
+      plan: "free",
+      status: "active",
+      seatCount: 1,
+      maxSeats: 3,
+      currentPeriodStart: new Date(),
+    });
+
+    const user = await storage.createUser({
+      username,
+      password,
+      email,
+      firstName,
+      lastName,
+      role: "owner",
+      organizationId: organization.id,
+      isActive: true,
+    });
+
+    const sessionToken = await createSession(user.id, user.username);
+
+    try {
+      await storage.createActivityLog({
+        userId: user.id,
+        organizationId: organization.id,
+        action: "Organization created",
+        details: `${firstName} ${lastName} created organization "${organizationName}"`,
+        entityType: "organization",
+        entityId: organization.id,
+      });
+    } catch (e) {
+      console.error("Failed to create registration activity log:", e);
+    }
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.status(201).json({ ...userWithoutPassword, sessionToken, hasDirectReports: false });
+  });
+
   app.post("/api/auth/logout", async (req, res) => {
     const { sessionToken } = req.body;
     if (sessionToken) {
@@ -275,20 +360,21 @@ export async function registerRoutes(
   });
 
   // User routes - protected with auth middleware
-  app.get("/api/users", authMiddleware, requireRole("admin"), async (req, res) => {
-    const users = await storage.getAllUsers();
+  app.get("/api/users", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const orgId = req.authenticatedUser!.organizationId ?? undefined;
+    const users = await storage.getAllUsers(orgId);
     const usersWithoutPasswords = users.map(({ password: _, ...u }) => u);
     res.json(usersWithoutPasswords);
   });
 
   app.get("/api/users/managers", authMiddleware, async (req, res) => {
-    const managers = await storage.getManagers();
+    const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? undefined);
     const managersWithoutPasswords = managers.map(({ password: _, ...u }) => u);
     res.json(managersWithoutPasswords);
   });
 
   app.get("/api/users/supervisors", authMiddleware, async (req, res) => {
-    const supervisors = await storage.getSupervisors();
+    const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? undefined);
     const supervisorsWithoutPasswords = supervisors.map(({ password: _, ...u }) => u);
     res.json(supervisorsWithoutPasswords);
   });
@@ -299,7 +385,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     
-    const users = await storage.getAllUsers();
+    const users = await storage.getAllUsers(currentUser.organizationId ?? undefined);
     // Return only essential info for display purposes
     const basicUsers = users.map(({ id, firstName, lastName, jobTitle, role }) => ({
       id,
@@ -335,7 +421,7 @@ export async function registerRoutes(
       const membersWithoutPasswords = members.map(({ password: _, ...u }) => u);
       res.json(membersWithoutPasswords);
     } else {
-      const ics = await storage.getUsersByRole("ic");
+      const ics = await storage.getUsersByRole("ic", currentUser.organizationId ?? undefined);
       const icsWithoutPasswords = ics.map(({ password: _, ...u }) => u);
       res.json(icsWithoutPasswords);
     }
@@ -346,8 +432,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const targetUserId = req.params.id;
     
-    // Users can view their own profile
-    const isAdmin = currentUser.role === "admin";
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     const isSelf = currentUser.id === targetUserId;
     
     // Check if supervisor and target is in their direct reports
@@ -366,11 +451,15 @@ export async function registerRoutes(
       return res.status(404).json({ error: "User not found" });
     }
     
+    if (!checkOrgBoundary(currentUser, user)) {
+      return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
+    
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   });
 
-  app.post("/api/users", authMiddleware, requireRole("admin"), async (req, res) => {
+  app.post("/api/users", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     try {
       // Check for existing username
       const existingByUsername = await storage.getUserByUsername(req.body.username);
@@ -379,7 +468,7 @@ export async function registerRoutes(
       }
       
       // Check for existing email
-      const allUsers = await storage.getAllUsers();
+      const allUsers = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
       const existingByEmail = allUsers.find(u => u.email === req.body.email);
       if (existingByEmail) {
         return res.status(400).json({ error: "Email already exists" });
@@ -390,6 +479,7 @@ export async function registerRoutes(
       try {
         await storage.createActivityLog({
           userId: req.body.createdBy || user.id,
+          organizationId: req.authenticatedUser!.organizationId,
           action: "User created",
           details: `Created user ${user.firstName} ${user.lastName}`,
           entityType: "user",
@@ -413,14 +503,20 @@ export async function registerRoutes(
     const targetUserId = req.params.id;
     
     // Users can only edit their own profile unless they're admin
-    const isAdmin = currentUser.role === "admin";
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     const isSelf = currentUser.id === targetUserId;
     
     if (!isAdmin && !isSelf) {
       return res.status(403).json({ error: "Cannot edit other users' profiles" });
     }
     
-    // Restrict sensitive fields for non-admins
+    if (isAdmin && !isSelf) {
+      const targetUser = await storage.getUser(targetUserId);
+      if (targetUser && !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+      }
+    }
+    
     if (!isAdmin) {
       const sensitiveFields = ["role", "isActive", "managerId", "hourlyRate", "monthlyCap"];
       for (const field of sensitiveFields) {
@@ -438,13 +534,11 @@ export async function registerRoutes(
     res.json(userWithoutPassword);
   });
 
-  // Password change endpoint - used for forced password changes and profile updates
   app.patch("/api/users/:id/password", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const targetUserId = req.params.id;
     
-    // Users can only change their own password unless they're admin
-    const isAdmin = currentUser.role === "admin";
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     const isSelf = currentUser.id === targetUserId;
     
     if (!isAdmin && !isSelf) {
@@ -481,6 +575,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: targetUserId,
+        organizationId: req.authenticatedUser!.organizationId,
         action: "Password changed",
         details: `Password changed successfully`,
         entityType: "user",
@@ -506,10 +601,10 @@ export async function registerRoutes(
     }
     
     const { tour, completed } = req.body;
-    const validTours = ["portal", "timesheets", "invoices", "ooo", "supervisor"];
+    const validTours = ["portal", "timesheets", "invoices", "ooo", "supervisor", "owner"];
     
     if (!tour || !validTours.includes(tour)) {
-      return res.status(400).json({ error: "Invalid tour name. Must be one of: portal, timesheets, invoices, ooo, supervisor" });
+      return res.status(400).json({ error: "Invalid tour name. Must be one of: portal, timesheets, invoices, ooo, supervisor, owner" });
     }
     
     if (typeof completed !== "boolean") {
@@ -537,7 +632,14 @@ export async function registerRoutes(
     res.json(userWithoutPassword);
   });
 
-  app.delete("/api/users/:id", authMiddleware, requireRole("admin"), async (req, res) => {
+  app.delete("/api/users/:id", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const targetUser = await storage.getUser(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (!checkOrgBoundary(req.authenticatedUser!, targetUser)) {
+      return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
     const success = await storage.deleteUser(req.params.id);
     if (!success) {
       return res.status(404).json({ error: "User not found" });
@@ -546,6 +648,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
+        organizationId: req.authenticatedUser!.organizationId,
         action: "User deleted",
         details: `User account removed`,
         entityType: "user",
@@ -558,7 +661,7 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.post("/api/users/bulk", authMiddleware, requireRole("admin"), async (req, res) => {
+  app.post("/api/users/bulk", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     try {
       const { users } = req.body;
       if (!Array.isArray(users) || users.length === 0) {
@@ -587,7 +690,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/users/:id/reset-password", authMiddleware, requireRole("admin"), async (req, res) => {
+  app.post("/api/users/:id/reset-password", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     const user = await storage.getUser(req.params.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -599,6 +702,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
+        organizationId: req.authenticatedUser!.organizationId,
         action: "Password reset",
         details: `Password reset for ${user.firstName} ${user.lastName}`,
         entityType: "user",
@@ -630,7 +734,7 @@ export async function registerRoutes(
         const requests = await storage.getOOORequestsByUser(currentUser.id);
         return res.json(requests);
       }
-      const requests = await storage.getAllOOORequests();
+      const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
       res.json(requests);
     }
   });
@@ -642,7 +746,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
     
-    const requests = await storage.getAllOOORequests();
+    const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
     
     // Enrich with user information
     const enrichedRequests = await Promise.all(
@@ -663,11 +767,11 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const { managerId } = req.query;
     
-    let requests = await storage.getPendingOOORequests();
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
     
     // Filter based on role - admins see all, IC supervisors see their team only
-    if (currentUser.role === "admin") {
-      // Admins see all pending requests
+    if (currentUser.role === "admin" || currentUser.role === "owner") {
+      // Admins/owners see all pending requests
     } else if (managerId) {
       // Filter to only show requests for this manager
       requests = requests.filter(r => r.managerId === managerId);
@@ -694,7 +798,7 @@ export async function registerRoutes(
   app.get("/api/leave-requests/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     
-    let requests = await storage.getPendingOOORequests();
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
     
     // Filter based on user role - only admins see all, IC supervisors see their team
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -714,12 +818,13 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Cannot create requests for other users" });
       }
       
-      const request = await storage.createOOORequest(req.body);
+      const request = await storage.createOOORequest({ ...req.body, organizationId: currentUser.organizationId });
       const submitter = await storage.getUser(req.body.userId);
 
       try {
         await storage.createActivityLog({
           userId: req.body.userId,
+          organizationId: currentUser.organizationId,
           action: "OOO request created",
           details: `Requested time off from ${req.body.startDate} to ${req.body.endDate}`,
           entityType: "ooo_request",
@@ -768,6 +873,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.body.reviewedBy,
+        organizationId: currentUser.organizationId,
         action: `OOO request ${req.body.status}`,
         details: `Leave request was ${req.body.status}`,
         entityType: "ooo_request",
@@ -806,7 +912,7 @@ export async function registerRoutes(
       const timesheets = await storage.getTimesheetsByUser(userId as string);
       res.json(timesheets);
     } else {
-      const timesheets = await storage.getAllTimesheets();
+      const timesheets = await storage.getAllTimesheets(req.authenticatedUser!.organizationId ?? undefined);
       // Enrich with user information
       const enrichedTimesheets = await Promise.all(
         timesheets.map(async (t) => {
@@ -832,8 +938,8 @@ export async function registerRoutes(
     const statusFilter = req.query.status as string | undefined;
     
     let timesheets = statusFilter
-      ? (await storage.getAllTimesheets()).filter(t => t.status === statusFilter)
-      : await storage.getSubmittedTimesheets();
+      ? (await storage.getAllTimesheets(currentUser.organizationId ?? undefined)).filter(t => t.status === statusFilter)
+      : await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     if (currentUser.role !== "admin") {
@@ -863,7 +969,7 @@ export async function registerRoutes(
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    let timesheets = await storage.getSubmittedTimesheets();
+    let timesheets = await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -915,6 +1021,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "draft",
+        organizationId: req.authenticatedUser!.organizationId,
       });
     }
 
@@ -924,6 +1031,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
+        organizationId: req.authenticatedUser!.organizationId,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -941,6 +1049,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
+            organizationId: req.authenticatedUser!.organizationId,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -979,6 +1088,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "submitted",
+        organizationId: req.authenticatedUser!.organizationId,
       });
       const updated = await storage.updateTimesheet(created.id, {
         submittedAt: new Date(),
@@ -995,6 +1105,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
+        organizationId: req.authenticatedUser!.organizationId,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -1012,6 +1123,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
+            organizationId: req.authenticatedUser!.organizationId,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -1024,6 +1136,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId,
+      organizationId: req.authenticatedUser!.organizationId,
       action: "Timesheet submitted",
       details: `Submitted timesheet for ${month}/${year} with ${totalHours} hours`,
       entityType: "timesheet",
@@ -1109,6 +1222,7 @@ export async function registerRoutes(
       // Log the activity
       await storage.createActivityLog({
         userId: currentUser.id,
+        organizationId: currentUser.organizationId,
         action: "Timesheet unlocked for revision",
         details: `Unlocked timesheet for ${timesheet.month}/${timesheet.year} for user ${timesheet.userId}. Reason: ${note}`,
         entityType: "timesheet",
@@ -1126,6 +1240,7 @@ export async function registerRoutes(
         });
         await storage.createActivityLog({
           userId: currentUser.id,
+          organizationId: currentUser.organizationId,
           action: "Invoice returned for revision",
           details: `Invoice ${linkedInvoice.fileName} returned for revision due to timesheet unlock`,
           entityType: "invoice",
@@ -1152,7 +1267,7 @@ export async function registerRoutes(
     if (!isSupervisor) {
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
-    const timesheets = await storage.getAllTimesheets();
+    const timesheets = await storage.getAllTimesheets(currentUser.organizationId ?? undefined);
     const enrichedTimesheets = await Promise.all(
       timesheets.map(async (t) => {
         const user = await storage.getUser(t.userId);
@@ -1177,9 +1292,9 @@ export async function registerRoutes(
     } else if (timesheetId) {
       requests = await storage.getOvertimeRequestsByTimesheet(timesheetId as string);
     } else if (status === "pending") {
-      requests = await storage.getPendingOvertimeRequests();
+      requests = await storage.getPendingOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
     } else {
-      requests = await storage.getAllOvertimeRequests();
+      requests = await storage.getAllOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
     }
     
     // Enrich overtime requests with activity log from daily entries
@@ -1197,7 +1312,7 @@ export async function registerRoutes(
 
   app.get("/api/overtime-requests/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    const requests = await storage.getPendingOvertimeRequests();
+    const requests = await storage.getPendingOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
     res.json({ count: requests.length });
   });
 
@@ -1214,12 +1329,13 @@ export async function registerRoutes(
         return res.json(existingRequest);
       }
       
-      const request = await storage.createOvertimeRequest(req.body);
+      const request = await storage.createOvertimeRequest({ ...req.body, organizationId: req.authenticatedUser!.organizationId });
       const submitter = await storage.getUser(req.body.userId);
 
       try {
         await storage.createActivityLog({
           userId: req.body.userId,
+          organizationId: req.authenticatedUser!.organizationId,
           action: "Overtime request created",
           details: `Requested ${req.body.requestedHours - 8} overtime hours for ${req.body.date}`,
           entityType: "overtime_request",
@@ -1298,6 +1414,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.body.reviewedBy,
+        organizationId: req.authenticatedUser!.organizationId,
         action: `Overtime request ${req.body.status}`,
         details: `Overtime request was ${req.body.status}`,
         entityType: "overtime_request",
@@ -1360,7 +1477,7 @@ export async function registerRoutes(
     if (userId) {
       invoices = await storage.getInvoicesByUser(userId as string);
     } else {
-      invoices = await storage.getAllInvoices();
+      invoices = await storage.getAllInvoices(req.authenticatedUser!.organizationId ?? undefined);
     }
     
     // Enrich invoices with user data and normalize file URLs
@@ -1398,6 +1515,7 @@ export async function registerRoutes(
         ...req.body,
         status: "pending_review",
         timesheetId: timesheet?.id || null,
+        organizationId: req.authenticatedUser!.organizationId,
       };
       
       const invoice = await storage.createInvoice(invoiceData);
@@ -1411,6 +1529,7 @@ export async function registerRoutes(
 
         await storage.createActivityLog({
           userId,
+          organizationId: req.authenticatedUser!.organizationId,
           action: "Timesheet auto-submitted",
           details: `Timesheet for ${month}/${year} submitted for approval with invoice`,
           entityType: "timesheet",
@@ -1420,6 +1539,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: req.body.userId,
+        organizationId: req.authenticatedUser!.organizationId,
         action: "Invoice submitted for review",
         details: `Submitted invoice ${req.body.fileName} for approval`,
         entityType: "invoice",
@@ -1431,7 +1551,7 @@ export async function registerRoutes(
         await notifyInvoiceUploaded(invoice, uploader);
       }
 
-      // Upload to Object Storage immediately (but don't sync to Notion yet - that happens on approval)
+      // Upload to Object Storage immediately
       res.status(201).json({
         ...invoice,
         fileUrl: normalizeFileUrl(invoice.fileUrl),
@@ -1541,11 +1661,7 @@ export async function registerRoutes(
       return res.status(500).json({ error: "Failed to update invoice" });
     }
 
-    // Handle approval - sync to Notion
     if (status === "approved") {
-      console.log("[Invoice] Processing approval for invoice:", invoice.invoiceNumber);
-      console.log("[Invoice] Invoice ID:", invoice.id);
-      console.log("[Invoice] File URL:", updatedInvoice.fileUrl);
       
       await notifyInvoiceApproved(updatedInvoice, invoice.userId, user);
 
@@ -1564,73 +1680,13 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: user.id,
+        organizationId: user.organizationId,
         action: "Invoice approved",
         details: `Approved invoice ${invoice.invoiceNumber}`,
         entityType: "invoice",
         entityId: invoice.id,
       });
 
-      // Fire-and-forget: sync to Notion after approval
-      setImmediate(async () => {
-        try {
-          const uploader = await storage.getUser(invoice.userId);
-          const timesheetForHours = invoice.timesheetId
-            ? await storage.getTimesheet(invoice.timesheetId)
-            : null;
-          
-          const contractorName = uploader 
-            ? `${uploader.firstName} ${uploader.lastName}` 
-            : invoice.contractorName || "Unknown";
-          
-          // Construct absolute URL for Notion if we have a relative path
-          let absoluteFileUrl: string | undefined;
-          if (updatedInvoice.fileUrl) {
-            if (updatedInvoice.fileUrl.startsWith("http")) {
-              absoluteFileUrl = updatedInvoice.fileUrl;
-            } else if (updatedInvoice.fileUrl.startsWith("/")) {
-              // Construct absolute URL from relative path for external services
-              // Try multiple environment variables for different deployment contexts
-              let baseUrl: string | undefined;
-              
-              // For production deployments (REPLIT_DOMAINS contains comma-separated domains)
-              if (process.env.REPLIT_DOMAINS) {
-                const domains = process.env.REPLIT_DOMAINS.split(',');
-                const productionDomain = domains.find(d => d.includes('.replit.app')) || domains[0];
-                if (productionDomain) {
-                  baseUrl = `https://${productionDomain.trim()}`;
-                }
-              }
-              
-              // Fallback to dev domain
-              if (!baseUrl && process.env.REPLIT_DEV_DOMAIN) {
-                baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
-              }
-              
-              // Last fallback to legacy format
-              if (!baseUrl && process.env.REPL_SLUG && process.env.REPL_OWNER) {
-                baseUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-              }
-              
-              if (baseUrl) {
-                absoluteFileUrl = `${baseUrl}${updatedInvoice.fileUrl}`;
-                console.log("[Invoice] Constructed absolute file URL:", absoluteFileUrl);
-              } else {
-                console.warn("[Invoice] Could not construct absolute URL - no domain env vars found");
-              }
-            }
-          }
-          
-          syncInvoiceToNotionAsync({
-            invoice: updatedInvoice,
-            contractorName,
-            totalHours: timesheetForHours?.totalHours || 0,
-            category: (uploader as any)?.contractorCategory || undefined,
-            fileUrl: absoluteFileUrl,
-          });
-        } catch (error: any) {
-          console.error("[Invoice] Notion sync error:", error?.message || error);
-        }
-      });
     }
 
     // Handle rejection
@@ -1649,6 +1705,7 @@ export async function registerRoutes(
           
           await storage.createActivityLog({
             userId: user.id,
+            organizationId: user.organizationId,
             action: "Timesheet unlocked for revision",
             details: `Timesheet unlocked due to invoice rejection`,
             entityType: "timesheet",
@@ -1659,6 +1716,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: user.id,
+        organizationId: user.organizationId,
         action: "Invoice rejected",
         details: `Rejected invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
         entityType: "invoice",
@@ -1672,6 +1730,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: user.id,
+        organizationId: user.organizationId,
         action: "Invoice revision requested",
         details: `Requested revision for invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
         entityType: "invoice",
@@ -1695,7 +1754,7 @@ export async function registerRoutes(
     }
 
     // Get all pending invoices
-    const pendingInvoices = await storage.getPendingInvoices();
+    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
     
     // Enrich with user data and normalize file URLs
     const enrichedInvoices = await Promise.all(
@@ -1730,7 +1789,7 @@ export async function registerRoutes(
       return res.json({ count: 0 });
     }
 
-    const pendingInvoices = await storage.getPendingInvoices();
+    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
     res.json({ count: pendingInvoices.length });
   });
 
@@ -1745,6 +1804,7 @@ export async function registerRoutes(
       const lineItem = await storage.createInvoiceLineItem({
         ...req.body,
         invoiceId: req.params.invoiceId,
+        organizationId: req.authenticatedUser!.organizationId,
       });
       res.status(201).json(lineItem);
     } catch (error) {
@@ -1752,9 +1812,21 @@ export async function registerRoutes(
     }
   });
 
-  // IC Payment Details routes - protected
   app.get("/api/ic-payment-details/:userId", authMiddleware, async (req, res) => {
-    const details = await storage.getIcPaymentDetails(req.params.userId);
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.userId;
+    const isSelf = currentUser.id === targetUserId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    if (!isSelf) {
+      const targetUser = await storage.getUser(targetUserId);
+      if (targetUser && !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+      }
+    }
+    const details = await storage.getIcPaymentDetails(targetUserId);
     if (!details) {
       return res.json(null);
     }
@@ -1763,12 +1835,17 @@ export async function registerRoutes(
 
   app.post("/api/ic-payment-details", authMiddleware, async (req, res) => {
     try {
-      const existing = await storage.getIcPaymentDetails(req.body.userId);
+      const currentUser = req.authenticatedUser!;
+      const targetUserId = req.body.userId;
+      if (currentUser.id !== targetUserId) {
+        return res.status(403).json({ error: "Can only manage your own payment details" });
+      }
+      const existing = await storage.getIcPaymentDetails(targetUserId);
       if (existing) {
-        const updated = await storage.updateIcPaymentDetails(req.body.userId, req.body);
+        const updated = await storage.updateIcPaymentDetails(targetUserId, { ...req.body, organizationId: currentUser.organizationId });
         return res.json(updated);
       }
-      const details = await storage.createIcPaymentDetails(req.body);
+      const details = await storage.createIcPaymentDetails({ ...req.body, organizationId: currentUser.organizationId });
       res.status(201).json(details);
     } catch (error) {
       res.status(500).json({ error: "Failed to save payment details" });
@@ -1776,6 +1853,10 @@ export async function registerRoutes(
   });
 
   app.patch("/api/ic-payment-details/:userId", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (currentUser.id !== req.params.userId) {
+      return res.status(403).json({ error: "Can only manage your own payment details" });
+    }
     const details = await storage.updateIcPaymentDetails(req.params.userId, req.body);
     if (!details) {
       return res.status(404).json({ error: "Payment details not found" });
@@ -1831,7 +1912,7 @@ export async function registerRoutes(
       const evaluations = await storage.getEvaluationsByIC(icId as string);
       res.json(evaluations);
     } else {
-      const evaluations = await storage.getAllEvaluations();
+      const evaluations = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
       res.json(evaluations);
     }
   });
@@ -1926,6 +2007,7 @@ export async function registerRoutes(
       periodStart: req.body.periodStart,
       periodEnd: req.body.periodEnd,
       status: "draft",
+      organizationId: currentUser.organizationId,
     };
     
     try {
@@ -1935,6 +2017,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: currentUser.id,
+        organizationId: currentUser.organizationId,
         action: isCreatingSelfEvaluation ? "Self-evaluation started" : "Evaluation created",
         details: `Created performance evaluation for period ${req.body.periodStart} to ${req.body.periodEnd}`,
         entityType: "evaluation",
@@ -2023,6 +2106,7 @@ export async function registerRoutes(
     if (req.body.status === "completed") {
       await storage.createActivityLog({
         userId: evaluation.managerId,
+        organizationId: currentUser.organizationId,
         action: "Evaluation completed",
         details: `Completed performance evaluation for period ${evaluation.periodStart} to ${evaluation.periodEnd}`,
         entityType: "evaluation",
@@ -2187,6 +2271,7 @@ export async function registerRoutes(
       try {
         await storage.createActivityLog({
           userId: currentUser.id,
+          organizationId: currentUser.organizationId,
           action: finalizeAs === "ic" ? "Self-assessment submitted" : "Evaluation completed",
           details: `${finalizeAs === "ic" ? "Submitted self-assessment" : "Finalized evaluation"} for period ${existingEvaluation.periodStart} to ${existingEvaluation.periodEnd}`,
           entityType: "evaluation",
@@ -2216,17 +2301,19 @@ export async function registerRoutes(
 
   app.post("/api/feedback-invitations", authMiddleware, async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
+      const users = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
       const invitedUser = users.find(u => u.email === req.body.email);
       
       const invitation = await storage.createFeedbackInvitation({
         ...req.body,
         invitedUserId: invitedUser?.id || "unknown",
+        organizationId: req.authenticatedUser!.organizationId,
       });
 
       try {
         await storage.createActivityLog({
           userId: req.body.invitedById,
+          organizationId: req.authenticatedUser!.organizationId,
           action: "Feedback invitation sent",
           details: `Invited ${req.body.email} to provide feedback`,
           entityType: "evaluation",
@@ -2255,8 +2342,8 @@ export async function registerRoutes(
   });
 
   // Activity logs routes - admin only
-  app.get("/api/activity-logs", authMiddleware, requireRole("admin"), async (req, res) => {
-    const logs = await storage.getActivityLogs();
+  app.get("/api/activity-logs", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const logs = await storage.getActivityLogs(req.authenticatedUser!.organizationId ?? undefined);
     res.json(logs);
   });
 
@@ -2423,6 +2510,109 @@ export async function registerRoutes(
       prefs = await storage.updateNotificationPreferences(userId, updates);
     }
     res.json(prefs);
+  });
+
+  app.get("/api/organization", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(404).json({ error: "No organization associated with this user" });
+    }
+    const org = await storage.getOrganization(currentUser.organizationId);
+    if (!org) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+    res.json(org);
+  });
+
+  app.patch("/api/organization", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(404).json({ error: "No organization associated with this user" });
+    }
+    const updated = await storage.updateOrganization(currentUser.organizationId, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+    res.json(updated);
+  });
+
+  app.get("/api/billing", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "User is not associated with an organization" });
+    }
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    const organization = await storage.getOrganization(currentUser.organizationId);
+    if (!subscription || !organization) {
+      return res.status(404).json({ error: "Billing information not found" });
+    }
+    res.json({
+      subscription,
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+        billingEmail: organization.billingEmail,
+      },
+    });
+  });
+
+  app.get("/api/billing/usage", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "User is not associated with an organization" });
+    }
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
+    const plan = subscription?.plan || "free";
+    const maxSeats = subscription?.maxSeats || 3;
+    const percentUsed = maxSeats > 0 ? Math.round((currentSeats / maxSeats) * 100) : 0;
+    res.json({ currentSeats, maxSeats, plan, percentUsed });
+  });
+
+  app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { plan } = req.body;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "User is not associated with an organization" });
+    }
+    const { PLAN_LIMITS } = await import("@shared/schema");
+    const validPlans = Object.keys(PLAN_LIMITS);
+    if (!plan || !validPlans.includes(plan)) {
+      return res.status(400).json({ error: "Invalid plan. Must be one of: " + validPlans.join(", ") });
+    }
+    if (plan === "enterprise") {
+      return res.status(400).json({ error: "Please contact sales for Enterprise plan" });
+    }
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+    const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
+    const newLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
+    if (currentSeats > newLimits.maxSeats) {
+      return res.status(400).json({
+        error: `Cannot downgrade to ${newLimits.name} plan. You currently have ${currentSeats} users but the plan allows only ${newLimits.maxSeats}. Please remove users first.`,
+      });
+    }
+    const updated = await storage.updateSubscription(subscription.id, {
+      plan,
+      maxSeats: newLimits.maxSeats,
+      updatedAt: new Date(),
+    });
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: "Subscription plan changed",
+        details: `Changed plan from ${subscription.plan} to ${plan}`,
+        entityType: "subscription",
+        entityId: subscription.id,
+      });
+    } catch (e) {
+      console.error("Failed to create activity log:", e);
+    }
+    res.json(updated);
   });
 
   return httpServer;

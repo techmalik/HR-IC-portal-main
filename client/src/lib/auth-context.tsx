@@ -8,13 +8,19 @@ interface AuthUser extends Omit<User, 'mustChangePassword'> {
   mustChangePassword?: boolean;
 }
 
+interface RegisterResult {
+  success: boolean;
+  error?: string;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   sessionToken: string | null;
   isLoading: boolean;
-  isSupervisor: boolean;  // IC with direct reports (has team members)
+  isSupervisor: boolean;
   isAdmin: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  register: (firstName: string, lastName: string, email: string, password: string, organizationName: string) => Promise<RegisterResult>;
   logout: () => void;
   updateUser: (updates: Partial<AuthUser>) => void;
 }
@@ -27,8 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("mentalyc_user");
-    const savedToken = localStorage.getItem("mentalyc_session_token");
+    const savedUser = localStorage.getItem("teamflow_user");
+    const savedToken = localStorage.getItem("teamflow_session_token");
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
@@ -50,13 +56,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { sessionToken: token, ...userData } = await response.json();
         setUser(userData);
         setSessionToken(token);
-        localStorage.setItem("mentalyc_user", JSON.stringify(userData));
-        localStorage.setItem("mentalyc_session_token", token);
+        localStorage.setItem("teamflow_user", JSON.stringify(userData));
+        localStorage.setItem("teamflow_session_token", token);
         return true;
       }
       return false;
     } catch {
       return false;
+    }
+  };
+
+  const register = async (firstName: string, lastName: string, email: string, password: string, organizationName: string): Promise<RegisterResult> => {
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, password, organizationName }),
+      });
+
+      if (response.ok) {
+        const { sessionToken: token, ...userData } = await response.json();
+        setUser(userData);
+        setSessionToken(token);
+        localStorage.setItem("teamflow_user", JSON.stringify(userData));
+        localStorage.setItem("teamflow_session_token", token);
+        return { success: true };
+      }
+
+      const errorData = await response.json().catch(() => ({ error: "Registration failed" }));
+      return { success: false, error: errorData.error };
+    } catch {
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
@@ -73,15 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setSessionToken(null);
-    localStorage.removeItem("mentalyc_user");
-    localStorage.removeItem("mentalyc_session_token");
+    localStorage.removeItem("teamflow_user");
+    localStorage.removeItem("teamflow_session_token");
   };
 
   const updateUser = (updates: Partial<AuthUser>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem("mentalyc_user", JSON.stringify(updatedUser));
+      localStorage.setItem("teamflow_user", JSON.stringify(updatedUser));
     }
   };
 
@@ -90,12 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Derived authorization flags
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
   // isSupervisor: IC with direct reports (team members assigned to them) OR Admin
   const isSupervisor = isAdmin || (user?.hasDirectReports ?? false);
 
   return (
-    <AuthContext.Provider value={{ user, sessionToken, isLoading, isSupervisor, isAdmin, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, sessionToken, isLoading, isSupervisor, isAdmin, login, register, logout, updateUser }}>
       {children}
       {user && sessionToken && user.mustChangePassword && (
         <ForcePasswordChangeModal

@@ -70,7 +70,7 @@ export default function TimesheetsPage() {
     queryKey: ["/api/timesheets", { userId: user?.id, month, year }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${user?.id}&month=${month}&year=${year}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch timesheet");
       return res.json();
@@ -82,7 +82,7 @@ export default function TimesheetsPage() {
     queryKey: ["/api/timesheets", timesheet?.id, "entries"],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${timesheet?.id}/entries`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch entries");
       return res.json();
@@ -94,7 +94,7 @@ export default function TimesheetsPage() {
     queryKey: ["/api/ooo-requests/approved-dates", { userId: user?.id, month, year }],
     queryFn: async () => {
       const res = await fetch(`/api/ooo-requests/approved-dates?userId=${user?.id}&month=${month}&year=${year}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch OOO dates");
       return res.json();
@@ -106,7 +106,7 @@ export default function TimesheetsPage() {
     queryKey: ["/api/overtime-requests", { timesheetId: timesheet?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/overtime-requests?timesheetId=${timesheet?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("mentalyc_session_token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch overtime requests");
       return res.json();

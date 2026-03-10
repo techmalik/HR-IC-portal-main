@@ -9,8 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import logoUrl from "@assets/Mentalyc_Logo_1766419352716.png";
+import { Loader2, Layers } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -53,8 +52,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <img src={logoUrl} alt="Mentalyc" className="w-20 h-20 rounded-xl mb-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Mentalyc Portal</h1>
+          <div className="w-20 h-20 rounded-xl mb-4 bg-primary flex items-center justify-center">
+            <Layers className="w-12 h-12 text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground">TeamFlow</h1>
           <p className="text-muted-foreground mt-1">Sign in to your account</p>
         </div>
 
@@ -121,9 +122,15 @@ export default function LoginPage() {
               </form>
             </Form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Forgot password? Contact Malik via Slack
+                Don't have an account?{" "}
+                <a href="/signup" className="text-primary hover:underline font-medium">
+                  Sign up
+                </a>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Forgot password? Contact your administrator
               </p>
             </div>
           </CardContent>
