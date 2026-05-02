@@ -360,28 +360,28 @@ export async function registerRoutes(
   });
 
   // User routes - protected with auth middleware
-  app.get("/api/users", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+  app.get("/api/users", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
     const orgId = req.authenticatedUser!.organizationId ?? undefined;
     const users = await storage.getAllUsers(orgId);
     const usersWithoutPasswords = users.map(({ password: _, ...u }) => u);
     res.json(usersWithoutPasswords);
-  });
+  }));
 
-  app.get("/api/users/managers", authMiddleware, async (req, res) => {
+  app.get("/api/users/managers", authMiddleware, asyncHandler(async (req, res) => {
     const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? undefined);
     const managersWithoutPasswords = managers.map(({ password: _, ...u }) => u);
     res.json(managersWithoutPasswords);
-  });
+  }));
 
-  app.get("/api/users/supervisors", authMiddleware, async (req, res) => {
+  app.get("/api/users/supervisors", authMiddleware, asyncHandler(async (req, res) => {
     const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? undefined);
     const supervisorsWithoutPasswords = supervisors.map(({ password: _, ...u }) => u);
     res.json(supervisorsWithoutPasswords);
-  });
+  }));
 
   // Basic user info for evaluation displays - accessible by all authenticated users
   // Non-supervisors only get limited info (themselves and their supervisor)
-  app.get("/api/users/basic", authMiddleware, async (req, res) => {
+  app.get("/api/users/basic", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     
@@ -407,9 +407,9 @@ export async function registerRoutes(
       );
       res.json(relevantUsers);
     }
-  });
+  }));
 
-  app.get("/api/team/members", authMiddleware, async (req, res) => {
+  app.get("/api/team/members", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     if (!isSupervisor) {
@@ -425,10 +425,10 @@ export async function registerRoutes(
       const icsWithoutPasswords = ics.map(({ password: _, ...u }) => u);
       res.json(icsWithoutPasswords);
     }
-  });
+  }));
 
   // Get single user by ID - for supervisors viewing team member details
-  app.get("/api/users/:id", authMiddleware, async (req, res) => {
+  app.get("/api/users/:id", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const targetUserId = req.params.id;
     
@@ -457,7 +457,7 @@ export async function registerRoutes(
     
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
-  });
+  }));
 
   app.post("/api/users", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     try {
@@ -473,8 +473,59 @@ export async function registerRoutes(
       if (existingByEmail) {
         return res.status(400).json({ error: "Email already exists" });
       }
-      
-      const user = await storage.createUser(req.body);
+
+      const currentUser = req.authenticatedUser!;
+
+      // Allowlist permitted fields — prevent privilege injection via req.body
+      const {
+        username,
+        password,
+        email,
+        firstName,
+        lastName,
+        jobTitle,
+        phone,
+        supervisorId,
+        managerId,
+        hourlyRate,
+        monthlyCap,
+        startDate,
+        role: requestedRole,
+        isActive: requestedIsActive,
+        organizationId: requestedOrgId,
+      } = req.body;
+
+      // Only owners can set a role; default to "ic" otherwise
+      const role = (currentUser.role === "owner" && requestedRole) ? requestedRole : (requestedRole || "ic");
+
+      // Reject attempts to assign user to a different organization
+      if (requestedOrgId && requestedOrgId !== currentUser.organizationId) {
+        return res.status(403).json({ error: "Cannot create a user in a different organization" });
+      }
+
+      const userData = {
+        username,
+        password,
+        email,
+        firstName,
+        lastName,
+        jobTitle,
+        phone,
+        supervisorId,
+        managerId,
+        hourlyRate,
+        monthlyCap,
+        startDate,
+        role,
+        isActive: requestedIsActive !== undefined ? requestedIsActive : true,
+        organizationId: currentUser.organizationId,
+      };
+
+      if (!username || !password || !email || !firstName || !lastName) {
+        return res.status(400).json({ error: "Required fields missing: username, password, email, firstName, lastName" });
+      }
+
+      const user = await storage.createUser(userData);
       
       try {
         await storage.createActivityLog({
@@ -498,7 +549,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/users/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/users/:id", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const targetUserId = req.params.id;
     
@@ -516,6 +567,11 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
       }
     }
+
+    // Always block organizationId changes regardless of role
+    if ("organizationId" in req.body) {
+      return res.status(403).json({ error: "Cannot modify organizationId" });
+    }
     
     if (!isAdmin) {
       const sensitiveFields = ["role", "isActive", "managerId", "hourlyRate", "monthlyCap"];
@@ -525,14 +581,48 @@ export async function registerRoutes(
         }
       }
     }
+
+    // Allowlist fields that may be updated — strip everything else
+    const {
+      firstName,
+      lastName,
+      email,
+      jobTitle,
+      phone,
+      supervisorId,
+      managerId,
+      hourlyRate,
+      monthlyCap,
+      startDate,
+      role,
+      isActive,
+      avatar,
+    } = req.body;
+
+    const allowedUpdates: Record<string, any> = {};
+    if (firstName !== undefined) allowedUpdates.firstName = firstName;
+    if (lastName !== undefined) allowedUpdates.lastName = lastName;
+    if (email !== undefined) allowedUpdates.email = email;
+    if (jobTitle !== undefined) allowedUpdates.jobTitle = jobTitle;
+    if (phone !== undefined) allowedUpdates.phone = phone;
+    if (avatar !== undefined) allowedUpdates.avatar = avatar;
+    if (isAdmin) {
+      if (supervisorId !== undefined) allowedUpdates.supervisorId = supervisorId;
+      if (managerId !== undefined) allowedUpdates.managerId = managerId;
+      if (hourlyRate !== undefined) allowedUpdates.hourlyRate = hourlyRate;
+      if (monthlyCap !== undefined) allowedUpdates.monthlyCap = monthlyCap;
+      if (startDate !== undefined) allowedUpdates.startDate = startDate;
+      if (role !== undefined) allowedUpdates.role = role;
+      if (isActive !== undefined) allowedUpdates.isActive = isActive;
+    }
     
-    const user = await storage.updateUser(targetUserId, req.body);
+    const user = await storage.updateUser(targetUserId, allowedUpdates);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
-  });
+  }));
 
   app.patch("/api/users/:id/password", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
@@ -987,8 +1077,12 @@ export async function registerRoutes(
     res.json(entries);
   });
 
-  app.post("/api/timesheets/save", authMiddleware, async (req, res) => {
+  app.post("/api/timesheets/save", authMiddleware, asyncHandler(async (req, res) => {
     const { userId, month, year, entries } = req.body;
+
+    if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
+      return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
+    }
     
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
@@ -1061,10 +1155,14 @@ export async function registerRoutes(
     }
 
     res.json(timesheet);
-  });
+  }));
 
-  app.post("/api/timesheets/submit", authMiddleware, async (req, res) => {
+  app.post("/api/timesheets/submit", authMiddleware, asyncHandler(async (req, res) => {
     const { userId, month, year, entries } = req.body;
+
+    if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
+      return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
+    }
     
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
@@ -1149,31 +1247,39 @@ export async function registerRoutes(
     }
 
     res.json(timesheet);
-  });
+  }));
 
-  app.patch("/api/timesheets/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/timesheets/:id", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const existingTimesheet = await storage.getTimesheet(req.params.id);
     
     if (!existingTimesheet) {
       return res.status(404).json({ error: "Timesheet not found" });
     }
 
-    if (req.body.reviewedBy && req.body.reviewedBy === existingTimesheet.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected")) {
-      return res.status(403).json({ error: "You cannot approve or reject your own timesheet" });
+    // Derive reviewedBy from the authenticated user — never trust the client-supplied value
+    const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected";
+    if (isApprovalAction) {
+      if (currentUser.id === existingTimesheet.userId) {
+        return res.status(403).json({ error: "You cannot approve or reject your own timesheet" });
+      }
     }
 
-    const timesheet = await storage.updateTimesheet(req.params.id, {
-      ...req.body,
-      reviewedAt: new Date(),
-    });
+    // Strip client-supplied reviewedBy; use the server-verified identity instead
+    const { reviewedBy: _ignored, ...bodyWithoutReviewedBy } = req.body;
+    const updatePayload: Record<string, any> = { ...bodyWithoutReviewedBy, reviewedAt: new Date() };
+    if (isApprovalAction) {
+      updatePayload.reviewedBy = currentUser.id;
+    }
+
+    const timesheet = await storage.updateTimesheet(req.params.id, updatePayload);
 
     if (!timesheet) {
       return res.status(500).json({ error: "Failed to update timesheet" });
     }
 
-    if (req.body.reviewedBy && req.body.status) {
-      const reviewer = await storage.getUser(req.body.reviewedBy);
+    if (isApprovalAction) {
+      const reviewer = await storage.getUser(currentUser.id);
       if (reviewer) {
         if (req.body.status === "approved") {
           await notifyTimesheetApproved(timesheet, existingTimesheet.userId, reviewer);
@@ -1184,7 +1290,7 @@ export async function registerRoutes(
     }
 
     res.json(timesheet);
-  });
+  }));
 
   // Unlock approved timesheet for revision (supervisor only)
   app.post("/api/timesheets/:id/unlock", authMiddleware, async (req, res) => {
@@ -1551,28 +1657,25 @@ export async function registerRoutes(
         await notifyInvoiceUploaded(invoice, uploader);
       }
 
-      // Upload to Object Storage immediately
+      // Upload to Object Storage before responding so failures are surfaced to the client
+      let finalFileUrl = invoice.fileUrl;
+      if (invoice.fileUrl && invoice.fileUrl.startsWith("data:")) {
+        const uploadedUrl = await uploadBase64ToObjectStorage(
+          invoice.fileUrl,
+          invoice.fileName
+        );
+        if (!uploadedUrl) {
+          // Roll back the created invoice record so no stale data:// URL is left in the DB
+          await storage.deleteInvoice(invoice.id);
+          return res.status(500).json({ error: "Failed to upload invoice file to storage" });
+        }
+        await storage.updateInvoice(invoice.id, { fileUrl: uploadedUrl });
+        finalFileUrl = uploadedUrl;
+      }
+
       res.status(201).json({
         ...invoice,
-        fileUrl: normalizeFileUrl(invoice.fileUrl),
-      });
-
-      setImmediate(async () => {
-        try {
-          // Upload the invoice file to Object Storage if it's a base64 data URL
-          if (invoice.fileUrl && invoice.fileUrl.startsWith("data:")) {
-            const uploadedUrl = await uploadBase64ToObjectStorage(
-              invoice.fileUrl,
-              invoice.fileName
-            );
-            if (uploadedUrl) {
-              // Update the invoice with the public URL
-              await storage.updateInvoice(invoice.id, { fileUrl: uploadedUrl });
-            }
-          }
-        } catch (error: any) {
-          console.error("[Invoice] Object Storage upload error:", error?.message || error);
-        }
+        fileUrl: normalizeFileUrl(finalFileUrl),
       });
     } catch (error: any) {
       console.error("Invoice creation error:", error?.message || error);
