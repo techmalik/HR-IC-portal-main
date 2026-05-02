@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, varchar, integer, date, timestamp, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -31,7 +31,33 @@ export const PLAN_LIMITS: Record<SubscriptionPlanType, { maxSeats: number; price
   enterprise: { maxSeats: 999, price: 0, name: "Enterprise" },
 };
 
+// ---------------------------------------------------------------------------
+// Database-level enums (enforced by Postgres)
+// ---------------------------------------------------------------------------
+
+export const timesheetStatusEnum = pgEnum("timesheet_status", [
+  "draft",
+  "submitted",
+  "approved",
+  "rejected",
+]);
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "pending_review",
+  "approved",
+  "rejected",
+  "revision_requested",
+]);
+
+export const oooRequestStatusEnum = pgEnum("ooo_request_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+// ---------------------------------------------------------------------------
 // Organizations table
+// ---------------------------------------------------------------------------
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -51,10 +77,12 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Subscriptions table
+// ---------------------------------------------------------------------------
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull(),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   plan: text("plan").notNull().default("free"),
   status: text("status").notNull().default("active"),
   seatCount: integer("seat_count").notNull().default(0),
@@ -74,7 +102,9 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
 
-// User roles enum
+// ---------------------------------------------------------------------------
+// User roles enum (TypeScript only — role values are few & stable)
+// ---------------------------------------------------------------------------
 // Note: ICs dynamically gain supervisor features when assigned team members
 export const UserRole = {
   IC: "ic",
@@ -84,7 +114,7 @@ export const UserRole = {
 
 export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
 
-// Request status enum
+// Request status enum (TypeScript)
 export const RequestStatus = {
   PENDING: "pending",
   APPROVED: "approved",
@@ -93,7 +123,7 @@ export const RequestStatus = {
 
 export type RequestStatusType = (typeof RequestStatus)[keyof typeof RequestStatus];
 
-// Timesheet status enum
+// Timesheet status enum (TypeScript mirror of DB enum)
 export const TimesheetStatus = {
   DRAFT: "draft",
   SUBMITTED: "submitted",
@@ -103,7 +133,7 @@ export const TimesheetStatus = {
 
 export type TimesheetStatusType = (typeof TimesheetStatus)[keyof typeof TimesheetStatus];
 
-// Invoice status enum
+// Invoice status enum (TypeScript mirror of DB enum)
 export const InvoiceStatus = {
   PENDING_REVIEW: "pending_review",
   APPROVED: "approved",
@@ -122,10 +152,12 @@ export const ContractorStatus = {
 
 export type ContractorStatusType = (typeof ContractorStatus)[keyof typeof ContractorStatus];
 
+// ---------------------------------------------------------------------------
 // Users table
+// ---------------------------------------------------------------------------
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").references(() => organizations.id),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull(),
@@ -145,7 +177,10 @@ export const users = pgTable("users", {
   monthlyCap: integer("monthly_cap"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   completedOnboarding: jsonb("completed_onboarding").default(sql`'{}'::jsonb`),
-});
+}, (table) => [
+  index("users_organization_id_idx").on(table.organizationId),
+  index("users_supervisor_id_idx").on(table.supervisorId),
+]);
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -154,7 +189,9 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // OOO type enum
+// ---------------------------------------------------------------------------
 export const OOOType = {
   FULL_DAY: "full_day",
   HALF_DAY: "half_day",
@@ -162,21 +199,27 @@ export const OOOType = {
 
 export type OOOTypeValue = (typeof OOOType)[keyof typeof OOOType];
 
+// ---------------------------------------------------------------------------
 // Out of Office Requests table
+// ---------------------------------------------------------------------------
 export const oooRequests = pgTable("ooo_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   managerId: varchar("manager_id").notNull(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
   oooType: text("ooo_type").notNull().default("full_day"),
   reason: text("reason"),
-  status: text("status").notNull().default("pending"),
+  status: oooRequestStatusEnum("status").notNull().default("pending"),
   reviewedBy: varchar("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
-});
+}, (table) => [
+  index("ooo_requests_user_id_idx").on(table.userId),
+  index("ooo_requests_manager_id_idx").on(table.managerId),
+  index("ooo_requests_status_idx").on(table.status),
+]);
 
 export const insertOOORequestSchema = createInsertSchema(oooRequests).omit({
   id: true,
@@ -188,20 +231,26 @@ export const insertOOORequestSchema = createInsertSchema(oooRequests).omit({
 export type InsertOOORequest = z.infer<typeof insertOOORequestSchema>;
 export type OOORequest = typeof oooRequests.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Timesheets table (monthly)
+// ---------------------------------------------------------------------------
 export const timesheets = pgTable("timesheets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
   totalHours: integer("total_hours").notNull().default(0),
-  status: text("status").notNull().default("draft"),
+  status: timesheetStatusEnum("status").notNull().default("draft"),
   submittedAt: timestamp("submitted_at"),
   reviewedBy: varchar("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
-});
+}, (table) => [
+  uniqueIndex("timesheets_user_month_year_idx").on(table.userId, table.month, table.year),
+  index("timesheets_organization_id_idx").on(table.organizationId),
+  index("timesheets_status_idx").on(table.status),
+]);
 
 export const insertTimesheetSchema = createInsertSchema(timesheets).omit({
   id: true,
@@ -214,15 +263,20 @@ export const insertTimesheetSchema = createInsertSchema(timesheets).omit({
 export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
 export type Timesheet = typeof timesheets.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Daily activity entries
+// ---------------------------------------------------------------------------
 export const dailyEntries = pgTable("daily_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  timesheetId: varchar("timesheet_id").notNull(),
+  timesheetId: varchar("timesheet_id").notNull().references(() => timesheets.id, { onDelete: "cascade" }),
   date: date("date").notNull(),
   hours: integer("hours").notNull().default(0),
   activityLog: text("activity_log"),
-});
+}, (table) => [
+  index("daily_entries_timesheet_id_idx").on(table.timesheetId),
+  index("daily_entries_date_idx").on(table.date),
+]);
 
 export const insertDailyEntrySchema = createInsertSchema(dailyEntries).omit({
   id: true,
@@ -231,12 +285,14 @@ export const insertDailyEntrySchema = createInsertSchema(dailyEntries).omit({
 export type InsertDailyEntry = z.infer<typeof insertDailyEntrySchema>;
 export type DailyEntry = typeof dailyEntries.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Overtime requests table (also used for weekend work approval)
+// ---------------------------------------------------------------------------
 export const overtimeRequests = pgTable("overtime_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull(),
-  timesheetId: varchar("timesheet_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  timesheetId: varchar("timesheet_id").notNull().references(() => timesheets.id),
   date: date("date").notNull(),
   requestedHours: integer("requested_hours").notNull(),
   approvedHours: integer("approved_hours"),
@@ -246,7 +302,11 @@ export const overtimeRequests = pgTable("overtime_requests", {
   reviewNote: text("review_note"),
   isWeekendWork: boolean("is_weekend_work").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("overtime_requests_user_id_idx").on(table.userId),
+  index("overtime_requests_timesheet_id_idx").on(table.timesheetId),
+  index("overtime_requests_status_idx").on(table.status),
+]);
 
 export const insertOvertimeRequestSchema = createInsertSchema(overtimeRequests).omit({
   id: true,
@@ -260,11 +320,13 @@ export const insertOvertimeRequestSchema = createInsertSchema(overtimeRequests).
 export type InsertOvertimeRequest = z.infer<typeof insertOvertimeRequestSchema>;
 export type OvertimeRequest = typeof overtimeRequests.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Invoices table
+// ---------------------------------------------------------------------------
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   invoiceNumber: text("invoice_number").notNull(),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
@@ -283,12 +345,17 @@ export const invoices = pgTable("invoices", {
   billToVatNo: text("bill_to_vat_no"),
   bankDetails: text("bank_details"),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
-  status: text("status").notNull().default("pending_review"),
+  status: invoiceStatusEnum("status").notNull().default("pending_review"),
   reviewedBy: varchar("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
   timesheetId: varchar("timesheet_id"),
-});
+}, (table) => [
+  index("invoices_user_id_idx").on(table.userId),
+  index("invoices_organization_id_idx").on(table.organizationId),
+  index("invoices_status_idx").on(table.status),
+  index("invoices_user_year_month_idx").on(table.userId, table.year, table.month),
+]);
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   id: true,
@@ -301,17 +368,21 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Invoice Line Items table
+// ---------------------------------------------------------------------------
 export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  invoiceId: varchar("invoice_id").notNull(),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
   description: text("description").notNull(),
   quantity: integer("quantity").notNull(),
   rate: integer("rate").notNull(),
   total: integer("total").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
-});
+}, (table) => [
+  index("invoice_line_items_invoice_id_idx").on(table.invoiceId),
+]);
 
 export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
   id: true,
@@ -320,11 +391,13 @@ export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).
 export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // IC Payment Details table (saveable bank details)
+// ---------------------------------------------------------------------------
 export const icPaymentDetails = pgTable("ic_payment_details", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull().unique(),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
   bankName: text("bank_name"),
   accountHolderFirstName: text("account_holder_first_name"),
   accountHolderLastName: text("account_holder_last_name"),
@@ -345,7 +418,9 @@ export const insertIcPaymentDetailsSchema = createInsertSchema(icPaymentDetails)
 export type InsertIcPaymentDetails = z.infer<typeof insertIcPaymentDetailsSchema>;
 export type IcPaymentDetails = typeof icPaymentDetails.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Evaluation status enum
+// ---------------------------------------------------------------------------
 export const EvaluationStatus = {
   DRAFT: "draft",
   IC_SUBMITTED: "ic_submitted",
@@ -355,15 +430,19 @@ export const EvaluationStatus = {
 
 export type EvaluationStatusType = (typeof EvaluationStatus)[keyof typeof EvaluationStatus];
 
+// ---------------------------------------------------------------------------
 // IC Responsibilities table (agreed expectations)
+// ---------------------------------------------------------------------------
 export const icResponsibilities = pgTable("ic_responsibilities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  icId: varchar("ic_id").notNull(),
+  icId: varchar("ic_id").notNull().references(() => users.id),
   responsibility: text("responsibility").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("ic_responsibilities_ic_id_idx").on(table.icId),
+]);
 
 export const insertIcResponsibilitySchema = createInsertSchema(icResponsibilities).omit({
   id: true,
@@ -388,12 +467,14 @@ export const EVALUATION_OUTCOMES = [
 
 export type EvaluationOutcome = typeof EVALUATION_OUTCOMES[number]["value"];
 
+// ---------------------------------------------------------------------------
 // Performance Evaluations table (enhanced)
+// ---------------------------------------------------------------------------
 export const evaluations = pgTable("evaluations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  icId: varchar("ic_id").notNull(),
-  managerId: varchar("manager_id").notNull(),
+  icId: varchar("ic_id").notNull().references(() => users.id),
+  managerId: varchar("manager_id").notNull().references(() => users.id),
   periodStart: date("period_start").notNull(),
   periodEnd: date("period_end").notNull(),
   experienceLevelAtEval: integer("experience_level_at_eval"),
@@ -409,7 +490,11 @@ export const evaluations = pgTable("evaluations", {
   icSubmittedAt: timestamp("ic_submitted_at"),
   managerSubmittedAt: timestamp("manager_submitted_at"),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => [
+  index("evaluations_ic_id_idx").on(table.icId),
+  index("evaluations_manager_id_idx").on(table.managerId),
+  index("evaluations_organization_id_idx").on(table.organizationId),
+]);
 
 // Seniority Scale reference data
 export const SENIORITY_SCALE = [
@@ -489,11 +574,13 @@ export const insertEvaluationSchema = createInsertSchema(evaluations).omit({
 export type InsertEvaluation = z.infer<typeof insertEvaluationSchema>;
 export type Evaluation = typeof evaluations.$inferSelect;
 
-// Evaluation sections - individual rating categories
+// ---------------------------------------------------------------------------
+// Evaluation sections — individual rating categories
+// ---------------------------------------------------------------------------
 export const evaluationSections = pgTable("evaluation_sections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  evaluationId: varchar("evaluation_id").notNull(),
+  evaluationId: varchar("evaluation_id").notNull().references(() => evaluations.id, { onDelete: "cascade" }),
   sectionNumber: integer("section_number").notNull(),
   sectionName: text("section_name").notNull(),
   question: text("question").notNull(),
@@ -503,7 +590,9 @@ export const evaluationSections = pgTable("evaluation_sections", {
   managerRating: integer("manager_rating"),
   managerFeedback: text("manager_feedback"),
   founderFeedback: text("founder_feedback"),
-});
+}, (table) => [
+  index("evaluation_sections_evaluation_id_idx").on(table.evaluationId),
+]);
 
 export const insertEvaluationSectionSchema = createInsertSchema(evaluationSections).omit({
   id: true,
@@ -546,19 +635,23 @@ export const DEFAULT_EVALUATION_SECTIONS = [
   },
 ] as const;
 
+// ---------------------------------------------------------------------------
 // Feedback invitations for performance evaluations
+// ---------------------------------------------------------------------------
 export const feedbackInvitations = pgTable("feedback_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  evaluationId: varchar("evaluation_id").notNull(),
-  invitedById: varchar("invited_by_id").notNull(),
-  invitedUserId: varchar("invited_user_id").notNull(),
+  evaluationId: varchar("evaluation_id").notNull().references(() => evaluations.id, { onDelete: "cascade" }),
+  invitedById: varchar("invited_by_id").notNull().references(() => users.id),
+  invitedUserId: varchar("invited_user_id").notNull().references(() => users.id),
   feedback: text("feedback"),
   rating: integer("rating"),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => [
+  index("feedback_invitations_evaluation_id_idx").on(table.evaluationId),
+]);
 
 export const insertFeedbackInvitationSchema = createInsertSchema(feedbackInvitations).omit({
   id: true,
@@ -569,7 +662,9 @@ export const insertFeedbackInvitationSchema = createInsertSchema(feedbackInvitat
 export type InsertFeedbackInvitation = z.infer<typeof insertFeedbackInvitationSchema>;
 export type FeedbackInvitation = typeof feedbackInvitations.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Activity logs for admin/cofounder visibility
+// ---------------------------------------------------------------------------
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
@@ -579,7 +674,11 @@ export const activityLogs = pgTable("activity_logs", {
   entityType: text("entity_type"),
   entityId: varchar("entity_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("activity_logs_organization_id_idx").on(table.organizationId),
+  index("activity_logs_created_at_idx").on(table.createdAt),
+  index("activity_logs_user_id_idx").on(table.userId),
+]);
 
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
   id: true,
@@ -589,7 +688,9 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Notification types enum
+// ---------------------------------------------------------------------------
 export const NotificationType = {
   OOO_SUBMITTED: "ooo_submitted",
   OOO_APPROVED: "ooo_approved",
@@ -617,11 +718,13 @@ export const NotificationType = {
 
 export type NotificationTypeValue = (typeof NotificationType)[keyof typeof NotificationType];
 
+// ---------------------------------------------------------------------------
 // Notifications table
+// ---------------------------------------------------------------------------
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   actorId: varchar("actor_id"),
   type: text("type").notNull(),
   title: text("title").notNull(),
@@ -630,7 +733,11 @@ export const notifications = pgTable("notifications", {
   entityId: varchar("entity_id"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("notifications_user_id_idx").on(table.userId),
+  index("notifications_user_is_read_idx").on(table.userId, table.isRead),
+  index("notifications_created_at_idx").on(table.createdAt),
+]);
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
@@ -641,11 +748,13 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Notification preferences table
+// ---------------------------------------------------------------------------
 export const notificationPreferences = pgTable("notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id"),
-  userId: varchar("user_id").notNull().unique(),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
   inAppEnabled: boolean("in_app_enabled").notNull().default(true),
   emailEnabled: boolean("email_enabled").notNull().default(true),
   oooNotifications: boolean("ooo_notifications").notNull().default(true),
@@ -664,14 +773,19 @@ export const insertNotificationPreferencesSchema = createInsertSchema(notificati
 export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 
+// ---------------------------------------------------------------------------
 // Sessions table for persistent authentication
+// ---------------------------------------------------------------------------
 export const sessions = pgTable("sessions", {
   token: varchar("token").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   username: text("username").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
-});
+}, (table) => [
+  index("sessions_user_id_idx").on(table.userId),
+  index("sessions_expires_at_idx").on(table.expiresAt),
+]);
 
 export const insertSessionSchema = createInsertSchema(sessions);
 export type InsertSession = z.infer<typeof insertSessionSchema>;
