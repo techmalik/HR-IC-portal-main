@@ -138,6 +138,13 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   if (!user.isActive) {
     return res.status(403).json({ error: "Account is disabled" });
   }
+  if (user.mustChangePassword) {
+    const isPasswordChangePath = /^\/api\/users\/[^/]+\/password$/.test(req.path);
+    const isLogoutPath = req.path === "/api/auth/logout";
+    if (!isPasswordChangePath && !isLogoutPath) {
+      return res.status(403).json({ error: "Password change required", mustChangePassword: true });
+    }
+  }
   req.authenticatedUser = user;
   next();
 }
@@ -357,6 +364,20 @@ export async function registerRoutes(
       await invalidateSession(sessionToken);
     }
     res.json({ success: true });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    const user = await getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized - Invalid or missing token" });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Account is disabled" });
+    }
+    const directReports = await storage.getUsersBySupervisor(user.id);
+    const hasDirectReports = directReports.length > 0;
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ ...userWithoutPassword, hasDirectReports });
   });
 
   // User routes - protected with auth middleware

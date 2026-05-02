@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("teamflow_session_token");
@@ -11,7 +12,14 @@ function getAuthHeaders(): Record<string, string> {
 function handleUnauthorized() {
   localStorage.removeItem("teamflow_session_token");
   localStorage.removeItem("teamflow_user");
-  window.location.href = "/auth";
+  toast({
+    title: "Session expired",
+    description: "Your session has expired. Please log in again.",
+    variant: "destructive",
+  });
+  const currentPath = window.location.pathname;
+  const redirect = currentPath && currentPath !== "/login" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
+  window.location.href = `/login${redirect}`;
 }
 
 async function throwIfResNotOk(res: Response) {

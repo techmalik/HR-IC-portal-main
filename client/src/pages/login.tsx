@@ -24,6 +24,8 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";
+
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -38,7 +40,7 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (success) {
-      setLocation("/");
+      setLocation(redirectTo);
     } else {
       toast({
         title: "Login failed",

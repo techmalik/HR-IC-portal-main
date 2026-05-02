@@ -33,15 +33,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("teamflow_user");
     const savedToken = localStorage.getItem("teamflow_session_token");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (!savedToken) {
+      setIsLoading(false);
+      return;
     }
-    if (savedToken) {
-      setSessionToken(savedToken);
-    }
-    setIsLoading(false);
+    fetch("/api/auth/me", {
+      headers: { "Authorization": `Bearer ${savedToken}` },
+      credentials: "include",
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+          setSessionToken(savedToken);
+          localStorage.setItem("teamflow_user", JSON.stringify(userData));
+        } else {
+          localStorage.removeItem("teamflow_user");
+          localStorage.removeItem("teamflow_session_token");
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem("teamflow_user");
+        localStorage.removeItem("teamflow_session_token");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {

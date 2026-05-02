@@ -474,6 +474,7 @@ function PublicRoutes() {
 
 function ProtectedRoutes() {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -484,6 +485,16 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
+    const publicPaths = ["/login", "/signup", "/"];
+    const isPublicPath = publicPaths.includes(location) || location === "";
+    if (!isPublicPath) {
+      window.location.replace(`/login?redirect=${encodeURIComponent(location)}`);
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     return <PublicRoutes />;
   }
 
