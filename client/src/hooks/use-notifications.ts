@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { Notification } from "@shared/schema";
 
 export function useNotifications() {
-  const { user, sessionToken } = useAuth();
+  const { user } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -42,17 +42,17 @@ export function useNotifications() {
   });
 
   const connectWebSocket = useCallback(() => {
-    if (!user?.id || !sessionToken || wsRef.current) return;
+    if (!user?.id || wsRef.current) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(sessionToken)}`;
-    
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+
     const ws = new WebSocket(wsUrl);
-    
+
     ws.onopen = () => {
       console.log("WebSocket connected for notifications");
     };
-    
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -64,22 +64,22 @@ export function useNotifications() {
         console.error("Error parsing WebSocket message:", e);
       }
     };
-    
+
     ws.onclose = () => {
       wsRef.current = null;
       setTimeout(() => connectWebSocket(), 5000);
     };
-    
+
     ws.onerror = () => {
       ws.close();
     };
-    
+
     wsRef.current = ws;
-  }, [user?.id, sessionToken]);
+  }, [user?.id]);
 
   useEffect(() => {
     connectWebSocket();
-    
+
     return () => {
       if (wsRef.current) {
         wsRef.current.close();

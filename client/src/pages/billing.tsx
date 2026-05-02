@@ -72,9 +72,8 @@ export default function BillingPage() {
   const { data: billing, isLoading: billingLoading } = useQuery<BillingData>({
     queryKey: ["/api/billing"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/billing", {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch billing data");
       return res.json();
@@ -85,9 +84,8 @@ export default function BillingPage() {
   const { data: usage, isLoading: usageLoading } = useQuery<UsageData>({
     queryKey: ["/api/billing/usage"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/billing/usage", {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch usage data");
       return res.json();
@@ -97,13 +95,12 @@ export default function BillingPage() {
 
   const changePlanMutation = useMutation({
     mutationFn: async (newPlan: string) => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/billing/change-plan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ plan: newPlan }),
       });
       if (!res.ok) {

@@ -73,7 +73,7 @@ export default function OOORequestsPage() {
   const [editingRequest, setEditingRequest] = useState<OOORequest | null>(null);
   const [showTour, setShowTour] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const { user, sessionToken, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function OOORequestsPage() {
     queryKey: ["/api/ooo-requests", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/ooo-requests?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch requests");
       return res.json();

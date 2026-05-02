@@ -62,7 +62,7 @@ interface MenuGroup {
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, logout, isSupervisor, isAdmin, sessionToken } = useAuth();
+  const { user, logout, isSupervisor, isAdmin } = useAuth();
 
   const isActive = (path: string) => location === path;
 
@@ -71,7 +71,7 @@ export function AppSidebar() {
     queryKey: ["/api/leave-requests/pending-count"],
     queryFn: async () => {
       const res = await fetch("/api/leave-requests/pending-count", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        credentials: "include",
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -84,7 +84,7 @@ export function AppSidebar() {
     queryKey: ["/api/overtime-requests/pending-count"],
     queryFn: async () => {
       const res = await fetch("/api/overtime-requests/pending-count", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        credentials: "include",
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -97,7 +97,7 @@ export function AppSidebar() {
     queryKey: ["/api/timesheets/pending-count"],
     queryFn: async () => {
       const res = await fetch("/api/timesheets/pending-count", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        credentials: "include",
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -110,7 +110,7 @@ export function AppSidebar() {
     queryKey: ["/api/invoices/pending-count"],
     queryFn: async () => {
       const res = await fetch("/api/invoices/pending-count", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        credentials: "include",
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -123,7 +123,7 @@ export function AppSidebar() {
     queryKey: ["/api/evaluations/pending-count"],
     queryFn: async () => {
       const res = await fetch("/api/evaluations/pending-count", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
+        credentials: "include",
       });
       if (!res.ok) return 0;
       const data = await res.json();

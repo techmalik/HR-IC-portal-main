@@ -29,7 +29,7 @@ export default function TimesheetsOverviewPage() {
     queryKey: ["/api/timesheets", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();

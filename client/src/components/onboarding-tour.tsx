@@ -32,7 +32,7 @@ export function OnboardingTour({ tourId, steps, onComplete, onSkip }: Onboarding
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const targetFoundRef = useRef(false);
-  const { user, sessionToken, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const step = steps[currentStep];
 
@@ -180,15 +180,15 @@ export function OnboardingTour({ tourId, steps, onComplete, onSkip }: Onboarding
   }, [updatePosition, currentStep, step?.target, cleanupAll]);
 
   const saveTourCompletion = async (completed: boolean) => {
-    if (!user?.id || !sessionToken) return;
-    
+    if (!user?.id) return;
+
     try {
       const response = await fetch(`/api/users/${user.id}/onboarding`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
         },
+        credentials: "include",
         body: JSON.stringify({ tour: tourId, completed }),
       });
       

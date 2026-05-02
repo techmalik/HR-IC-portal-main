@@ -115,13 +115,12 @@ function resetRateLimit(ip: string): void {
   loginAttempts.delete(ip);
 }
 
-// Get current user from token (helper function)
+// Get current user from session cookie
 async function getCurrentUser(req: Request) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
+  const token = req.cookies?.session_token;
+  if (!token) {
     return null;
   }
-  const token = authHeader.substring(7);
   const userId = await getUserIdFromToken(token);
   if (!userId) {
     return null;
@@ -274,9 +273,17 @@ export async function registerRoutes(
     // Check if user has direct reports (for dynamic supervisor privileges)
     const directReports = await storage.getUsersBySupervisor(user.id);
     const hasDirectReports = directReports.length > 0;
-    
+
+    res.cookie("session_token", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
     const { password: _, ...userWithoutPassword } = user;
-    res.json({ ...userWithoutPassword, sessionToken, hasDirectReports });
+    res.json({ ...userWithoutPassword, hasDirectReports });
   });
 
   app.post("/api/auth/register", async (req, res) => {
@@ -354,15 +361,24 @@ export async function registerRoutes(
       console.error("Failed to create registration activity log:", e);
     }
 
+    res.cookie("session_token", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
     const { password: _, ...userWithoutPassword } = user;
-    res.status(201).json({ ...userWithoutPassword, sessionToken, hasDirectReports: false });
+    res.status(201).json({ ...userWithoutPassword, hasDirectReports: false });
   });
 
   app.post("/api/auth/logout", async (req, res) => {
-    const { sessionToken } = req.body;
-    if (sessionToken) {
-      await invalidateSession(sessionToken);
+    const token = req.cookies?.session_token;
+    if (token) {
+      await invalidateSession(token);
     }
+    res.clearCookie("session_token", { path: "/" });
     res.json({ success: true });
   });
 

@@ -112,7 +112,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/invoices", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/invoices?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch invoices");
       return res.json();
@@ -124,7 +124,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/timesheets", { userId: user?.id }],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets?userId=${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch timesheets");
       return res.json();
@@ -142,7 +142,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/overtime-requests", { timesheetId: selectedTimesheetId }],
     queryFn: async () => {
       const res = await fetch(`/api/overtime-requests?timesheetId=${selectedTimesheetId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch overtime requests");
       return res.json();
@@ -155,7 +155,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/timesheets", selectedTimesheetId, "entries"],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${selectedTimesheetId}/entries`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch daily entries");
       return res.json();
@@ -183,7 +183,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/ic-payment-details", user?.id],
     queryFn: async () => {
       const res = await fetch(`/api/ic-payment-details/${user?.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) return null;
       return res.json();
@@ -195,7 +195,7 @@ export default function InvoicesPage() {
     queryKey: ["/api/organization"],
     queryFn: async () => {
       const res = await fetch("/api/organization", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       });
       if (!res.ok) return null;
       return res.json();
@@ -253,7 +253,7 @@ export default function InvoicesPage() {
   useEffect(() => {
     if (isDialogOpen && activeTab === "generate" && user?.id) {
       fetch(`/api/invoices/next-number/${user.id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("teamflow_session_token")}` },
+        credentials: "include",
       })
         .then((res) => res.json())
         .then((data) => setInvoiceNumber(data.invoiceNumber))

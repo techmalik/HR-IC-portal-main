@@ -9,7 +9,6 @@ const WARNING_DURATION_S = 2 * 60;
 const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "touchstart"] as const;
 
 interface AuthUser extends Omit<User, 'mustChangePassword'> {
-  sessionToken?: string;
   hasDirectReports?: boolean;
   mustChangePassword?: boolean;
 }
@@ -21,7 +20,6 @@ interface RegisterResult {
 
 interface AuthContextType {
   user: AuthUser | null;
-  sessionToken: string | null;
   isLoading: boolean;
   isSupervisor: boolean;
   isAdmin: boolean;
@@ -35,7 +33,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showIdleWarning, setShowIdleWarning] = useState(false);
   const [warningSecondsLeft, setWarningSecondsLeft] = useState(WARNING_DURATION_S);
@@ -44,17 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const warningIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const warningSecondsRef = useRef(WARNING_DURATION_S);
   const userRef = useRef<AuthUser | null>(null);
-  const sessionTokenRef = useRef<string | null>(null);
-  // Ref-based flag so activity handler stays stable across warning open/close
   const warningActiveRef = useRef(false);
 
   useEffect(() => {
     userRef.current = user;
   }, [user]);
-
-  useEffect(() => {
-    sessionTokenRef.current = sessionToken;
-  }, [sessionToken]);
 
   const clearIdleTimer = useCallback(() => {
     if (idleTimerRef.current) {
@@ -71,21 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const doLogout = useCallback(async () => {
-    const token = sessionTokenRef.current;
-    if (token) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionToken: token }),
-        });
-      } catch {
-      }
-    }
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {}
     setUser(null);
-    setSessionToken(null);
-    localStorage.removeItem("teamflow_user");
-    localStorage.removeItem("teamflow_session_token");
   }, []);
 
   const handleIdleLogout = useCallback(async () => {
@@ -119,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, IDLE_TIMEOUT_MS);
   }, [clearIdleTimer, clearWarningInterval, handleIdleLogout]);
 
-  // Stable handler: reads warning state via ref so its identity never changes
   const handleActivityEvent = useCallback(() => {
     if (warningActiveRef.current) return;
     if (!userRef.current) return;
@@ -133,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     startIdleTimer();
   }, [clearWarningInterval, startIdleTimer]);
 
-  // Register activity listeners once per user session; does NOT depend on warning state
   useEffect(() => {
     if (!user) {
       clearIdleTimer();
@@ -160,30 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("teamflow_session_token");
-    if (!savedToken) {
-      setIsLoading(false);
-      return;
-    }
     fetch("/api/auth/me", {
-      headers: { "Authorization": `Bearer ${savedToken}` },
       credentials: "include",
     })
       .then(async (res) => {
         if (res.ok) {
           const userData = await res.json();
           setUser(userData);
-          setSessionToken(savedToken);
-          localStorage.setItem("teamflow_user", JSON.stringify(userData));
-        } else {
-          localStorage.removeItem("teamflow_user");
-          localStorage.removeItem("teamflow_session_token");
         }
       })
-      .catch(() => {
-        localStorage.removeItem("teamflow_user");
-        localStorage.removeItem("teamflow_session_token");
-      })
+      .catch(() => {})
       .finally(() => {
         setIsLoading(false);
       });
@@ -194,15 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
-      
+
       if (response.ok) {
-        const { sessionToken: token, ...userData } = await response.json();
+        const userData = await response.json();
         setUser(userData);
-        setSessionToken(token);
-        localStorage.setItem("teamflow_user", JSON.stringify(userData));
-        localStorage.setItem("teamflow_session_token", token);
         return true;
       }
       return false;
@@ -216,15 +181,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ firstName, lastName, email, password, organizationName }),
       });
 
       if (response.ok) {
-        const { sessionToken: token, ...userData } = await response.json();
+        const userData = await response.json();
         setUser(userData);
-        setSessionToken(token);
-        localStorage.setItem("teamflow_user", JSON.stringify(userData));
-        localStorage.setItem("teamflow_session_token", token);
         return { success: true };
       }
 
@@ -245,9 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = (updates: Partial<AuthUser>) => {
     if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem("teamflow_user", JSON.stringify(updatedUser));
+      setUser({ ...user, ...updates });
     }
   };
 
@@ -259,12 +220,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSupervisor = isAdmin || (user?.hasDirectReports ?? false);
 
   return (
-    <AuthContext.Provider value={{ user, sessionToken, isLoading, isSupervisor, isAdmin, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, isSupervisor, isAdmin, login, register, logout, updateUser }}>
       {children}
-      {user && sessionToken && user.mustChangePassword && (
+      {user && user.mustChangePassword && (
         <ForcePasswordChangeModal
           userId={user.id}
-          sessionToken={sessionToken}
           onSuccess={handlePasswordChangeSuccess}
         />
       )}

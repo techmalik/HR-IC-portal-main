@@ -36,13 +36,11 @@ type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 
 interface ForcePasswordChangeModalProps {
   userId: string;
-  sessionToken: string;
   onSuccess: () => void;
 }
 
 export function ForcePasswordChangeModal({
   userId,
-  sessionToken,
   onSuccess,
 }: ForcePasswordChangeModalProps) {
   const { toast } = useToast();

@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -13,14 +14,15 @@ const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
 wss.on("connection", async (ws: WebSocket, req) => {
-  const url = new URL(req.url || "", `http://${req.headers.host}`);
-  const token = url.searchParams.get("token");
-  
+  const cookieHeader = req.headers.cookie || "";
+  const tokenMatch = cookieHeader.match(/(?:^|;\s*)session_token=([^;]+)/);
+  const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
+
   if (!token) {
     ws.close(4001, "Missing session token");
     return;
   }
-  
+
   const userId = await getUserIdFromToken(token);
   if (!userId) {
     ws.close(4002, "Invalid or expired session");
@@ -43,6 +45,8 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+app.use(cookieParser());
 
 app.use(
   express.json({

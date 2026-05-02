@@ -1,17 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("teamflow_session_token");
-  if (token) {
-    return { "Authorization": `Bearer ${token}` };
-  }
-  return {};
-}
-
 function handleUnauthorized() {
-  localStorage.removeItem("teamflow_session_token");
-  localStorage.removeItem("teamflow_user");
   toast({
     title: "Session expired",
     description: "Your session has expired. Please log in again.",
@@ -24,7 +14,6 @@ function handleUnauthorized() {
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Handle expired session - clear token and redirect to login
     if (res.status === 401) {
       handleUnauthorized();
       throw new Error("Session expired. Please log in again.");
@@ -39,13 +28,11 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    ...getAuthHeaders(),
-  };
+  const headers: Record<string, string> = {};
   if (data) {
     headers["Content-Type"] = "application/json";
   }
-  
+
   const res = await fetch(url, {
     method,
     headers,
@@ -65,7 +52,6 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
-      headers: getAuthHeaders(),
     });
 
     if (res.status === 401) {

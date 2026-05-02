@@ -42,11 +42,11 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, breadcrumbs, backHref, backLabel, onStartTour, onStartTourAfterNavigation, showSupervisorTour }: PageHeaderProps) {
-  const { user, sessionToken, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [location, setLocation] = useLocation();
 
   const handleStartTour = async (tourId: "portal" | "timesheets" | "invoices" | "ooo" | "supervisor") => {
-    if (!user?.id || !sessionToken) return;
+    if (!user?.id) return;
     
     const targetRoute = TOUR_ROUTES[tourId];
     // Check if we're on the correct page, accounting for query params and subroutes
@@ -63,8 +63,8 @@ export function PageHeader({ title, breadcrumbs, backHref, backLabel, onStartTou
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
         },
+        credentials: "include",
         body: JSON.stringify({ tour: tourId, completed: false }),
       });
       
