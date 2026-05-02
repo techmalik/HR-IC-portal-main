@@ -533,7 +533,7 @@ function ProtectedRoutes() {
                 <Route path="/roles">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
                 <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
-                <Route path="/settings" component={ProfilePage} />
+                <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />
@@ -549,12 +549,6 @@ function ProtectedRoutes() {
 }
 
 function App() {
-  const [location] = useLocation();
-
-  if (location === "/admin/migrate-files") {
-    return <MigrateFilesPage />;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

@@ -263,7 +263,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     if (isDialogOpen && activeTab === "generate" && user?.hourlyRate) {
-      const rateInDollars = (user.hourlyRate / 100).toFixed(2);
+      const rateInDollars = formatCurrency(user.hourlyRate / 100);
       setLineItems((prev) => {
         if (prev.length === 1 && !prev[0].rate) {
           return [{ ...prev[0], rate: rateInDollars }];
@@ -426,7 +426,7 @@ export default function InvoicesPage() {
       const validLineItems = lineItems.filter((item) => item.description && item.rate);
       for (let i = 0; i < validLineItems.length; i++) {
         const item = validLineItems[i];
-        const rateCents = Math.round(parseFloat(item.rate) * 100);
+        const rateCents = Math.round(parseFloat(item.rate.replace(/,/g, "")) * 100);
         const qty = parseInt(item.quantity) || 1;
         const totalCents = rateCents * qty;
         
@@ -606,7 +606,7 @@ export default function InvoicesPage() {
   };
 
   const calculateLineTotal = (rate: string, quantity: string): number => {
-    const r = parseFloat(rate) || 0;
+    const r = parseFloat(rate.replace(/,/g, "")) || 0;
     const q = parseFloat(quantity) || 0;
     return r * q;
   };
@@ -703,7 +703,7 @@ export default function InvoicesPage() {
       const total = calculateLineTotal(item.rate, item.quantity);
       doc.text(item.description.substring(0, 50), 22, y);
       doc.text(item.quantity, 120, y);
-      doc.text(`$${formatCurrency(parseFloat(item.rate))}`, 145, y);
+      doc.text(`$${formatCurrency(parseFloat(item.rate.replace(/,/g, "")))}`, 145, y);
       doc.text(`$${formatCurrency(total)}`, pageWidth - 22, y, { align: "right" });
       doc.setDrawColor(229, 229, 229);
       doc.line(20, y + 2, pageWidth - 20, y + 2);

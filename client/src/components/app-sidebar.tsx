@@ -40,7 +40,6 @@ import {
   Briefcase,
   CheckSquare,
   Building2,
-  BarChart3,
   Layers,
   CreditCard,
   type LucideIcon,
@@ -64,7 +63,17 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout, isSupervisor, isAdmin } = useAuth();
 
-  const isActive = (path: string) => location === path;
+  const isActive = (path: string) => {
+    const [itemPathname, itemSearch] = path.split("?");
+    const currentPathname = location.split("?")[0];
+    if (itemSearch) {
+      const currentSearch = window.location.search.startsWith("?")
+        ? window.location.search.slice(1)
+        : window.location.search;
+      return currentPathname === itemPathname && currentSearch === itemSearch;
+    }
+    return currentPathname === itemPathname;
+  };
 
   // Fetch pending counts for badges (only for users with supervisor privileges)
   const { data: pendingLeaveCount } = useQuery<number>({
@@ -221,9 +230,9 @@ export function AppSidebar() {
     // Settings - for all users
     groups.push({
       label: "Settings",
-      icon: BarChart3,
+      icon: Settings,
       items: [
-        { title: "Settings", url: "/settings", icon: Settings },
+        { title: "Settings", url: "/profile", icon: Settings },
       ],
     });
 

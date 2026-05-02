@@ -220,8 +220,8 @@ export async function registerRoutes(
   // Register Object Storage routes for serving uploaded files
   registerObjectStorageRoutes(app);
 
-  // Temporary migration file upload route (no auth - remove after migration)
-  app.use(createMigrateFilesRouter());
+  // Migration file upload route - admin only
+  app.use(createMigrateFilesRouter(authMiddleware, requireRole("admin")));
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {

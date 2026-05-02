@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import multer from "multer";
 import { Client } from "@replit/object-storage";
 
@@ -7,11 +7,11 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-export function createMigrateFilesRouter(): Router {
+export function createMigrateFilesRouter(authMiddleware: RequestHandler, requireAdmin: RequestHandler): Router {
   const router = Router();
   const storageClient = new Client();
 
-  router.post("/api/admin/migrate-files", upload.array("files", 50), async (req, res) => {
+  router.post("/api/admin/migrate-files", authMiddleware, requireAdmin, upload.array("files", 50), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {
