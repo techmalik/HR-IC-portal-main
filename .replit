@@ -52,3 +52,7 @@ RESEND_API_KEY = "re_UP9pe1oo_EWNRxgdVArnoxRosysyEpy7C"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-a574b5c8-816e-42ff-ad9b-932337729135"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
