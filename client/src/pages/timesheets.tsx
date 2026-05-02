@@ -477,7 +477,7 @@ export default function TimesheetsPage() {
                       <span className="text-muted-foreground">Half-day leave (4h max)</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-blue-500/30 border border-blue-500/50" />
+                      <div className="w-3 h-3 rounded-sm bg-amber-500/30 border border-amber-500/50" />
                       <span className="text-muted-foreground">Overtime pending</span>
                     </div>
                   </div>
@@ -523,7 +523,7 @@ export default function TimesheetsPage() {
                             isWeekend && "bg-muted/30",
                             isFullDayOOO && "bg-red-500/20 border-red-500/50 cursor-not-allowed",
                             isHalfDayOOO && "bg-amber-500/20 border-amber-500/50",
-                            hasOvertimePending && "bg-blue-500/20 border-blue-500/50",
+                            hasOvertimePending && "bg-amber-500/20 border-amber-500/50",
                             hasOvertimeApproved && "bg-emerald-500/10 border-emerald-500/50",
                             hasEntry && !isFullDayOOO && !isHalfDayOOO && !hasOvertimePending && "border-primary bg-primary/5",
                             (isEditable && !isFullDayOOO) && "hover:bg-muted cursor-pointer",
@@ -538,7 +538,7 @@ export default function TimesheetsPage() {
                           {hasEntry && (
                             <span className={cn(
                               "text-xs font-semibold",
-                              hasOvertimePending && "text-blue-600",
+                              hasOvertimePending && "text-amber-600",
                               hasOvertimeApproved && "text-emerald-600",
                               !hasOvertimePending && !hasOvertimeApproved && "text-primary"
                             )}>
@@ -552,7 +552,7 @@ export default function TimesheetsPage() {
                             <span className="text-[10px] text-amber-600">4h</span>
                           )}
                           {hasOvertimePending && (
-                            <Clock className="absolute top-1 right-1 w-3 h-3 text-blue-600" />
+                            <Clock className="absolute top-1 right-1 w-3 h-3 text-amber-600" />
                           )}
                         </button>
                       );
@@ -601,7 +601,7 @@ export default function TimesheetsPage() {
                 {overtimeRequests && overtimeRequests.filter(r => r.status === "pending").length > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Pending Overtime</span>
-                    <Badge variant="outline" className="text-blue-600 border-blue-500">
+                    <Badge variant="outline" className="text-amber-600 border-amber-500">
                       {overtimeRequests.filter(r => r.status === "pending").length}
                     </Badge>
                   </div>
@@ -707,7 +707,7 @@ export default function TimesheetsPage() {
                   data-testid="input-hours"
                 />
                 {selectedDay && selectedDay.hours > STANDARD_HOURS && (
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-amber-600">
                     <AlertCircle className="w-3 h-3 inline mr-1" />
                     Hours over {STANDARD_HOURS} will require manager approval.
                   </p>
