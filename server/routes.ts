@@ -2755,5 +2755,99 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // ── SEO / Public content routes ──────────────────────────────────────────
+  // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
+  // so that Googlebot receives fully server-rendered HTML.
+
+  const { getBlogIndexHtml, getBlogArticleHtml } = await import("./seo/blogPages");
+  const { getFaqHtml } = await import("./seo/faqPages");
+  const { blogArticles } = await import("./seo/blogData");
+  const { FAQ_LAST_UPDATED } = await import("./seo/faqData");
+
+  const SEO_CACHE = "public, max-age=86400, stale-while-revalidate=3600";
+
+  app.get("/blog", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(getBlogIndexHtml());
+  });
+
+  app.get("/blog/:slug", (req, res) => {
+    const html = getBlogArticleHtml(req.params.slug);
+    if (!html) {
+      res.status(404).send("<h1>Article not found</h1>");
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(html);
+  });
+
+  app.get("/faq", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(getFaqHtml());
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(
+      `User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\nSitemap: /sitemap-blog.xml\n`
+    );
+  });
+
+  function buildSitemapXml(urls: Array<{ loc: string; lastmod: string; changefreq?: string; priority?: string }>): string {
+    const urlEntries = urls
+      .map(
+        ({ loc, lastmod, changefreq = "monthly", priority = "0.7" }) =>
+          `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
+      )
+      .join("\n");
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlEntries}\n</urlset>`;
+  }
+
+  const BASE_URL = "https://teamflow.app";
+
+  app.get("/sitemap.xml", (_req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const mostRecentArticleDate = blogArticles.reduce(
+      (max, a) => (a.updatedDate > max ? a.updatedDate : max),
+      blogArticles[0]?.updatedDate ?? today
+    );
+    const articleUrls = blogArticles.map((a) => ({
+      loc: `${BASE_URL}/blog/${a.slug}`,
+      lastmod: a.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.7",
+    }));
+    const xml = buildSitemapXml([
+      { loc: `${BASE_URL}/`, lastmod: today, changefreq: "weekly", priority: "1.0" },
+      { loc: `${BASE_URL}/blog`, lastmod: mostRecentArticleDate, changefreq: "weekly", priority: "0.9" },
+      { loc: `${BASE_URL}/faq`, lastmod: FAQ_LAST_UPDATED, changefreq: "monthly", priority: "0.8" },
+      { loc: `${BASE_URL}/signup`, lastmod: today, changefreq: "monthly", priority: "0.8" },
+      ...articleUrls,
+    ]);
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(xml);
+  });
+
+  app.get("/sitemap-blog.xml", (_req, res) => {
+    const articleUrls = blogArticles.map((a) => ({
+      loc: `${BASE_URL}/blog/${a.slug}`,
+      lastmod: a.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.7",
+    }));
+    const xml = buildSitemapXml([
+      ...articleUrls,
+      { loc: `${BASE_URL}/faq`, lastmod: FAQ_LAST_UPDATED, changefreq: "monthly", priority: "0.8" },
+    ]);
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(xml);
+  });
+
   return httpServer;
 }
