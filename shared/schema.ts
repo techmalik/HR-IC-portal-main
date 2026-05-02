@@ -355,6 +355,7 @@ export const invoices = pgTable("invoices", {
   index("invoices_organization_id_idx").on(table.organizationId),
   index("invoices_status_idx").on(table.status),
   index("invoices_user_year_month_idx").on(table.userId, table.year, table.month),
+  index("invoices_user_organization_idx").on(table.userId, table.organizationId),
 ]);
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
