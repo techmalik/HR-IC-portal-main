@@ -32,6 +32,15 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    ...(process.env.REPL_ID !== undefined
+      ? {
+          hmr: {
+            clientPort: 443,
+            protocol: "wss",
+          },
+          allowedHosts: true,
+        }
+      : {}),
     fs: {
       strict: true,
       deny: ["**/.*"],
