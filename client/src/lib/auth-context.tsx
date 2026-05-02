@@ -1,10 +1,16 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import type { User } from "@shared/schema";
 import { ForcePasswordChangeModal } from "@/components/force-password-change-modal";
+import { IdleTimeoutDialog } from "@/components/idle-timeout-dialog";
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const WARNING_DURATION_S = 2 * 60;
+
+const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "touchstart"] as const;
 
 interface AuthUser extends Omit<User, 'mustChangePassword'> {
   sessionToken?: string;
-  hasDirectReports?: boolean;  // Dynamic supervisor flag
+  hasDirectReports?: boolean;
   mustChangePassword?: boolean;
 }
 
@@ -31,6 +37,127 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
+  const [warningSecondsLeft, setWarningSecondsLeft] = useState(WARNING_DURATION_S);
+
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const warningSecondsRef = useRef(WARNING_DURATION_S);
+  const userRef = useRef<AuthUser | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
+  // Ref-based flag so activity handler stays stable across warning open/close
+  const warningActiveRef = useRef(false);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    sessionTokenRef.current = sessionToken;
+  }, [sessionToken]);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const clearWarningInterval = useCallback(() => {
+    if (warningIntervalRef.current) {
+      clearInterval(warningIntervalRef.current);
+      warningIntervalRef.current = null;
+    }
+  }, []);
+
+  const doLogout = useCallback(async () => {
+    const token = sessionTokenRef.current;
+    if (token) {
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionToken: token }),
+        });
+      } catch {
+      }
+    }
+    setUser(null);
+    setSessionToken(null);
+    localStorage.removeItem("teamflow_user");
+    localStorage.removeItem("teamflow_session_token");
+  }, []);
+
+  const handleIdleLogout = useCallback(async () => {
+    clearIdleTimer();
+    clearWarningInterval();
+    warningActiveRef.current = false;
+    setShowIdleWarning(false);
+    await doLogout();
+    const { pathname, search, hash } = window.location;
+    const fullPath = pathname + search + hash;
+    const redirect = fullPath && pathname !== "/login" ? `?redirect=${encodeURIComponent(fullPath)}` : "";
+    window.location.href = `/login${redirect}`;
+  }, [clearIdleTimer, clearWarningInterval, doLogout]);
+
+  const startIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(() => {
+      warningActiveRef.current = true;
+      warningSecondsRef.current = WARNING_DURATION_S;
+      setWarningSecondsLeft(WARNING_DURATION_S);
+      setShowIdleWarning(true);
+
+      warningIntervalRef.current = setInterval(() => {
+        warningSecondsRef.current -= 1;
+        setWarningSecondsLeft(warningSecondsRef.current);
+        if (warningSecondsRef.current <= 0) {
+          clearWarningInterval();
+          handleIdleLogout();
+        }
+      }, 1000);
+    }, IDLE_TIMEOUT_MS);
+  }, [clearIdleTimer, clearWarningInterval, handleIdleLogout]);
+
+  // Stable handler: reads warning state via ref so its identity never changes
+  const handleActivityEvent = useCallback(() => {
+    if (warningActiveRef.current) return;
+    if (!userRef.current) return;
+    startIdleTimer();
+  }, [startIdleTimer]);
+
+  const handleStayLoggedIn = useCallback(() => {
+    clearWarningInterval();
+    warningActiveRef.current = false;
+    setShowIdleWarning(false);
+    startIdleTimer();
+  }, [clearWarningInterval, startIdleTimer]);
+
+  // Register activity listeners once per user session; does NOT depend on warning state
+  useEffect(() => {
+    if (!user) {
+      clearIdleTimer();
+      clearWarningInterval();
+      warningActiveRef.current = false;
+      setShowIdleWarning(false);
+      return;
+    }
+
+    startIdleTimer();
+
+    ACTIVITY_EVENTS.forEach((event) => {
+      window.addEventListener(event, handleActivityEvent, { passive: true });
+    });
+
+    return () => {
+      ACTIVITY_EVENTS.forEach((event) => {
+        window.removeEventListener(event, handleActivityEvent);
+      });
+      clearIdleTimer();
+      clearWarningInterval();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("teamflow_session_token");
@@ -109,20 +236,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    if (sessionToken) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionToken }),
-        });
-      } catch {
-      }
-    }
-    setUser(null);
-    setSessionToken(null);
-    localStorage.removeItem("teamflow_user");
-    localStorage.removeItem("teamflow_session_token");
+    clearIdleTimer();
+    clearWarningInterval();
+    warningActiveRef.current = false;
+    setShowIdleWarning(false);
+    await doLogout();
   };
 
   const updateUser = (updates: Partial<AuthUser>) => {
@@ -137,9 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUser({ mustChangePassword: false });
   };
 
-  // Derived authorization flags
   const isAdmin = user?.role === "admin" || user?.role === "owner";
-  // isSupervisor: IC with direct reports (team members assigned to them) OR Admin
   const isSupervisor = isAdmin || (user?.hasDirectReports ?? false);
 
   return (
@@ -150,6 +266,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId={user.id}
           sessionToken={sessionToken}
           onSuccess={handlePasswordChangeSuccess}
+        />
+      )}
+      {user && (
+        <IdleTimeoutDialog
+          open={showIdleWarning}
+          secondsRemaining={warningSecondsLeft}
+          onStayLoggedIn={handleStayLoggedIn}
+          onLogout={handleIdleLogout}
         />
       )}
     </AuthContext.Provider>
