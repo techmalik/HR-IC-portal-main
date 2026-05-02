@@ -68,6 +68,11 @@ export default function DashboardSupervisor() {
     queryKey: ["/api/leave-requests"],
   });
 
+  const { data: evaluationsDueData, isLoading: evaluationsLoading } = useQuery<{ count: number }>({
+    queryKey: ["/api/evaluations/pending-count"],
+  });
+  const evaluationsDueCount = evaluationsDueData?.count ?? 0;
+
   const pendingTimesheets = teamTimesheets?.filter((t) => t.status === "submitted");
   const pendingInvoices = teamInvoices?.filter((i) => i.status === "submitted");
   const pendingOoo = myOooRequests?.filter((r) => r.status === "pending") || [];
@@ -195,7 +200,7 @@ export default function DashboardSupervisor() {
               {timesheetsLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-pending-timesheets">
+                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-timesheets">
                   {pendingTimesheets?.length || 0}
                 </div>
               )}
@@ -213,7 +218,7 @@ export default function DashboardSupervisor() {
               {teamInvoicesLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400" data-testid="text-pending-invoices">
+                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-invoices">
                   {pendingInvoices?.length || 0}
                 </div>
               )}
@@ -246,9 +251,13 @@ export default function DashboardSupervisor() {
               <Star className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary" data-testid="text-evaluations-due">
-                2
-              </div>
+              {evaluationsLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-evaluations-due">
+                  {evaluationsDueCount}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

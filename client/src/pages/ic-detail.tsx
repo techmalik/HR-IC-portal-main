@@ -456,6 +456,9 @@ export default function ICDetailPage() {
               ) : (
                 <div className="space-y-4 w-full overflow-hidden">
                   {/* Calendar Grid */}
+                  <div className="flex justify-end mb-2">
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">View Only</span>
+                  </div>
                   <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground mb-2 w-full">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                       <div key={d} className="py-1 min-w-0">{d}</div>

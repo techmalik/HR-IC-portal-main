@@ -375,8 +375,16 @@ export default function LeaveRequestsPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {actionType === "approve" ? "Note (optional)" : "Reason for rejection"}
+                  {actionType === "approve" ? "Note (optional)" : (
+                    <>
+                      Reason for rejection{" "}
+                      <span className="text-red-500" aria-hidden="true">*</span>
+                    </>
+                  )}
                 </label>
+                {actionType === "reject" && (
+                  <p className="text-xs text-red-500">Required</p>
+                )}
                 <Textarea
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value.slice(0, NOTE_MAX))}

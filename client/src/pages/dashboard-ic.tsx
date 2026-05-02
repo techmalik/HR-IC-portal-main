@@ -115,7 +115,7 @@ export default function DashboardIC() {
             {oooLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-3xl font-bold" data-testid="text-pending-ooo-count">
+              <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-ooo-count">
                 {oooRequests?.filter((r) => r.status === "pending").length || 0}
               </div>
             )}

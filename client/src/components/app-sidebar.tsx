@@ -62,7 +62,7 @@ interface MenuGroup {
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, logout, isSupervisor, isAdmin } = useAuth();
+  const { user, logout, isSupervisor, isAdmin, sessionToken } = useAuth();
 
   const isActive = (path: string) => location === path;
 
@@ -70,9 +70,8 @@ export function AppSidebar() {
   const { data: pendingLeaveCount } = useQuery<number>({
     queryKey: ["/api/leave-requests/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/leave-requests/pending-count", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -84,9 +83,8 @@ export function AppSidebar() {
   const { data: pendingOvertimeCount } = useQuery<number>({
     queryKey: ["/api/overtime-requests/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/overtime-requests/pending-count", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -98,9 +96,8 @@ export function AppSidebar() {
   const { data: pendingTimesheetsCount } = useQuery<number>({
     queryKey: ["/api/timesheets/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/timesheets/pending-count", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -112,9 +109,8 @@ export function AppSidebar() {
   const { data: pendingInvoicesCount } = useQuery<number>({
     queryKey: ["/api/invoices/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/invoices/pending-count", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!res.ok) return 0;
       const data = await res.json();
@@ -126,9 +122,8 @@ export function AppSidebar() {
   const { data: pendingEvaluationsCount } = useQuery<number>({
     queryKey: ["/api/evaluations/pending-count"],
     queryFn: async () => {
-      const token = localStorage.getItem("teamflow_session_token");
       const res = await fetch("/api/evaluations/pending-count", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!res.ok) return 0;
       const data = await res.json();

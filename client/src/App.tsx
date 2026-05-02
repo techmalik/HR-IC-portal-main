@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
 import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from "@/components/onboarding-tour";
 import NotFound from "@/pages/not-found";
+import AccessDenied from "@/pages/access-denied";
 import LoginPage from "@/pages/login";
 import DashboardIC from "@/pages/dashboard-ic";
 import DashboardSupervisor from "@/pages/dashboard-supervisor";
@@ -407,7 +408,7 @@ function DynamicPageHeader() {
 function AdminOnlyRoute({ component: Component }: { component: () => JSX.Element }) {
   const { isAdmin } = useAuth();
   if (!isAdmin) {
-    return <NotFound />;
+    return <AccessDenied />;
   }
   return <Component />;
 }

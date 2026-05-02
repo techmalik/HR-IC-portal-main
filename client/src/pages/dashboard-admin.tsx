@@ -85,9 +85,13 @@ export default function DashboardAdmin() {
             <Clock className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-ic-count">
-              {icCount}
-            </div>
+            {usersLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-3xl font-bold" data-testid="text-ic-count">
+                {icCount}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -99,9 +103,13 @@ export default function DashboardAdmin() {
             <Activity className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-admin-count">
-              {adminCount}
-            </div>
+            {usersLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-3xl font-bold" data-testid="text-admin-count">
+                {adminCount}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
