@@ -8,7 +8,21 @@ import { Link } from "wouter";
 import { Calendar, Clock, FileText, Plus, ArrowRight, Timer } from "lucide-react";
 import type { OOORequest, Timesheet, Invoice, OvertimeRequest } from "@shared/schema";
 import { formatMoney } from "@/lib/currency";
-import { format, getDaysInMonth } from "date-fns";
+import { format, getDaysInMonth, getDay } from "date-fns";
+
+// Count Mon-Fri days in [start, end] inclusive.
+function countWeekdaysBetween(start: Date, end: Date): number {
+  if (end < start) return 0;
+  let count = 0;
+  const d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (d <= last) {
+    const dow = getDay(d);
+    if (dow !== 0 && dow !== 6) count += 1;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
 
 export default function DashboardIC() {
   const { user } = useAuth();
@@ -67,15 +81,21 @@ export default function DashboardIC() {
     (t) => t.month === now.getMonth() + 1 && t.year === now.getFullYear()
   );
 
-  const totalExpectedHours = 160;
+  // Use the IC's configured monthly cap when set; otherwise estimate from the
+  // number of weekdays in the current month (8 hours/weekday).
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
+  const totalWeekdaysInMonth = countWeekdaysBetween(monthStart, monthEnd);
+  const totalExpectedHours = user?.monthlyCap ?? totalWeekdaysInMonth * 8;
   const loggedHours = currentTimesheet?.totalHours || 0;
-  const progressPercent = Math.min((loggedHours / totalExpectedHours) * 100, 100);
+  const progressPercent = totalExpectedHours > 0
+    ? Math.min((loggedHours / totalExpectedHours) * 100, 100)
+    : 0;
 
-  // Expected hours paced to today's date within the month
-  const daysInMonth = getDaysInMonth(now);
-  const dayOfMonth = now.getDate();
-  const workdaysPassedRatio = dayOfMonth / daysInMonth;
-  const expectedByNow = totalExpectedHours * workdaysPassedRatio;
+  // Pace expectations by elapsed weekdays (today counts as elapsed).
+  const weekdaysElapsed = countWeekdaysBetween(monthStart, now);
+  const elapsedRatio = totalWeekdaysInMonth > 0 ? weekdaysElapsed / totalWeekdaysInMonth : 0;
+  const expectedByNow = totalExpectedHours * elapsedRatio;
   const behindBy = expectedByNow - loggedHours;
 
   const progressColor =

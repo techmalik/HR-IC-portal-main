@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Layers } from "lucide-react";
+import { Loader2, Layers, AlertCircle } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -24,7 +24,9 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";
+  const searchParams = new URLSearchParams(window.location.search);
+  const redirectTo = searchParams.get("redirect") || "/";
+  const sessionExpired = searchParams.get("expired") === "1";
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -61,6 +63,17 @@ export default function LoginPage() {
           <p className="text-muted-foreground mt-1">Sign in to your account</p>
         </div>
 
+        {sessionExpired && (
+          <div
+            className="mb-4 flex items-start gap-3 p-3 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            data-testid="banner-session-expired"
+          >
+            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+            <p className="text-sm">
+              Your session has expired. Please log in again to continue.
+            </p>
+          </div>
+        )}
         <Card>
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>

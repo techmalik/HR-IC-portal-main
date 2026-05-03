@@ -1,15 +1,20 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+
+let unauthorizedHandled = false;
 
 function handleUnauthorized() {
-  toast({
-    title: "Session expired",
-    description: "Your session has expired. Please log in again.",
-    variant: "destructive",
-  });
+  // Avoid redirect loops on the login/signup pages, and avoid firing twice
+  // for parallel queries that all 401 at once.
+  if (unauthorizedHandled) return;
   const currentPath = window.location.pathname;
-  const redirect = currentPath && currentPath !== "/login" ? `?redirect=${encodeURIComponent(currentPath)}` : "";
-  window.location.href = `/login${redirect}`;
+  if (currentPath === "/login" || currentPath === "/signup") return;
+  unauthorizedHandled = true;
+  const params = new URLSearchParams();
+  params.set("expired", "1");
+  if (currentPath && currentPath !== "/") {
+    params.set("redirect", currentPath + window.location.search + window.location.hash);
+  }
+  window.location.href = `/login?${params.toString()}`;
 }
 
 async function throwIfResNotOk(res: Response) {
