@@ -44,6 +44,7 @@ import {
   CreditCard,
   BookOpen,
   Receipt,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -239,6 +240,7 @@ export function AppSidebar() {
           { title: "User Management", url: "/users", icon: Users },
           { title: "All Timesheets", url: "/all-timesheets", icon: Clock },
           { title: "Performance Reviews", url: "/evaluations", icon: Star },
+          { title: "Analytics", url: "/analytics", icon: BarChart3 },
           { title: "Billing", url: "/billing", icon: CreditCard },
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
           { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },

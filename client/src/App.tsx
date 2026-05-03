@@ -32,6 +32,7 @@ import TeamTimesheetsPage from "@/pages/team-timesheets";
 import ICDetailPage from "@/pages/ic-detail";
 import TeamInvoicesPage from "@/pages/team-invoices";
 import AllTimesheetsPage from "@/pages/all-timesheets";
+import AnalyticsPage from "@/pages/analytics";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import MigrateFilesPage from "@/pages/migrate-files";
@@ -328,6 +329,15 @@ function getRouteConfig(pathname: string, userRole?: string, hasDirectReports?: 
       backHref: "/",
       backLabel: "Dashboard",
     },
+    "/analytics": {
+      title: "Analytics",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/" },
+        { label: "Analytics" },
+      ],
+      backHref: "/",
+      backLabel: "Dashboard",
+    },
     "/activity-logs": {
       title: "Activity Logs",
       breadcrumbs: [
@@ -545,6 +555,7 @@ function ProtectedRoutes() {
                 <Route path="/team-timesheets" component={TeamTimesheetsPage} />
                 <Route path="/team-invoices" component={TeamInvoicesPage} />
                 <Route path="/all-timesheets" component={AllTimesheetsPage} />
+                <Route path="/analytics">{() => <AdminOnlyRoute component={AnalyticsPage} />}</Route>
                 <Route path="/evaluations" component={EvaluationsPage} />
                 <Route path="/my-team" component={MyTeamPage} />
                 <Route path="/team/:userId" component={ICDetailPage} />

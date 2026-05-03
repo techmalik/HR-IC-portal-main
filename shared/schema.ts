@@ -311,6 +311,7 @@ export const oooRequests = pgTable("ooo_requests", {
   reviewedBy: varchar("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("ooo_requests_user_id_idx").on(table.userId),
   index("ooo_requests_manager_id_idx").on(table.managerId),
@@ -322,6 +323,7 @@ export const insertOOORequestSchema = createInsertSchema(oooRequests).omit({
   reviewedBy: true,
   reviewedAt: true,
   reviewNote: true,
+  createdAt: true,
 });
 
 export type InsertOOORequest = z.infer<typeof insertOOORequestSchema>;
