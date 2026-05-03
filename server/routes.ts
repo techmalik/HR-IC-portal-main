@@ -2763,6 +2763,7 @@ export async function registerRoutes(
   const { getFaqHtml } = await import("./seo/faqPages");
   const { getArticles: getBlogArticles, createArticle, updateArticle, deleteArticle, BlogNotFoundError, BlogConflictError } = await import("./seo/blogStorage");
   const { FAQ_LAST_UPDATED } = await import("./seo/faqData");
+  const { recordView, getAllViewStats } = await import("./seo/blogViews");
 
   const SEO_CACHE = "public, max-age=86400, stale-while-revalidate=3600";
   // Blog pages are user-editable; use a shorter cache so edits appear within minutes
@@ -2799,6 +2800,23 @@ export async function registerRoutes(
   // ── Admin Blog API routes (auth-protected, admin only) ─────────────────
   app.get("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
     res.json(getBlogArticles());
+  }));
+
+  app.get("/api/admin/blog-analytics", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+    const articles = getBlogArticles();
+    const viewStats = getAllViewStats();
+    const analytics = articles.map((a) => {
+      const stats = viewStats[a.slug] ?? { views: 0, referrers: {} };
+      return {
+        slug: a.slug,
+        title: a.title,
+        publishedDate: a.publishedDate,
+        views: stats.views,
+        referrers: stats.referrers,
+      };
+    });
+    analytics.sort((a, b) => b.views - a.views);
+    res.json(analytics);
   }));
 
   app.post("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
@@ -2863,6 +2881,7 @@ export async function registerRoutes(
       res.status(404).send("<h1>Article not found</h1>");
       return;
     }
+    recordView(req.params.slug, req.headers.referer);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);

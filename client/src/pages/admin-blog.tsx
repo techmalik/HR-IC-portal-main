@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -42,8 +43,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ExternalLink, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, FileText, BarChart2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface BlogArticle {
@@ -55,6 +57,14 @@ interface BlogArticle {
   readingMinutes: number;
   excerpt: string;
   bodyHtml: string;
+}
+
+interface ArticleAnalytics {
+  slug: string;
+  title: string;
+  publishedDate: string;
+  views: number;
+  referrers: Record<string, number>;
 }
 
 const articleSchema = z.object({
@@ -122,6 +132,7 @@ function ArticleForm({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/blog"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/blog-analytics"] });
       toast({
         title: isEditing ? "Article updated" : "Article created",
         description: isEditing
@@ -279,6 +290,102 @@ function ArticleForm({
   );
 }
 
+function TopReferrers({ referrers }: { referrers: Record<string, number> }) {
+  const entries = Object.entries(referrers).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (entries.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {entries.map(([source, count]) => (
+        <Badge key={source} variant="secondary" className="text-xs font-normal">
+          {source} ({count})
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+function AnalyticsTab() {
+  const { data: analytics, isLoading } = useQuery<ArticleAnalytics[]>({
+    queryKey: ["/api/admin/blog-analytics"],
+  });
+
+  const totalViews = analytics?.reduce((sum, a) => sum + a.views, 0) ?? 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5" />
+              Article View Counts
+            </CardTitle>
+            <CardDescription>
+              Articles ranked by page views. Referral source is detected from the browser's Referer header — no cookies or user PII are collected.
+            </CardDescription>
+          </div>
+          {totalViews > 0 && (
+            <div className="text-right">
+              <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">total views</p>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : !analytics || analytics.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p>No articles found.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8">#</TableHead>
+                <TableHead>Article</TableHead>
+                <TableHead className="text-right">Views</TableHead>
+                <TableHead>Top Referrers</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {analytics.map((article, idx) => (
+                <TableRow key={article.slug}>
+                  <TableCell className="text-muted-foreground text-sm font-medium">{idx + 1}</TableCell>
+                  <TableCell>
+                    <div className="font-medium truncate max-w-[260px]">{article.title}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{article.slug}</div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="font-semibold">{article.views.toLocaleString()}</span>
+                  </TableCell>
+                  <TableCell>
+                    <TopReferrers referrers={article.referrers} />
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" asChild title="Open article">
+                      <a href={`/blog/${article.slug}`} target="_blank" rel="noreferrer">
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminBlogPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -296,6 +403,7 @@ export default function AdminBlogPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/blog"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/blog-analytics"] });
       toast({ title: "Article deleted", description: "The article has been removed." });
       setDeletingSlug(null);
     },
@@ -310,98 +418,117 @@ export default function AdminBlogPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Blog Articles
-              </CardTitle>
-              <CardDescription>
-                Create, edit, and delete blog articles. Changes are reflected on{" "}
-                <a href="/blog" target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                  /blog
-                </a>{" "}
-                immediately without a code deployment.
-              </CardDescription>
-            </div>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Article
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : !articles || articles.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p>No articles yet. Click &ldquo;New Article&rdquo; to get started.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Published</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Read Time</TableHead>
-                  <TableHead className="w-[120px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {articles.map((article) => (
-                  <TableRow key={article.slug}>
-                    <TableCell className="font-medium max-w-[260px] truncate">{article.title}</TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-sm">{article.slug}</TableCell>
-                    <TableCell className="text-sm">{article.publishedDate}</TableCell>
-                    <TableCell className="text-sm">{article.updatedDate}</TableCell>
-                    <TableCell className="text-right text-sm">{article.readingMinutes} min</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          asChild
-                          title="Preview article"
-                        >
-                          <a href={`/blog/${article.slug}`} target="_blank" rel="noreferrer">
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setEditingArticle(article)}
-                          title="Edit article"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeletingSlug(article.slug)}
-                          title="Delete article"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="articles">
+        <TabsList>
+          <TabsTrigger value="articles" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Articles
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="articles" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Blog Articles
+                  </CardTitle>
+                  <CardDescription>
+                    Create, edit, and delete blog articles. Changes are reflected on{" "}
+                    <a href="/blog" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                      /blog
+                    </a>{" "}
+                    immediately without a code deployment.
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowCreate(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Article
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : !articles || articles.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                  <p>No articles yet. Click &ldquo;New Article&rdquo; to get started.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Slug</TableHead>
+                      <TableHead>Published</TableHead>
+                      <TableHead>Updated</TableHead>
+                      <TableHead className="text-right">Read Time</TableHead>
+                      <TableHead className="w-[120px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {articles.map((article) => (
+                      <TableRow key={article.slug}>
+                        <TableCell className="font-medium max-w-[260px] truncate">{article.title}</TableCell>
+                        <TableCell className="text-muted-foreground font-mono text-sm">{article.slug}</TableCell>
+                        <TableCell className="text-sm">{article.publishedDate}</TableCell>
+                        <TableCell className="text-sm">{article.updatedDate}</TableCell>
+                        <TableCell className="text-right text-sm">{article.readingMinutes} min</TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              title="Preview article"
+                            >
+                              <a href={`/blog/${article.slug}`} target="_blank" rel="noreferrer">
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingArticle(article)}
+                              title="Edit article"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingSlug(article.slug)}
+                              title="Delete article"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4">
+          <AnalyticsTab />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
