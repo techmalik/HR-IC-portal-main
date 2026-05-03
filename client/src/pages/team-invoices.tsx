@@ -15,6 +15,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -279,6 +282,8 @@ export default function TeamInvoicesPage() {
   };
 
   const getPendingReviewInvoices = () => pendingInvoices?.filter((i) => i.status === "pending_review" || i.status === "revision_requested") || [];
+  const bulkEligibleInvoices = pendingInvoices?.filter((i) => i.status === "pending_review" || i.status === "revision_requested") || [];
+  const invoiceBulk = useBulkSelection(bulkEligibleInvoices);
   const approvedInvoices = allInvoices?.filter((i) => i.status === "approved") || [];
   const paidInvoices = allInvoices?.filter((i) => i.status === "paid") || [];
   const rejectedInvoices = allInvoices?.filter((i) => i.status === "rejected") || [];
@@ -331,6 +336,15 @@ export default function TeamInvoicesPage() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
+            {showActions && (invoice.status === "pending_review" || invoice.status === "revision_requested") && (
+              <Checkbox
+                className="mt-1 h-5 w-5"
+                checked={invoiceBulk.isSelected(invoice.id)}
+                onCheckedChange={(c) => invoiceBulk.setSelected(invoice.id, c === true)}
+                data-testid={`select-invoice-${invoice.id}`}
+                aria-label="Select invoice"
+              />
+            )}
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
                 {getContractorInitials(invoice)}
@@ -560,6 +574,25 @@ export default function TeamInvoicesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {bulkEligibleInvoices.length > 0 && (
+                  <div className="flex items-center gap-2 pb-3 mb-3 border-b">
+                    <Checkbox
+                      checked={
+                        invoiceBulk.allVisibleSelected
+                          ? true
+                          : invoiceBulk.someVisibleSelected
+                          ? "indeterminate"
+                          : false
+                      }
+                      onCheckedChange={(c) => invoiceBulk.toggleAll(c === true)}
+                      data-testid="select-all-invoices"
+                      aria-label="Select all"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Select all eligible on page
+                    </span>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {getPendingReviewInvoices().map((invoice) => renderInvoiceCard(invoice, true))}
                 </div>
@@ -576,6 +609,19 @@ export default function TeamInvoicesPage() {
               </CardContent>
             </Card>
           )}
+          <BulkActionBar
+            selectedIds={invoiceBulk.selectedArray}
+            resourceLabel="invoice"
+            endpoint="/api/invoices/bulk-review"
+            onAfterSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/invoices/pending-count"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/team/timesheets"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+            }}
+            onClear={invoiceBulk.clear}
+          />
         </TabsContent>
 
         <TabsContent value="approved" className="mt-6">

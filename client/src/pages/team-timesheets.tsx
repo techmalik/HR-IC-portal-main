@@ -15,6 +15,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -160,7 +163,10 @@ export default function TeamTimesheetsPage() {
   const approvedTimesheets = allTimesheets?.filter((t) => t.status === "approved") || [];
   const rejectedTimesheets = allTimesheets?.filter((t) => t.status === "rejected") || [];
 
+  const bulk = useBulkSelection(submittedTimesheets);
+
   const renderTimesheetCard = (timesheet: TimesheetWithUser, showActions: boolean = false) => {
+    const showCheckbox = showActions;
     return (
       <div
         key={timesheet.id}
@@ -169,6 +175,15 @@ export default function TeamTimesheetsPage() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
+            {showCheckbox && (
+              <Checkbox
+                className="mt-1 h-5 w-5"
+                checked={bulk.isSelected(timesheet.id)}
+                onCheckedChange={(c) => bulk.setSelected(timesheet.id, c === true)}
+                data-testid={`select-timesheet-${timesheet.id}`}
+                aria-label="Select timesheet"
+              />
+            )}
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
                 {timesheet.userName?.split(" ").map((n) => n[0]).join("") || "?"}
@@ -276,6 +291,23 @@ export default function TeamTimesheetsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="flex items-center gap-2 pb-3 mb-3 border-b">
+                  <Checkbox
+                    checked={
+                      bulk.allVisibleSelected
+                        ? true
+                        : bulk.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                    }
+                    onCheckedChange={(c) => bulk.toggleAll(c === true)}
+                    data-testid="select-all-timesheets"
+                    aria-label="Select all"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Select all on page
+                  </span>
+                </div>
                 <div className="space-y-4">
                   {submittedTimesheets.map((timesheet) => renderTimesheetCard(timesheet, true))}
                 </div>
@@ -292,6 +324,17 @@ export default function TeamTimesheetsPage() {
               </CardContent>
             </Card>
           )}
+          <BulkActionBar
+            selectedIds={bulk.selectedArray}
+            resourceLabel="timesheet"
+            endpoint="/api/timesheets/bulk-review"
+            onAfterSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/team/timesheets"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/timesheets/pending-count"] });
+            }}
+            onClear={bulk.clear}
+          />
         </TabsContent>
 
         <TabsContent value="approved" className="mt-6">

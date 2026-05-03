@@ -16,6 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -124,6 +127,8 @@ export default function OvertimeApprovalsPage() {
   const approvedRequests = sortRequests(overtimeRequests?.filter((r) => r.status === "approved") || []);
   const rejectedRequests = sortRequests(overtimeRequests?.filter((r) => r.status === "rejected") || []);
 
+  const bulk = useBulkSelection(pendingRequests);
+
   const renderRequestCard = (request: EnrichedOvertimeRequest, showActions: boolean = false) => {
     const overtimeHours = request.requestedHours - 8;
     const isWeekend = request.isWeekendWork;
@@ -138,6 +143,15 @@ export default function OvertimeApprovalsPage() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
+            {showActions && (
+              <Checkbox
+                className="mt-1 h-5 w-5"
+                checked={bulk.isSelected(request.id)}
+                onCheckedChange={(c) => bulk.setSelected(request.id, c === true)}
+                data-testid={`select-overtime-${request.id}`}
+                aria-label="Select overtime request"
+              />
+            )}
             <Avatar className="h-10 w-10">
               <AvatarFallback className={`${isWeekend ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary"} text-sm`}>
                 {usersLoading ? (
@@ -284,6 +298,21 @@ export default function OvertimeApprovalsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="flex items-center gap-2 pb-3 mb-3 border-b">
+                  <Checkbox
+                    checked={
+                      bulk.allVisibleSelected
+                        ? true
+                        : bulk.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                    }
+                    onCheckedChange={(c) => bulk.toggleAll(c === true)}
+                    data-testid="select-all-overtime"
+                    aria-label="Select all"
+                  />
+                  <span className="text-sm text-muted-foreground">Select all on page</span>
+                </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {pendingRequests.map((request) => renderRequestCard(request, true))}
                 </div>
@@ -300,6 +329,18 @@ export default function OvertimeApprovalsPage() {
               </CardContent>
             </Card>
           )}
+          <BulkActionBar
+            selectedIds={bulk.selectedArray}
+            resourceLabel="overtime request"
+            resourcePlural="overtime requests"
+            endpoint="/api/overtime-requests/bulk-review"
+            onAfterSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/overtime-requests"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/overtime-requests/pending-count"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+            }}
+            onClear={bulk.clear}
+          />
         </TabsContent>
 
         <TabsContent value="approved" className="mt-6">

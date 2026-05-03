@@ -1,6 +1,17 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
+import { db } from "./db";
+import { parseBulkBody, runBulk } from "./bulkReview";
+import { eq } from "drizzle-orm";
+import {
+  timesheets as timesheetsTable,
+  oooRequests as oooRequestsTable,
+  overtimeRequests as overtimeRequestsTable,
+  expenses as expensesTable,
+  invoices as invoicesTable,
+  activityLogs as activityLogsTable,
+} from "@shared/schema";
 import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
@@ -3352,6 +3363,458 @@ export async function registerRoutes(
       throw err;
     }
   }
+
+  // ── Bulk approve/reject endpoints for managers ─────────────────────────
+  // Each endpoint accepts { ids: string[], status: "approved"|"rejected", reviewNote?: string }
+  // and returns { results: [{ id, success, error? }], successCount, failureCount }.
+  // Per-item failures are non-fatal: successful items are committed individually,
+  // failed items are surfaced with reasons. Each item is re-authorized server-side.
+
+  // Bulk: timesheets
+  app.post("/api/timesheets/bulk-review", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const parsed = parseBulkBody(req.body);
+    if (typeof parsed === "string") return res.status(400).json({ error: parsed });
+    const { ids, status, reviewNote } = parsed;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const teamMemberIds = isAdmin ? null : new Set(await getTeamMemberIds(currentUser.id));
+
+    const summary = await runBulk(ids, async (id) => {
+      const existing = await storage.getTimesheet(id);
+      if (!existing) throw new Error("Timesheet not found");
+      if (currentUser.organizationId && existing.organizationId && existing.organizationId !== currentUser.organizationId) {
+        throw new Error("Not authorized");
+      }
+      if (existing.userId === currentUser.id) {
+        throw new Error("You cannot approve or reject your own timesheet");
+      }
+      if (teamMemberIds && !teamMemberIds.has(existing.userId)) {
+        throw new Error("Not authorized to review this timesheet");
+      }
+      if (existing.status !== "submitted") {
+        throw new Error(`Timesheet is ${existing.status}, not submitted`);
+      }
+
+      // Per-item atomic write: status update + activity log committed together.
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(timesheetsTable)
+          .set({
+            status,
+            reviewedBy: currentUser.id,
+            reviewedAt: new Date(),
+            reviewNote: reviewNote ?? null,
+          })
+          .where(eq(timesheetsTable.id, id))
+          .returning();
+        if (!row) throw new Error("Failed to update timesheet");
+        await tx.insert(activityLogsTable).values({
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+          action: `Timesheet ${status}`,
+          details: `Timesheet for ${existing.month}/${existing.year} was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
+          entityType: "timesheet",
+          entityId: id,
+        });
+        return row;
+      });
+
+      // Post-commit side-effects (best-effort).
+      try {
+        if (status === "approved") {
+          await notifyTimesheetApproved(updated, existing.userId, currentUser);
+        } else {
+          await notifyTimesheetRejected(updated, existing.userId, currentUser, reviewNote ?? undefined);
+        }
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+    });
+
+    // Always write bulk summary, even on full failure, for audit traceability.
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Bulk timesheet ${status}`,
+        details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} timesheets (${summary.failureCount} failed)`,
+        entityType: "timesheet",
+        // entityId omitted: bulk summary spans multiple records
+      });
+    } catch {}
+
+    res.json(summary);
+  }));
+
+  // Bulk: OOO / leave requests
+  app.post("/api/ooo-requests/bulk-review", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const parsed = parseBulkBody(req.body);
+    if (typeof parsed === "string") return res.status(400).json({ error: parsed });
+    const { ids, status, reviewNote } = parsed;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    const summary = await runBulk(ids, async (id) => {
+      const existing = await storage.getOOORequest(id);
+      if (!existing) throw new Error("Request not found");
+      if (currentUser.organizationId && existing.organizationId && existing.organizationId !== currentUser.organizationId) {
+        throw new Error("Not authorized");
+      }
+      if (existing.userId === currentUser.id) {
+        throw new Error("You cannot approve or reject your own request");
+      }
+      if (!isAdmin && existing.managerId !== currentUser.id) {
+        throw new Error("Not authorized to review this request");
+      }
+      if (existing.status !== "pending") {
+        throw new Error(`Request has already been ${existing.status}`);
+      }
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(oooRequestsTable)
+          .set({
+            status,
+            reviewedBy: currentUser.id,
+            reviewedAt: new Date(),
+            reviewNote: reviewNote ?? null,
+          })
+          .where(eq(oooRequestsTable.id, id))
+          .returning();
+        if (!row) throw new Error("Failed to update request");
+        await tx.insert(activityLogsTable).values({
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+          action: `OOO request ${status}`,
+          details: `Leave request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
+          entityType: "ooo_request",
+          entityId: id,
+        });
+        return row;
+      });
+
+      try {
+        if (status === "approved") {
+          await notifyOOOApproved(updated, currentUser);
+        } else {
+          await notifyOOORejected(updated, currentUser, reviewNote ?? undefined);
+        }
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+    });
+
+    // Always write bulk summary, even on full failure, for audit traceability.
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Bulk OOO ${status}`,
+        details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} leave requests (${summary.failureCount} failed)`,
+        entityType: "ooo_request",
+        // entityId omitted: bulk summary spans multiple records
+      });
+    } catch {}
+
+    res.json(summary);
+  }));
+
+  // Bulk: overtime
+  app.post("/api/overtime-requests/bulk-review", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const parsed = parseBulkBody(req.body);
+    if (typeof parsed === "string") return res.status(400).json({ error: parsed });
+    const { ids, status, reviewNote } = parsed;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const teamMemberIds = isAdmin ? null : new Set(await getTeamMemberIds(currentUser.id));
+
+    const summary = await runBulk(ids, async (id) => {
+      const existing = await storage.getOvertimeRequest(id);
+      if (!existing) throw new Error("Request not found");
+      if (currentUser.organizationId && existing.organizationId && existing.organizationId !== currentUser.organizationId) {
+        throw new Error("Not authorized");
+      }
+      if (existing.userId === currentUser.id) {
+        throw new Error("You cannot approve or reject your own overtime request");
+      }
+      if (teamMemberIds && !teamMemberIds.has(existing.userId)) {
+        throw new Error("Not authorized to review this request");
+      }
+      if (existing.status !== "pending") {
+        throw new Error(`Request has already been ${existing.status}`);
+      }
+
+      const updates: Record<string, any> = {
+        status,
+        reviewedBy: currentUser.id,
+        reviewedAt: new Date(),
+        reviewNote: reviewNote ?? null,
+      };
+      if (status === "approved") {
+        updates.approvedHours = existing.requestedHours;
+      }
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(overtimeRequestsTable)
+          .set(updates)
+          .where(eq(overtimeRequestsTable.id, id))
+          .returning();
+        if (!row) throw new Error("Failed to update request");
+        await tx.insert(activityLogsTable).values({
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+          action: `Overtime request ${status}`,
+          details: `Overtime request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
+          entityType: "overtime_request",
+          entityId: id,
+        });
+        return row;
+      });
+
+      // On rejection, reset over-8h daily entry hours back to 8 like the single-item route.
+      if (status === "rejected") {
+        try {
+          const dailyEntry = await storage.getDailyEntryByTimesheetAndDate(existing.timesheetId, existing.date);
+          if (dailyEntry && dailyEntry.hours > 8) {
+            await storage.updateDailyEntry(dailyEntry.id, { hours: 8 });
+            const allEntries = await storage.getDailyEntriesByTimesheet(existing.timesheetId);
+            const newTotal = allEntries.reduce((sum, e) => sum + (e.id === dailyEntry.id ? 8 : e.hours), 0);
+            await storage.updateTimesheet(existing.timesheetId, { totalHours: newTotal });
+          }
+        } catch (e) {
+          console.error("Failed to reset hours after overtime rejection:", e);
+        }
+      }
+
+      try {
+        if (status === "approved") {
+          await notifyOvertimeApproved(updated, currentUser);
+        } else {
+          await notifyOvertimeRejected(updated, currentUser, reviewNote ?? undefined);
+        }
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+    });
+
+    // Always write bulk summary, even on full failure, for audit traceability.
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Bulk overtime ${status}`,
+        details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} overtime requests (${summary.failureCount} failed)`,
+        entityType: "overtime_request",
+        // entityId omitted: bulk summary spans multiple records
+      });
+    } catch {}
+
+    res.json(summary);
+  }));
+
+  // Bulk: expenses
+  app.post("/api/expenses/bulk-review", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const parsed = parseBulkBody(req.body);
+    if (typeof parsed === "string") return res.status(400).json({ error: parsed });
+    const { ids, status, reviewNote } = parsed;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    const summary = await runBulk(ids, async (id) => {
+      const expense = await storage.getExpense(id);
+      if (!expense) throw new Error("Expense not found");
+      if (currentUser.organizationId && expense.organizationId && expense.organizationId !== currentUser.organizationId) {
+        throw new Error("Not authorized");
+      }
+      if (!isAdmin && expense.managerId !== currentUser.id) {
+        throw new Error("Not authorized to review this expense");
+      }
+      if (expense.status !== "pending") {
+        throw new Error("Expense has already been reviewed");
+      }
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(expensesTable)
+          .set({
+            status,
+            reviewedBy: currentUser.id,
+            reviewedAt: new Date(),
+            reviewNote: reviewNote ?? null,
+          })
+          .where(eq(expensesTable.id, id))
+          .returning();
+        if (!row) throw new Error("Failed to update expense");
+        await tx.insert(activityLogsTable).values({
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+          action: status === "approved" ? "Expense approved" : "Expense rejected",
+          details: `${status === "approved" ? "Approved" : "Rejected"} expense ${expense.id}${reviewNote ? `: ${reviewNote}` : ""}`,
+          entityType: "expense",
+          entityId: id,
+        });
+        return row;
+      });
+
+      try {
+        if (status === "approved") {
+          await notifyExpenseApproved(updated, currentUser);
+        } else {
+          await notifyExpenseRejected(updated, currentUser, reviewNote ?? undefined);
+        }
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+    });
+
+    // Always write bulk summary, even on full failure, for audit traceability.
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Bulk expense ${status}`,
+        details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} expenses (${summary.failureCount} failed)`,
+        entityType: "expense",
+        // entityId omitted: bulk summary spans multiple records
+      });
+    } catch {}
+
+    res.json(summary);
+  }));
+
+  // Bulk: invoices
+  app.post("/api/invoices/bulk-review", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
+    if (!isSupervisor) {
+      return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    }
+    const parsed = parseBulkBody(req.body);
+    if (typeof parsed === "string") return res.status(400).json({ error: parsed });
+    const { ids, status, reviewNote } = parsed;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const teamMemberIds = isAdmin ? null : new Set(await getTeamMemberIds(currentUser.id));
+
+    const summary = await runBulk(ids, async (id) => {
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) throw new Error("Invoice not found");
+      if (currentUser.organizationId && invoice.organizationId && invoice.organizationId !== currentUser.organizationId) {
+        throw new Error("Not authorized");
+      }
+      if (invoice.userId === currentUser.id) {
+        throw new Error("You cannot approve or reject your own invoice");
+      }
+      if (teamMemberIds && !teamMemberIds.has(invoice.userId)) {
+        throw new Error("Not authorized to review this invoice");
+      }
+      if (invoice.status === "approved") {
+        throw new Error("Invoice has already been approved");
+      }
+      if (invoice.status === "paid") {
+        throw new Error("Invoice has been paid and cannot be changed");
+      }
+
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(invoicesTable)
+          .set({
+            status,
+            reviewedBy: currentUser.id,
+            reviewedAt: new Date(),
+            reviewNote: reviewNote ?? null,
+          })
+          .where(eq(invoicesTable.id, id))
+          .returning();
+        if (!row) throw new Error("Failed to update invoice");
+        await tx.insert(activityLogsTable).values({
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+          action: status === "approved" ? "Invoice approved" : "Invoice rejected",
+          details: `${status === "approved" ? "Approved" : "Rejected"} invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
+          entityType: "invoice",
+          entityId: id,
+        });
+        return row;
+      });
+
+      try {
+        if (status === "approved") {
+          await notifyInvoiceApproved(updated, invoice.userId, currentUser);
+          // Auto-approve linked timesheet (mirrors single-item route).
+          if (invoice.timesheetId) {
+            const timesheet = await storage.getTimesheet(invoice.timesheetId);
+            if (timesheet && timesheet.status !== "approved") {
+              await storage.updateTimesheet(invoice.timesheetId, {
+                status: "approved",
+                reviewedBy: currentUser.id,
+                reviewedAt: new Date(),
+              });
+              try {
+                await notifyTimesheetApproved(timesheet, invoice.userId, currentUser);
+              } catch {}
+            }
+          }
+        } else {
+          await notifyInvoiceRejected(updated, invoice.userId, currentUser, reviewNote ?? undefined);
+          // On rejection, unlock the linked timesheet back to draft (mirrors single-item route).
+          if (invoice.timesheetId) {
+            const timesheet = await storage.getTimesheet(invoice.timesheetId);
+            if (timesheet && timesheet.status === "submitted") {
+              await storage.updateTimesheet(invoice.timesheetId, {
+                status: "draft",
+                reviewedBy: null,
+                reviewedAt: null,
+              });
+              try {
+                await storage.createActivityLog({
+                  userId: currentUser.id,
+                  organizationId: currentUser.organizationId,
+                  action: "Timesheet unlocked for revision",
+                  details: `Timesheet unlocked due to invoice rejection`,
+                  entityType: "timesheet",
+                  entityId: invoice.timesheetId,
+                });
+              } catch {}
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Notification or side-effect failed:", e);
+      }
+    });
+
+    // Always write bulk summary, even on full failure, for audit traceability.
+    try {
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Bulk invoice ${status}`,
+        details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} invoices (${summary.failureCount} failed)`,
+        entityType: "invoice",
+        // entityId omitted: bulk summary spans multiple records
+      });
+    } catch {}
+
+    res.json(summary);
+  }));
 
   // ── Admin Blog API routes (auth-protected, admin only) ─────────────────
   app.get("/api/admin/blog-subscribers", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {

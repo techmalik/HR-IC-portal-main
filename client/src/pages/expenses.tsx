@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/bulk-action-bar";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -140,6 +143,7 @@ export default function ExpensesPage() {
     () => (teamExpenses || []).filter((e) => e.status === "pending"),
     [teamExpenses]
   );
+  const expenseBulk = useBulkSelection(teamPending);
   const teamReviewed = useMemo(
     () => (teamExpenses || []).filter((e) => e.status !== "pending"),
     [teamExpenses]
@@ -314,6 +318,7 @@ export default function ExpensesPage() {
       .slice(0, 2)
       .join("")
       .toUpperCase();
+    const isPending = e.status === "pending";
     return (
       <div
         key={e.id}
@@ -321,6 +326,15 @@ export default function ExpensesPage() {
         data-testid={`team-expense-${e.id}`}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {isPending && (
+            <Checkbox
+              className="h-5 w-5"
+              checked={expenseBulk.isSelected(e.id)}
+              onCheckedChange={(c) => expenseBulk.setSelected(e.id, c === true)}
+              data-testid={`select-expense-${e.id}`}
+              aria-label="Select expense"
+            />
+          )}
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary/10 text-primary text-sm">{initials || "?"}</AvatarFallback>
           </Avatar>
@@ -521,7 +535,24 @@ export default function ExpensesPage() {
                     <Skeleton className="h-16 w-full" />
                   </div>
                 ) : teamPending.length > 0 ? (
-                  <div className="space-y-2">{teamPending.map(renderTeamExpenseRow)}</div>
+                  <>
+                    <div className="flex items-center gap-2 pb-3 mb-3 border-b">
+                      <Checkbox
+                        checked={
+                          expenseBulk.allVisibleSelected
+                            ? true
+                            : expenseBulk.someVisibleSelected
+                            ? "indeterminate"
+                            : false
+                        }
+                        onCheckedChange={(c) => expenseBulk.toggleAll(c === true)}
+                        data-testid="select-all-expenses"
+                        aria-label="Select all"
+                      />
+                      <span className="text-sm text-muted-foreground">Select all on page</span>
+                    </div>
+                    <div className="space-y-2">{teamPending.map(renderTeamExpenseRow)}</div>
+                  </>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <CheckCircle className="w-10 h-10 mx-auto mb-2 opacity-40" />
@@ -544,6 +575,16 @@ export default function ExpensesPage() {
                 </CardContent>
               </Card>
             )}
+            <BulkActionBar
+              selectedIds={expenseBulk.selectedArray}
+              resourceLabel="expense"
+              endpoint="/api/expenses/bulk-review"
+              onAfterSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/expenses/pending-count"] });
+              }}
+              onClear={expenseBulk.clear}
+            />
           </TabsContent>
         )}
 
