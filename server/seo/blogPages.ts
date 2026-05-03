@@ -1,4 +1,4 @@
-import { blogArticles, type BlogArticle } from "./blogData";
+import { getArticles, getArticleBySlug, type BlogArticle } from "./blogStorage";
 import { ssrHtmlShell, escHtml, escAttr } from "../ssrShared";
 
 const BASE_URL = "https://teamflow.app";
@@ -12,16 +12,17 @@ function formatDate(dateStr: string): string {
 }
 
 function getRelatedArticles(currentSlug: string, count = 3): BlogArticle[] {
-  const others = blogArticles.filter((a) => a.slug !== currentSlug);
-  // Rotate based on current slug index so each article gets different related articles
-  const idx = blogArticles.findIndex((a) => a.slug === currentSlug);
-  const offset = (idx * 3) % others.length;
+  const articles = getArticles();
+  const others = articles.filter((a) => a.slug !== currentSlug);
+  const idx = articles.findIndex((a) => a.slug === currentSlug);
+  const offset = (idx * 3) % (others.length || 1);
   const rotated = [...others.slice(offset), ...others.slice(0, offset)];
   return rotated.slice(0, count);
 }
 
 export function getBlogIndexHtml(): string {
-  const cardsHtml = blogArticles
+  const articles = getArticles();
+  const cardsHtml = articles
     .map(
       (a) => `
     <article class="ssr-blog-card">
@@ -71,7 +72,7 @@ export function getBlogIndexHtml(): string {
 }
 
 export function getBlogArticleHtml(slug: string): string | null {
-  const article = blogArticles.find((a) => a.slug === slug);
+  const article = getArticleBySlug(slug);
   if (!article) return null;
 
   const related = getRelatedArticles(slug);

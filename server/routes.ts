@@ -2761,14 +2761,99 @@ export async function registerRoutes(
 
   const { getBlogIndexHtml, getBlogArticleHtml } = await import("./seo/blogPages");
   const { getFaqHtml } = await import("./seo/faqPages");
-  const { blogArticles } = await import("./seo/blogData");
+  const { getArticles: getBlogArticles, createArticle, updateArticle, deleteArticle, BlogNotFoundError, BlogConflictError } = await import("./seo/blogStorage");
   const { FAQ_LAST_UPDATED } = await import("./seo/faqData");
 
   const SEO_CACHE = "public, max-age=86400, stale-while-revalidate=3600";
+  // Blog pages are user-editable; use a shorter cache so edits appear within minutes
+  const BLOG_CACHE = "public, max-age=300, stale-while-revalidate=60";
+
+  const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function validateBlogArticleBody(body: Record<string, any>): string | null {
+    const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = body;
+    if (!slug || !title || !metaDescription || !publishedDate || !updatedDate || readingMinutes == null || !excerpt || !bodyHtml) {
+      return "All fields are required: slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml";
+    }
+    if (!SLUG_RE.test(slug)) return "slug must contain only lowercase letters, numbers, and hyphens";
+    if (!DATE_RE.test(publishedDate)) return "publishedDate must be in YYYY-MM-DD format";
+    if (!DATE_RE.test(updatedDate)) return "updatedDate must be in YYYY-MM-DD format";
+    const mins = Number(readingMinutes);
+    if (!Number.isInteger(mins) || mins < 1) return "readingMinutes must be a positive integer";
+    if (typeof title !== "string" || title.trim().length === 0) return "title must not be empty";
+    if (typeof metaDescription !== "string" || metaDescription.length > 160) return "metaDescription must be 160 characters or fewer";
+    if (typeof excerpt !== "string" || excerpt.trim().length === 0) return "excerpt must not be empty";
+    if (typeof bodyHtml !== "string" || bodyHtml.trim().length === 0) return "bodyHtml must not be empty";
+    return null;
+  }
+
+  function handleBlogError(err: unknown, res: Response): void {
+    if (err instanceof BlogNotFoundError || err instanceof BlogConflictError) {
+      (res as any).status(err.status).json({ error: err.message });
+    } else {
+      throw err;
+    }
+  }
+
+  // ── Admin Blog API routes (auth-protected, admin only) ─────────────────
+  app.get("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+    res.json(getBlogArticles());
+  }));
+
+  app.post("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const validationError = validateBlogArticleBody(req.body);
+    if (validationError) return res.status(400).json({ error: validationError });
+    const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
+    try {
+      const article = createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
+      res.status(201).json(article);
+    } catch (err) {
+      handleBlogError(err, res as any);
+    }
+  }));
+
+  app.put("/api/admin/blog/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const { slug: _bodySlug, ...rawUpdates } = req.body;
+    const updates: Record<string, any> = {};
+    const allowed = ["title", "metaDescription", "publishedDate", "updatedDate", "readingMinutes", "excerpt", "bodyHtml"] as const;
+    for (const key of allowed) {
+      if (rawUpdates[key] !== undefined) updates[key] = rawUpdates[key];
+    }
+    if (updates.readingMinutes !== undefined) {
+      const mins = Number(updates.readingMinutes);
+      if (!Number.isInteger(mins) || mins < 1) return res.status(400).json({ error: "readingMinutes must be a positive integer" });
+      updates.readingMinutes = mins;
+    }
+    if (updates.publishedDate !== undefined && !DATE_RE.test(updates.publishedDate)) {
+      return res.status(400).json({ error: "publishedDate must be in YYYY-MM-DD format" });
+    }
+    if (updates.updatedDate !== undefined && !DATE_RE.test(updates.updatedDate)) {
+      return res.status(400).json({ error: "updatedDate must be in YYYY-MM-DD format" });
+    }
+    if (updates.metaDescription !== undefined && updates.metaDescription.length > 160) {
+      return res.status(400).json({ error: "metaDescription must be 160 characters or fewer" });
+    }
+    try {
+      const article = updateArticle(req.params.slug, updates);
+      res.json(article);
+    } catch (err) {
+      handleBlogError(err, res as any);
+    }
+  }));
+
+  app.delete("/api/admin/blog/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    try {
+      deleteArticle(req.params.slug);
+      res.json({ success: true });
+    } catch (err) {
+      handleBlogError(err, res as any);
+    }
+  }));
 
   app.get("/blog", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", SEO_CACHE);
+    res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(getBlogIndexHtml());
   });
 
@@ -2779,7 +2864,7 @@ export async function registerRoutes(
       return;
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", SEO_CACHE);
+    res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
   });
 
@@ -2811,11 +2896,12 @@ export async function registerRoutes(
 
   app.get("/sitemap.xml", (_req, res) => {
     const today = new Date().toISOString().slice(0, 10);
-    const mostRecentArticleDate = blogArticles.reduce(
+    const articles = getBlogArticles();
+    const mostRecentArticleDate = articles.reduce(
       (max, a) => (a.updatedDate > max ? a.updatedDate : max),
-      blogArticles[0]?.updatedDate ?? today
+      articles[0]?.updatedDate ?? today
     );
-    const articleUrls = blogArticles.map((a) => ({
+    const articleUrls = articles.map((a) => ({
       loc: `${BASE_URL}/blog/${a.slug}`,
       lastmod: a.updatedDate,
       changefreq: "monthly" as const,
@@ -2834,7 +2920,8 @@ export async function registerRoutes(
   });
 
   app.get("/sitemap-blog.xml", (_req, res) => {
-    const articleUrls = blogArticles.map((a) => ({
+    const articles = getBlogArticles();
+    const articleUrls = articles.map((a) => ({
       loc: `${BASE_URL}/blog/${a.slug}`,
       lastmod: a.updatedDate,
       changefreq: "monthly" as const,

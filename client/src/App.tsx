@@ -38,6 +38,7 @@ import MigrateFilesPage from "@/pages/migrate-files";
 import SignupPage from "@/pages/signup";
 import LandingPage from "@/pages/landing";
 import BillingPage from "@/pages/billing";
+import AdminBlogPage from "@/pages/admin-blog";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -334,6 +335,15 @@ function getRouteConfig(pathname: string, userRole?: string, hasDirectReports?: 
       backHref: "/",
       backLabel: "Dashboard",
     },
+    "/admin/blog": {
+      title: "Blog Articles",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/" },
+        { label: "Blog Articles" },
+      ],
+      backHref: "/",
+      backLabel: "Dashboard",
+    },
     "/profile": {
       title: "Profile Settings",
       breadcrumbs: [
@@ -534,6 +544,7 @@ function ProtectedRoutes() {
                 <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
                 <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
+                <Route path="/admin/blog">{() => <AdminOnlyRoute component={AdminBlogPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />

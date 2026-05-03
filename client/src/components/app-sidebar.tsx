@@ -42,6 +42,7 @@ import {
   Building2,
   Layers,
   CreditCard,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -223,6 +224,7 @@ export function AppSidebar() {
           { title: "Performance Reviews", url: "/evaluations", icon: Star },
           { title: "Billing", url: "/billing", icon: CreditCard },
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
+          { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
         ],
       });
     }
