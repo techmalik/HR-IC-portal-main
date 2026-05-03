@@ -699,17 +699,30 @@ function NotificationPreferencesSection({ userId, isAdmin }: { userId: string; i
             />
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label className="text-sm font-medium">Evaluations & Feedback</label>
+              <p className="text-xs text-muted-foreground">Performance evaluations and peer feedback requests</p>
+            </div>
+            <Switch
+              checked={preferences?.evaluationNotifications ?? true}
+              onCheckedChange={(checked) => handleToggle("evaluationNotifications", checked)}
+              disabled={updateMutation.isPending}
+              data-testid="switch-evaluations"
+            />
+          </div>
+
           {isAdmin && (
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <label className="text-sm font-medium">System Alerts</label>
-                <p className="text-xs text-muted-foreground">Critical system notifications (admin only)</p>
+                <label className="text-sm font-medium">Team Activity</label>
+                <p className="text-xs text-muted-foreground">Updates on your team's submissions and approvals</p>
               </div>
               <Switch
-                checked={preferences?.systemAlerts ?? true}
-                onCheckedChange={(checked) => handleToggle("systemAlerts", checked)}
+                checked={preferences?.teamActionNotifications ?? true}
+                onCheckedChange={(checked) => handleToggle("teamActionNotifications", checked)}
                 disabled={updateMutation.isPending}
-                data-testid="switch-system-alerts"
+                data-testid="switch-team-actions"
               />
             </div>
           )}

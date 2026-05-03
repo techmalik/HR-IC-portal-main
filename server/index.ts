@@ -8,7 +8,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { registerWebSocketClient, unregisterWebSocketClient } from "./notificationService";
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
 import { storage } from "./storage";
-import { notifyContractExpiring } from "./notificationService";
+import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
 
 const app = express();
 const httpServer = createServer(app);
@@ -164,6 +164,74 @@ app.use((req, res, next) => {
       };
       setTimeout(checkExpiringContracts, 30 * 1000);
       setInterval(checkExpiringContracts, 24 * 60 * 60 * 1000);
+
+      // Timesheet submission reminder: warn ICs whose timesheet for the
+      // target period is missing or still in draft. Idempotency is keyed on
+      // (userId, type, entityId=period key) so each (user, period) only ever
+      // gets one reminder, even across restarts and concurrent scheduler runs.
+      // A process-local in-flight set guards against overlapping runs in the
+      // same instance; the createNotification path is wrapped in a
+      // try/catch and tolerates duplicate-key errors at the DB layer.
+      const reminderInFlight = new Set<string>();
+      const checkTimesheetReminders = async () => {
+        try {
+          const now = new Date();
+          const day = now.getUTCDate();
+          const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+          const inEndOfMonth = day >= lastDay - 6;
+          const inGracePeriod = day <= 5;
+          if (!inEndOfMonth && !inGracePeriod) return;
+
+          let targetMonth: number;
+          let targetYear: number;
+          if (inGracePeriod) {
+            const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+            targetMonth = prev.getUTCMonth() + 1;
+            targetYear = prev.getUTCFullYear();
+          } else {
+            targetMonth = now.getUTCMonth() + 1;
+            targetYear = now.getUTCFullYear();
+          }
+          const periodKey = timesheetReminderPeriodKey(targetMonth, targetYear);
+
+          const allUsers = await storage.getAllUsers();
+          for (const u of allUsers) {
+            if (!u.isActive || u.role !== "ic") continue;
+
+            const inFlightKey = `${u.id}:${periodKey}`;
+            if (reminderInFlight.has(inFlightKey)) continue;
+
+            const ts = await storage.getTimesheetByUserAndMonth(u.id, targetMonth, targetYear);
+            // Only nudge when the timesheet is missing or still a draft.
+            // Skip submitted/approved/rejected — rejected has its own notification.
+            if (ts && ts.status !== "draft") continue;
+
+            // Idempotency: look up any prior reminder for this exact period
+            // via the period key stored in entityId. This survives restarts
+            // (unlike a process-local set) and is period-specific.
+            const existing = await storage.getNotificationsByUser(u.id);
+            const already = existing.some(n =>
+              n.type === "timesheet_reminder"
+              && n.entityType === "timesheet"
+              && n.entityId === periodKey
+            );
+            if (already) continue;
+
+            reminderInFlight.add(inFlightKey);
+            try {
+              await notifyTimesheetReminder(u.id, targetMonth, targetYear);
+            } catch (sendErr) {
+              console.error("Timesheet reminder send error:", sendErr);
+            } finally {
+              reminderInFlight.delete(inFlightKey);
+            }
+          }
+        } catch (e) {
+          console.error("Timesheet reminder check error:", e);
+        }
+      };
+      setTimeout(checkTimesheetReminders, 60 * 1000);
+      setInterval(checkTimesheetReminders, 12 * 60 * 60 * 1000);
     },
   );
 })();

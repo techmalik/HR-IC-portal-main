@@ -22,14 +22,10 @@ export interface EmailPayload {
   additionalDetails?: Record<string, string>;
 }
 
+import { getPreferenceCategory } from "./notificationService";
+
 function getEmailCategoryFromType(type: string): keyof NotificationPreferences | null {
-  if (type.startsWith("ooo_")) return "oooNotifications";
-  if (type.startsWith("timesheet_")) return "timesheetNotifications";
-  if (type.startsWith("overtime_")) return "overtimeNotifications";
-  if (type.startsWith("invoice_")) return "invoiceNotifications";
-  if (type === "deadline_reminder") return "deadlineReminders";
-  if (type.startsWith("evaluation_") || type === "feedback_requested") return "evaluationNotifications";
-  return null;
+  return getPreferenceCategory(type) as keyof NotificationPreferences | null;
 }
 
 async function shouldSendEmail(userId: string, notificationType: string): Promise<boolean> {
@@ -87,6 +83,12 @@ function getDeepLink(baseUrl: string, payload: EmailPayload): string {
   if (entityType === 'evaluation' && entityId) {
     return `${baseUrl}/evaluations?highlight=${entityId}`;
   }
+  if (entityType === 'expense' && entityId) {
+    return `${baseUrl}/expenses?highlight=${entityId}`;
+  }
+  if (entityType === 'user' && entityId) {
+    return `${baseUrl}/team/${entityId}`;
+  }
   
   // Fallback based on notification type prefix
   if (type.startsWith('ooo_')) {
@@ -100,6 +102,9 @@ function getDeepLink(baseUrl: string, payload: EmailPayload): string {
   }
   if (type.startsWith('overtime_')) {
     return `${baseUrl}/overtime-approvals`;
+  }
+  if (type.startsWith('expense_')) {
+    return `${baseUrl}/expenses`;
   }
   if (type.startsWith('evaluation_') || type === 'feedback_requested') {
     return `${baseUrl}/evaluations`;

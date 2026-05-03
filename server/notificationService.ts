@@ -43,6 +43,21 @@ async function sendToWebSocket(userId: string, notification: any) {
   }
 }
 
+// Map a notification type to the preference category that controls it.
+// Used by both in-app and email pre-checks so toggling one place actually works.
+export function getPreferenceCategory(
+  notificationType: string,
+): "oooNotifications" | "timesheetNotifications" | "overtimeNotifications" | "invoiceNotifications" | "deadlineReminders" | "evaluationNotifications" | "teamActionNotifications" | null {
+  if (notificationType.startsWith("ooo_")) return "oooNotifications";
+  if (notificationType.startsWith("timesheet_")) return "timesheetNotifications";
+  if (notificationType.startsWith("overtime_")) return "overtimeNotifications";
+  if (notificationType.startsWith("invoice_") || notificationType.startsWith("expense_")) return "invoiceNotifications";
+  if (notificationType === "deadline_reminder") return "deadlineReminders";
+  if (notificationType.startsWith("evaluation_") || notificationType === "feedback_requested") return "evaluationNotifications";
+  if (notificationType === "user_created" || notificationType === "user_updated") return "teamActionNotifications";
+  return null;
+}
+
 async function shouldNotifyUser(userId: string, notificationType: string, isTeamAction: boolean = false): Promise<boolean> {
   const prefs = await storage.getNotificationPreferences(userId);
   if (!prefs) {
@@ -61,18 +76,14 @@ async function shouldNotifyUser(userId: string, notificationType: string, isTeam
     return true;
   }
   if (!prefs.inAppEnabled) return false;
-  
-  // Check if this is a team action notification for admins
+
+  // Team-action overrides (e.g. admins watching team timesheets) — allow opting out
+  // even when the underlying category is enabled.
   if (isTeamAction && !prefs.teamActionNotifications) return false;
-  
-  if (notificationType.startsWith("ooo_") && !prefs.oooNotifications) return false;
-  if (notificationType.startsWith("timesheet_") && !prefs.timesheetNotifications) return false;
-  if (notificationType.startsWith("overtime_") && !prefs.overtimeNotifications) return false;
-  if (notificationType.startsWith("invoice_") && !prefs.invoiceNotifications) return false;
-  if (notificationType.startsWith("expense_") && !prefs.invoiceNotifications) return false;
-  if (notificationType === "deadline_reminder" && !prefs.deadlineReminders) return false;
-  if ((notificationType === "evaluation_reminder" || notificationType === "feedback_requested") && !prefs.evaluationNotifications) return false;
-  
+
+  const category = getPreferenceCategory(notificationType);
+  if (category && prefs[category] === false) return false;
+
   return true;
 }
 
@@ -681,6 +692,73 @@ export async function notifyExpenseRejected(
       "Amount": formatExpenseAmount(expense.amount, expense.currency),
       "Category": EXPENSE_CATEGORY_LABEL[expense.category] || expense.category,
       ...(reason && { "Reason": reason }),
+    },
+  });
+}
+
+export async function notifyTimesheetUnlocked(
+  timesheet: any,
+  icUserId: string,
+  supervisor: User,
+  note: string,
+): Promise<void> {
+  await createNotification(icUserId, {
+    type: "timesheet_unlocked",
+    title: "Timesheet Unlocked for Revision",
+    message: `Your ${MONTH_NAMES[timesheet.month - 1]} ${timesheet.year} timesheet was unlocked by ${supervisor.firstName} ${supervisor.lastName}: ${note}`,
+    entityType: "timesheet",
+    entityId: timesheet.id,
+    actorId: supervisor.id,
+    additionalEmailDetails: {
+      "Period": `${MONTH_NAMES[timesheet.month - 1]} ${timesheet.year}`,
+      "Reason": note,
+      "Unlocked by": `${supervisor.firstName} ${supervisor.lastName}`,
+    },
+  });
+}
+
+export async function notifyInvoicePaid(
+  invoice: any,
+  icUserId: string,
+  payer: User,
+): Promise<void> {
+  const detail: Record<string, string> = {
+    "Invoice Number": invoice.invoiceNumber,
+    "Period": `${MONTH_NAMES[invoice.month - 1]} ${invoice.year}`,
+  };
+  if (invoice.paymentReference) detail["Reference"] = invoice.paymentReference;
+  if (invoice.amount) detail["Amount"] = `${invoice.currency || "USD"} ${(invoice.amount / 100).toFixed(2)}`;
+
+  await createNotification(icUserId, {
+    type: "invoice_processed",
+    title: "Invoice Marked as Paid",
+    message: `Your invoice ${invoice.invoiceNumber} has been marked as paid${invoice.paymentReference ? ` (ref: ${invoice.paymentReference})` : ""}.`,
+    entityType: "invoice",
+    entityId: invoice.id,
+    actorId: payer.id,
+    additionalEmailDetails: detail,
+  });
+}
+
+// Stable period key used as entityId for timesheet reminders so that the
+// (userId, type, entityId) triple uniquely identifies one reminder per period.
+export function timesheetReminderPeriodKey(month: number, year: number): string {
+  return `ts-reminder:${year}-${String(month).padStart(2, "0")}`;
+}
+
+export async function notifyTimesheetReminder(
+  userId: string,
+  month: number,
+  year: number,
+): Promise<void> {
+  await createNotification(userId, {
+    type: "timesheet_reminder",
+    title: "Timesheet Submission Reminder",
+    message: `Your ${MONTH_NAMES[month - 1]} ${year} timesheet hasn't been submitted yet. Please submit it as soon as possible.`,
+    entityType: "timesheet",
+    entityId: timesheetReminderPeriodKey(month, year),
+    additionalEmailDetails: {
+      "Period": `${MONTH_NAMES[month - 1]} ${year}`,
     },
   });
 }

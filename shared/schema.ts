@@ -799,6 +799,8 @@ export const NotificationType = {
   TIMESHEET_SUBMITTED: "timesheet_submitted",
   TIMESHEET_APPROVED: "timesheet_approved",
   TIMESHEET_REJECTED: "timesheet_rejected",
+  TIMESHEET_UNLOCKED: "timesheet_unlocked",
+  TIMESHEET_REMINDER: "timesheet_reminder",
   OVERTIME_SUBMITTED: "overtime_submitted",
   OVERTIME_APPROVED: "overtime_approved",
   OVERTIME_REJECTED: "overtime_rejected",

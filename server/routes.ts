@@ -226,6 +226,9 @@ import {
   notifyExpenseSubmitted,
   notifyExpenseApproved,
   notifyExpenseRejected,
+  notifyTimesheetUnlocked,
+  notifyInvoicePaid,
+  notifyFeedbackRequested,
   createNotification,
 } from "./notificationService";
 
@@ -1418,9 +1421,10 @@ export async function registerRoutes(
       }
 
       // Notify the IC user
-      const icUser = await storage.getUser(timesheet.userId);
-      if (icUser) {
-        // Notification would go here (using existing notification patterns)
+      try {
+        await notifyTimesheetUnlocked(timesheet, timesheet.userId, currentUser, note);
+      } catch (notifyErr) {
+        console.error("Failed to send timesheet unlock notification:", notifyErr);
       }
 
       res.json(updatedTimesheet);
@@ -1967,6 +1971,12 @@ export async function registerRoutes(
       });
     } catch (e) {
       console.error("Failed to log mark-paid activity:", e);
+    }
+
+    try {
+      await notifyInvoicePaid(updated, invoice.userId, user);
+    } catch (notifyErr) {
+      console.error("Failed to send invoice paid notification:", notifyErr);
     }
 
     res.json({
@@ -2972,6 +2982,26 @@ export async function registerRoutes(
         });
       } catch (e) {
         console.error("Failed to create activity log:", e);
+      }
+
+      // Notify the invited user (in-app + email) when they're a known user.
+      if (invitedUser && req.body.evaluationId) {
+        try {
+          const evaluation = await storage.getEvaluation(req.body.evaluationId);
+          let icName = "a team member";
+          if (evaluation) {
+            const ic = await storage.getUser(evaluation.icId);
+            if (ic) icName = `${ic.firstName} ${ic.lastName}`;
+          }
+          await notifyFeedbackRequested(
+            req.body.evaluationId,
+            req.body.invitedById || req.authenticatedUser!.id,
+            invitedUser.id,
+            icName,
+          );
+        } catch (notifyErr) {
+          console.error("Failed to send feedback invitation notification:", notifyErr);
+        }
       }
 
       res.status(201).json(invitation);

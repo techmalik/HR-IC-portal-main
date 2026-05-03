@@ -6,6 +6,13 @@ TeamFlow is a multi-tenant SaaS platform for managing independent contractors. O
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Notification System
+- In-app + email notifications for all approval flows: timesheets (submit/approve/reject/unlock/reminder), invoices (submit/approve/reject/paid), expenses, OOO, overtime, evaluations, feedback invitations, contracts.
+- Per-user preferences in `notification_preferences`: `inAppEnabled`, `emailEnabled`, plus category toggles (`oooNotifications`, `timesheetNotifications`, `overtimeNotifications`, `invoiceNotifications` (also covers expenses), `deadlineReminders`, `evaluationNotifications`, `teamActionNotifications`).
+- Centralized prefix→category mapper: `getPreferenceCategory()` in `server/notificationService.ts`, reused by both in-app and email category checks.
+- Notification bell groups items by Today/Yesterday/date and routes via wouter `setLocation` based on `entityType`/`type` (e.g. `/team/:userId`, `/timesheets?highlight=`).
+- Timesheet reminder scheduler (`server/index.ts`): runs every 12h, only fires in last 7 days of a month or first 5 days of the next month, idempotent per (user, period) using `entityId = "ts-reminder:YYYY-MM"`.
+
 ## System Architecture
 
 ### Multi-Tenancy
