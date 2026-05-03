@@ -88,7 +88,7 @@ export default function ProfilePage() {
       team: (user as any)?.team || "",
       experienceLevel: (user as any)?.experienceLevel || 1,
       contractorStatus: (user as any)?.contractorStatus || "engaged",
-      currency: (user as any)?.currency || "USD",
+      currency: user?.currency || "USD",
     },
   });
 

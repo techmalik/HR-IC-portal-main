@@ -65,7 +65,7 @@ export default function InvoicesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
-  const userCurrency = normalizeCurrency((user as any)?.currency);
+  const userCurrency = normalizeCurrency(user?.currency);
   const currencySymbol = getCurrencySymbol(userCurrency);
 
   useEffect(() => {
