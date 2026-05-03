@@ -39,6 +39,7 @@ import SignupPage from "@/pages/signup";
 import LandingPage from "@/pages/landing";
 import BillingPage from "@/pages/billing";
 import AdminBlogPage from "@/pages/admin-blog";
+import ExpensesPage from "@/pages/expenses";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -530,6 +531,7 @@ function ProtectedRoutes() {
                 <Route path="/timesheets/current" component={TimesheetsPage} />
                 <Route path="/invoices" component={InvoicesPage} />
                 <Route path="/invoices/upload" component={InvoicesPage} />
+                <Route path="/expenses" component={ExpensesPage} />
                 <Route path="/leave-requests" component={LeaveRequestsPage} />
                 <Route path="/overtime-approvals" component={OvertimeApprovalsPage} />
                 <Route path="/team-timesheets" component={TeamTimesheetsPage} />

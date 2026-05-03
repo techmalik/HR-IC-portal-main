@@ -38,7 +38,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw } from "lucide-react";
+import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw, Receipt } from "lucide-react";
+import type { Expense } from "@shared/schema";
 import { StatusBadge } from "@/components/status-badge";
 import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry, Organization } from "@shared/schema";
 import { formatMoney, getCurrencySymbol, normalizeCurrency } from "@/lib/currency";
@@ -48,6 +49,7 @@ interface LineItem {
   description: string;
   rate: string;
   quantity: string;
+  expenseId?: string;
 }
 
 const formatCurrency = (value: number): string => {
@@ -294,6 +296,65 @@ export default function InvoicesPage() {
     }
   }, [selectedMonth, selectedYear, timesheets]);
 
+  const { data: approvedExpenses } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses/approved-for-invoice", { month: selectedMonth, year: selectedYear }],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/expenses/approved-for-invoice?month=${selectedMonth}&year=${selectedYear}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled:
+      isDialogOpen && activeTab === "generate" && !!selectedMonth && !!selectedYear,
+  });
+
+  // Clear expense-bound line items when the period changes so we never link
+  // approved expenses from a different month/year to the new invoice.
+  useEffect(() => {
+    setLineItems((prev) => {
+      const filtered = prev.filter((li) => !li.expenseId);
+      if (filtered.length === prev.length) return prev;
+      return filtered.length > 0
+        ? filtered
+        : [{ description: "", rate: "", quantity: "1" }];
+    });
+  }, [selectedMonth, selectedYear]);
+
+  const linkedExpenseIdsInLineItems = lineItems
+    .map((li) => li.expenseId)
+    .filter((id): id is string => !!id);
+
+  const availableApprovedExpenses = (approvedExpenses || []).filter(
+    (e) => !linkedExpenseIdsInLineItems.includes(e.id)
+  );
+
+  const addApprovedExpensesAsLineItems = () => {
+    if (availableApprovedExpenses.length === 0) return;
+    const toAdd = availableApprovedExpenses;
+    setLineItems((prev) => {
+      const blankIndex = prev.findIndex(
+        (p) => !p.description.trim() && !p.rate && !p.expenseId
+      );
+      const newItems: LineItem[] = toAdd.map((e) => ({
+        description: e.description,
+        rate: (e.amount / 100).toFixed(2),
+        quantity: "1",
+        expenseId: e.id,
+      }));
+      const next = [...prev];
+      if (blankIndex >= 0) {
+        next.splice(blankIndex, 1);
+      }
+      return [...next, ...newItems];
+    });
+    toast({
+      title: "Expenses added",
+      description: `Added ${toAdd.length} approved expense${toAdd.length === 1 ? "" : "s"} as line items.`,
+    });
+  };
+
   const savePaymentDetailsMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/ic-payment-details", {
@@ -451,6 +512,21 @@ export default function InvoicesPage() {
         });
         // Update auth context with new category
         updateUser({ contractorCategory } as any);
+      }
+
+      // Atomically link any approved expenses still present as line items.
+      const expenseIdsToLink = lineItems
+        .filter((li) => li.expenseId && li.description && li.rate)
+        .map((li) => li.expenseId as string);
+      if (expenseIdsToLink.length > 0) {
+        try {
+          await apiRequest("POST", "/api/expenses/link-invoice", {
+            invoiceId: invoice.id,
+            expenseIds: expenseIdsToLink,
+          });
+        } catch (err) {
+          console.error("Failed to link expenses to invoice:", err);
+        }
       }
 
       const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -1132,15 +1208,28 @@ export default function InvoicesPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-sm">Line Items</h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={addLineItem}
-                          data-testid="button-add-line-item"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Item
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {availableApprovedExpenses.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={addApprovedExpensesAsLineItems}
+                              data-testid="button-add-approved-expenses"
+                            >
+                              <Receipt className="w-4 h-4 mr-1" />
+                              Add {availableApprovedExpenses.length} Approved Expense{availableApprovedExpenses.length === 1 ? "" : "s"}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={addLineItem}
+                            data-testid="button-add-line-item"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add Item
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="space-y-3">

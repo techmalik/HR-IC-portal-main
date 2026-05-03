@@ -43,6 +43,7 @@ import {
   Layers,
   CreditCard,
   BookOpen,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -129,6 +130,19 @@ export function AppSidebar() {
     enabled: !!user && isSupervisor,
   });
 
+  const { data: pendingExpensesCount } = useQuery<number>({
+    queryKey: ["/api/expenses/pending-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/expenses/pending-count", {
+        credentials: "include",
+      });
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return data.count || 0;
+    },
+    enabled: !!user && isSupervisor,
+  });
+
   const { data: pendingEvaluationsCount } = useQuery<number>({
     queryKey: ["/api/evaluations/pending-count"],
     queryFn: async () => {
@@ -148,6 +162,7 @@ export function AppSidebar() {
     timesheets: pendingTimesheetsCount || 0,
     invoices: pendingInvoicesCount || 0,
     evaluations: pendingEvaluationsCount || 0,
+    expenses: pendingExpensesCount || 0,
   };
 
   const getMenuGroups = (): MenuGroup[] => {
@@ -181,6 +196,7 @@ export function AppSidebar() {
       { title: "My Time Off", url: "/ooo-requests", icon: Calendar },
       { title: "My Timesheets", url: "/timesheets-overview", icon: Clock },
       { title: "My Invoices", url: "/invoices", icon: FileText },
+      { title: "My Expenses", url: "/expenses", icon: Receipt },
       { title: "My Evaluations", url: "/evaluations?view=my", icon: Star, badgeKey: "evaluations" }
     );
 
@@ -198,6 +214,7 @@ export function AppSidebar() {
         { title: "Overtime Approvals", url: "/overtime-approvals", icon: Timer, badgeKey: "overtime" },
         { title: "Timesheet Reviews", url: "/team-timesheets", icon: Clock, badgeKey: "timesheets" },
         { title: "Invoice Reviews", url: "/team-invoices", icon: FileText, badgeKey: "invoices" },
+        { title: "Expense Reviews", url: "/expenses", icon: Receipt, badgeKey: "expenses" },
         { title: "Approved Timesheets", url: "/approved-timesheets", icon: ClipboardCheck },
       ];
 

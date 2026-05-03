@@ -224,6 +224,68 @@ export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contracts.$inferSelect;
 
 // ---------------------------------------------------------------------------
+// Expenses table — contractor reimbursement requests
+// ---------------------------------------------------------------------------
+export const ExpenseCategory = {
+  SOFTWARE: "software",
+  TRAVEL: "travel",
+  EQUIPMENT: "equipment",
+  OTHER: "other",
+} as const;
+
+export type ExpenseCategoryValue = (typeof ExpenseCategory)[keyof typeof ExpenseCategory];
+
+export const ExpenseStatus = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+} as const;
+
+export type ExpenseStatusValue = (typeof ExpenseStatus)[keyof typeof ExpenseStatus];
+
+export const expenses = pgTable("expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerId: varchar("manager_id"),
+  amount: integer("amount").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  category: text("category").notNull().default("other"),
+  description: text("description").notNull(),
+  receiptUrl: text("receipt_url"),
+  receiptFileName: text("receipt_file_name"),
+  expenseDate: date("expense_date").notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  status: text("status").notNull().default("pending"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+  invoicedAt: timestamp("invoiced_at"),
+  invoiceId: varchar("invoice_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("expenses_user_id_idx").on(table.userId),
+  index("expenses_manager_id_idx").on(table.managerId),
+  index("expenses_organization_id_idx").on(table.organizationId),
+  index("expenses_status_idx").on(table.status),
+  index("expenses_user_year_month_idx").on(table.userId, table.year, table.month),
+]);
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({
+  id: true,
+  createdAt: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  reviewNote: true,
+  invoicedAt: true,
+  invoiceId: true,
+});
+
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
+
+// ---------------------------------------------------------------------------
 // OOO type enum
 // ---------------------------------------------------------------------------
 export const OOOType = {
@@ -753,6 +815,9 @@ export const NotificationType = {
   EVALUATION_COMPLETED: "evaluation_completed",
   EVALUATION_REMINDER: "evaluation_reminder",
   FEEDBACK_REQUESTED: "feedback_requested",
+  EXPENSE_SUBMITTED: "expense_submitted",
+  EXPENSE_APPROVED: "expense_approved",
+  EXPENSE_REJECTED: "expense_rejected",
 } as const;
 
 export type NotificationTypeValue = (typeof NotificationType)[keyof typeof NotificationType];

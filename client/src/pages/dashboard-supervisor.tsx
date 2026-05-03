@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
-import { Calendar, Clock, Star, Users, CheckCircle, XCircle, FileText, Briefcase, ClipboardList, Palmtree } from "lucide-react";
+import { Calendar, Clock, Star, Users, CheckCircle, XCircle, FileText, Briefcase, ClipboardList, Palmtree, Receipt } from "lucide-react";
 import type { OOORequest, Timesheet, User, Invoice } from "@shared/schema";
 import { format, differenceInDays, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { OnboardingTour, supervisorApprovalsTourConfig, useTour } from "@/components/onboarding-tour";
@@ -47,6 +47,10 @@ export default function DashboardSupervisor() {
 
   const { data: directReports, isLoading: reportsLoading } = useQuery<User[]>({
     queryKey: ["/api/team/members"],
+  });
+
+  const { data: pendingExpensesData, isLoading: expensesLoading } = useQuery<{ count: number }>({
+    queryKey: ["/api/expenses/pending-count"],
   });
 
   const { data: myOooRequests, isLoading: myOooLoading } = useQuery<OOORequest[]>({
@@ -170,7 +174,7 @@ export default function DashboardSupervisor() {
           <span className="text-sm text-muted-foreground ml-2">Items requiring your review</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -224,6 +228,26 @@ export default function DashboardSupervisor() {
               )}
             </CardContent>
           </Card>
+
+          <Link href="/expenses" data-testid="card-pending-expenses">
+            <Card className="cursor-pointer hover-elevate active-elevate-2">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Expenses to Review
+                </CardTitle>
+                <Receipt className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {expensesLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-expenses">
+                    {pendingExpensesData?.count || 0}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">

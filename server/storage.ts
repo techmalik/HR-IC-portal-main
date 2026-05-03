@@ -35,7 +35,10 @@ import {
   type InsertSubscription,
   type Contract,
   type InsertContract,
+  type Expense,
+  type InsertExpense,
   contracts,
+  expenses,
   users,
   oooRequests,
   timesheets,
@@ -57,7 +60,7 @@ import {
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, or, inArray } from "drizzle-orm";
+import { eq, and, desc, or, inArray, isNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const SALT_ROUNDS = 12;
@@ -187,6 +190,17 @@ export interface IStorage {
   createContract(contract: InsertContract): Promise<Contract>;
   deleteContract(id: string): Promise<boolean>;
   updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined>;
+
+  getExpense(id: string): Promise<Expense | undefined>;
+  getExpensesByUser(userId: string): Promise<Expense[]>;
+  getExpensesByManager(managerId: string): Promise<Expense[]>;
+  getPendingExpensesByManager(managerId: string): Promise<Expense[]>;
+  getAllExpenses(organizationId?: string): Promise<Expense[]>;
+  getApprovedExpensesForInvoice(userId: string, month: number, year: number): Promise<Expense[]>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: string, updates: Partial<Expense>): Promise<Expense | undefined>;
+  deleteExpense(id: string): Promise<boolean>;
+  linkExpensesToInvoice(expenseIds: string[], invoiceId: string, userId: string): Promise<Expense[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -737,6 +751,75 @@ export class DatabaseStorage implements IStorage {
   async updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined> {
     const result = await db.update(contracts).set(updates).where(eq(contracts.id, id)).returning();
     return result[0];
+  }
+
+  async getExpense(id: string): Promise<Expense | undefined> {
+    const result = await db.select().from(expenses).where(eq(expenses.id, id));
+    return result[0];
+  }
+
+  async getExpensesByUser(userId: string): Promise<Expense[]> {
+    return db.select().from(expenses).where(eq(expenses.userId, userId)).orderBy(desc(expenses.createdAt));
+  }
+
+  async getExpensesByManager(managerId: string): Promise<Expense[]> {
+    return db.select().from(expenses).where(eq(expenses.managerId, managerId)).orderBy(desc(expenses.createdAt));
+  }
+
+  async getPendingExpensesByManager(managerId: string): Promise<Expense[]> {
+    return db.select().from(expenses).where(
+      and(eq(expenses.managerId, managerId), eq(expenses.status, "pending"))
+    ).orderBy(desc(expenses.createdAt));
+  }
+
+  async getAllExpenses(organizationId?: string): Promise<Expense[]> {
+    if (organizationId) {
+      return db.select().from(expenses).where(eq(expenses.organizationId, organizationId)).orderBy(desc(expenses.createdAt));
+    }
+    return db.select().from(expenses).orderBy(desc(expenses.createdAt));
+  }
+
+  async getApprovedExpensesForInvoice(userId: string, month: number, year: number): Promise<Expense[]> {
+    return db.select().from(expenses).where(
+      and(
+        eq(expenses.userId, userId),
+        eq(expenses.month, month),
+        eq(expenses.year, year),
+        eq(expenses.status, "approved"),
+      )
+    ).orderBy(desc(expenses.createdAt));
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const result = await db.insert(expenses).values(expense).returning();
+    return result[0];
+  }
+
+  async updateExpense(id: string, updates: Partial<Expense>): Promise<Expense | undefined> {
+    const result = await db.update(expenses).set(updates).where(eq(expenses.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteExpense(id: string): Promise<boolean> {
+    const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async linkExpensesToInvoice(expenseIds: string[], invoiceId: string, userId: string): Promise<Expense[]> {
+    if (expenseIds.length === 0) return [];
+    const result = await db
+      .update(expenses)
+      .set({ invoiceId, invoicedAt: new Date() })
+      .where(
+        and(
+          inArray(expenses.id, expenseIds),
+          eq(expenses.userId, userId),
+          eq(expenses.status, "approved"),
+          isNull(expenses.invoiceId),
+        )
+      )
+      .returning();
+    return result;
   }
 }
 

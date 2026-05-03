@@ -69,6 +69,7 @@ async function shouldNotifyUser(userId: string, notificationType: string, isTeam
   if (notificationType.startsWith("timesheet_") && !prefs.timesheetNotifications) return false;
   if (notificationType.startsWith("overtime_") && !prefs.overtimeNotifications) return false;
   if (notificationType.startsWith("invoice_") && !prefs.invoiceNotifications) return false;
+  if (notificationType.startsWith("expense_") && !prefs.invoiceNotifications) return false;
   if (notificationType === "deadline_reminder" && !prefs.deadlineReminders) return false;
   if ((notificationType === "evaluation_reminder" || notificationType === "feedback_requested") && !prefs.evaluationNotifications) return false;
   
@@ -606,6 +607,80 @@ export async function notifyFeedbackRequested(
     actorId: requesterId,
     additionalEmailDetails: {
       "For": icName,
+    },
+  });
+}
+
+const EXPENSE_CATEGORY_LABEL: Record<string, string> = {
+  software: "Software",
+  travel: "Travel",
+  equipment: "Equipment",
+  other: "Other",
+};
+
+function formatExpenseAmount(amount: number, currency: string): string {
+  const value = (amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${currency} ${value}`;
+}
+
+export async function notifyExpenseSubmitted(
+  expense: any,
+  submitter: User
+): Promise<void> {
+  if (!expense.managerId) return;
+  await createNotification(expense.managerId, {
+    type: "expense_submitted",
+    title: "New Expense Request",
+    message: `${submitter.firstName} ${submitter.lastName} submitted a ${EXPENSE_CATEGORY_LABEL[expense.category] || expense.category} expense for ${formatExpenseAmount(expense.amount, expense.currency)}`,
+    entityType: "expense",
+    entityId: expense.id,
+    actorId: submitter.id,
+    additionalEmailDetails: {
+      "Amount": formatExpenseAmount(expense.amount, expense.currency),
+      "Category": EXPENSE_CATEGORY_LABEL[expense.category] || expense.category,
+      "Date": expense.expenseDate,
+      "Description": expense.description,
+    },
+  });
+}
+
+export async function notifyExpenseApproved(
+  expense: any,
+  reviewer: User
+): Promise<void> {
+  await createNotification(expense.userId, {
+    type: "expense_approved",
+    title: "Expense Approved",
+    message: `Your ${EXPENSE_CATEGORY_LABEL[expense.category] || expense.category} expense for ${formatExpenseAmount(expense.amount, expense.currency)} was approved`,
+    entityType: "expense",
+    entityId: expense.id,
+    actorId: reviewer.id,
+    additionalEmailDetails: {
+      "Amount": formatExpenseAmount(expense.amount, expense.currency),
+      "Category": EXPENSE_CATEGORY_LABEL[expense.category] || expense.category,
+      "Reviewer": `${reviewer.firstName} ${reviewer.lastName}`,
+    },
+  });
+}
+
+export async function notifyExpenseRejected(
+  expense: any,
+  reviewer: User,
+  reason?: string
+): Promise<void> {
+  await createNotification(expense.userId, {
+    type: "expense_rejected",
+    title: "Expense Rejected",
+    message: reason
+      ? `Your ${EXPENSE_CATEGORY_LABEL[expense.category] || expense.category} expense was rejected: ${reason}`
+      : `Your ${EXPENSE_CATEGORY_LABEL[expense.category] || expense.category} expense for ${formatExpenseAmount(expense.amount, expense.currency)} was rejected`,
+    entityType: "expense",
+    entityId: expense.id,
+    actorId: reviewer.id,
+    additionalEmailDetails: {
+      "Amount": formatExpenseAmount(expense.amount, expense.currency),
+      "Category": EXPENSE_CATEGORY_LABEL[expense.category] || expense.category,
+      ...(reason && { "Reason": reason }),
     },
   });
 }
