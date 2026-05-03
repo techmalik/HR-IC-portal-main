@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useInView, useMotionValue, useSpring, useTransform, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -146,24 +146,24 @@ const steps = [
 
 const testimonials = [
   {
-    quote: "We used to spend two days every month chasing timesheets over email. With TeamFlow, approvals happen the same day. It's changed how our entire ops team works.",
-    name: "Sarah M.",
-    role: "Operations Manager",
-    initials: "SM",
+    quote: "[Insert customer quote about saving time on timesheet approvals and reducing email back-and-forth with contractors]",
+    name: "[Customer name]",
+    role: "[Operations Manager / similar role]",
+    initials: "—",
     color: "bg-blue-500",
   },
   {
-    quote: "Our contractors are spread across five countries with different payment methods. TeamFlow's invoicing handles all of it without us having to build anything custom.",
-    name: "David K.",
-    role: "Head of Engineering",
-    initials: "DK",
+    quote: "[Insert customer quote about managing contractors across multiple countries or handling international invoice payments]",
+    name: "[Customer name]",
+    role: "[Head of Engineering / similar role]",
+    initials: "—",
     color: "bg-purple-500",
   },
   {
-    quote: "The performance evaluation module finally gave us a structured way to run reviews with our contractors. No more awkward spreadsheets or inconsistent scoring.",
-    name: "Priya R.",
-    role: "HR Lead",
-    initials: "PR",
+    quote: "[Insert customer quote about running structured performance reviews and moving away from spreadsheet-based scoring]",
+    name: "[Customer name]",
+    role: "[HR Lead / similar role]",
+    initials: "—",
     color: "bg-emerald-500",
   },
 ];
@@ -171,6 +171,10 @@ const testimonials = [
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const [isAnnual, setIsAnnual] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
+
+  const motionProps = (props: object) =>
+    shouldReduceMotion ? {} : props;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -246,8 +250,8 @@ export default function LandingPage() {
                 variants={fadeUp}
                 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none mb-6"
               >
-                Stop chasing<br />
-                <span className="text-primary">contractors.</span>
+                Stop chasing contractors.<br />
+                <span className="text-primary">Start managing them.</span>
               </motion.h1>
 
               <motion.p
@@ -313,7 +317,7 @@ export default function LandingPage() {
                 {/* Floating badges */}
                 <motion.div
                   className="absolute -left-6 top-10 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
-                  animate={{ y: [0, -6, 0] }}
+                  animate={shouldReduceMotion ? {} : { y: [0, -6, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -321,7 +325,7 @@ export default function LandingPage() {
                 </motion.div>
                 <motion.div
                   className="absolute -right-4 top-1/3 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
-                  animate={{ y: [0, 6, 0] }}
+                  animate={shouldReduceMotion ? {} : { y: [0, 6, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
@@ -329,7 +333,7 @@ export default function LandingPage() {
                 </motion.div>
                 <motion.div
                   className="absolute -left-2 bottom-10 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
-                  animate={{ y: [0, -4, 0] }}
+                  animate={shouldReduceMotion ? {} : { y: [0, -4, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                 >
                   <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
@@ -689,16 +693,24 @@ export default function LandingPage() {
             </motion.p>
 
             {/* Billing toggle */}
-            <motion.div variants={fadeUp} className="inline-flex items-center bg-muted rounded-full p-1 gap-1">
+            <motion.div variants={fadeUp} className="inline-flex items-center bg-muted rounded-full p-1 relative">
+              {/* Animated sliding pill indicator */}
+              <motion.div
+                className="absolute top-1 bottom-1 bg-card rounded-full shadow-sm"
+                layoutId="billing-toggle-pill"
+                animate={{ x: isAnnual ? "100%" : "0%" }}
+                transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
+                style={{ width: "calc(50% - 2px)", left: 2 }}
+              />
               <button
                 onClick={() => setIsAnnual(false)}
-                className={`relative px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${!isAnnual ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative z-10 px-4 py-1.5 text-sm font-medium rounded-full transition-colors min-w-[90px] ${!isAnnual ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setIsAnnual(true)}
-                className={`relative px-4 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-1.5 ${isAnnual ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                className={`relative z-10 px-4 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center justify-center gap-1.5 min-w-[90px] ${isAnnual ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Annual
                 <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
@@ -799,10 +811,11 @@ export default function LandingPage() {
         {/* Glow */}
         <motion.div
           className="absolute inset-0 -z-10 pointer-events-none"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          animate={shouldReduceMotion ? {} : { opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           style={{
             background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,255,255,0.08), transparent)",
+            opacity: 0.4,
           }}
         />
 
