@@ -1752,6 +1752,9 @@ export async function registerRoutes(
     if (invoice.status === "approved") {
       return res.status(403).json({ error: "Cannot delete approved invoices" });
     }
+    if (invoice.status === "paid") {
+      return res.status(403).json({ error: "Cannot delete paid invoices" });
+    }
     
     if (invoice.userId !== user.id && user.role !== "admin") {
       return res.status(403).json({ error: "Not authorized to delete this invoice" });

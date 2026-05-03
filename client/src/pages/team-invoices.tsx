@@ -859,6 +859,33 @@ export default function TeamInvoicesPage() {
                 </div>
               </div>
 
+              {viewingInvoice.status === "paid" && viewingInvoice.paidAt && (
+                <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BadgeCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="font-medium text-sm">Payment Information</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Paid on</p>
+                      <p className="font-medium">{format(new Date(viewingInvoice.paidAt), "MMM d, yyyy")}</p>
+                    </div>
+                    {viewingInvoice.paymentReference && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Reference</p>
+                        <p className="font-medium font-mono break-all">{viewingInvoice.paymentReference}</p>
+                      </div>
+                    )}
+                    {viewingInvoice.paidBy && getUserName(viewingInvoice.paidBy) && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Marked paid by</p>
+                        <p className="font-medium">{getUserName(viewingInvoice.paidBy)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {viewingInvoice.fileUrl && (
                 <div className="flex items-center gap-2 min-w-0">
                   <Button

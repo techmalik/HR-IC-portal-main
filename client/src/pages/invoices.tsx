@@ -1453,7 +1453,7 @@ export default function InvoicesPage() {
                       >
                         <Download className="w-4 h-4" />
                       </Button>
-                      {(invoice.status !== "approved") && (
+                      {(invoice.status !== "approved" && invoice.status !== "paid") && (
                         <Button
                           variant="ghost"
                           size="icon"
