@@ -33,6 +33,9 @@ import {
   type InsertOrganization,
   type Subscription,
   type InsertSubscription,
+  type Contract,
+  type InsertContract,
+  contracts,
   users,
   oooRequests,
   timesheets,
@@ -177,6 +180,13 @@ export interface IStorage {
 
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserCountByOrganization(organizationId: string): Promise<number>;
+
+  getContract(id: string): Promise<Contract | undefined>;
+  getContractsByUser(userId: string): Promise<Contract[]>;
+  getAllContracts(organizationId?: string): Promise<Contract[]>;
+  createContract(contract: InsertContract): Promise<Contract>;
+  deleteContract(id: string): Promise<boolean>;
+  updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -696,6 +706,37 @@ export class DatabaseStorage implements IStorage {
   async getUserCountByOrganization(organizationId: string): Promise<number> {
     const result = await db.select().from(users).where(eq(users.organizationId, organizationId));
     return result.length;
+  }
+
+  async getContract(id: string): Promise<Contract | undefined> {
+    const result = await db.select().from(contracts).where(eq(contracts.id, id));
+    return result[0];
+  }
+
+  async getContractsByUser(userId: string): Promise<Contract[]> {
+    return db.select().from(contracts).where(eq(contracts.userId, userId)).orderBy(desc(contracts.createdAt));
+  }
+
+  async getAllContracts(organizationId?: string): Promise<Contract[]> {
+    if (organizationId) {
+      return db.select().from(contracts).where(eq(contracts.organizationId, organizationId)).orderBy(desc(contracts.createdAt));
+    }
+    return db.select().from(contracts).orderBy(desc(contracts.createdAt));
+  }
+
+  async createContract(contract: InsertContract): Promise<Contract> {
+    const result = await db.insert(contracts).values(contract).returning();
+    return result[0];
+  }
+
+  async deleteContract(id: string): Promise<boolean> {
+    const result = await db.delete(contracts).where(eq(contracts.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined> {
+    const result = await db.update(contracts).set(updates).where(eq(contracts.id, id)).returning();
+    return result[0];
   }
 }
 

@@ -193,6 +193,37 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // ---------------------------------------------------------------------------
+// Contracts table — store contractor agreements with renewal alerts
+// ---------------------------------------------------------------------------
+export const contracts = pgTable("contracts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id"),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  noticePeriodDays: integer("notice_period_days").notNull().default(30),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  noticeAlertSentAt: timestamp("notice_alert_sent_at"),
+}, (table) => [
+  index("contracts_user_id_idx").on(table.userId),
+  index("contracts_organization_id_idx").on(table.organizationId),
+  index("contracts_end_date_idx").on(table.endDate),
+]);
+
+export const insertContractSchema = createInsertSchema(contracts).omit({
+  id: true,
+  createdAt: true,
+  noticeAlertSentAt: true,
+});
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+
+// ---------------------------------------------------------------------------
 // OOO type enum
 // ---------------------------------------------------------------------------
 export const OOOType = {

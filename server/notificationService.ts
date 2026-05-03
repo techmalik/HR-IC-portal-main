@@ -499,6 +499,37 @@ export async function notifyInvoiceRevisionRequested(
   });
 }
 
+export async function notifyContractExpiring(
+  contract: any,
+  contractor: User
+): Promise<void> {
+  const admins = await storage.getUsersByRole("admin", contractor.organizationId || undefined);
+  const owners = await storage.getUsersByRole("owner", contractor.organizationId || undefined);
+  const recipients = [...admins, ...owners];
+  const seen = new Set<string>();
+  const daysUntil = Math.ceil(
+    (new Date(contract.endDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+  );
+
+  for (const r of recipients) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    await createNotification(r.id, {
+      type: "deadline_reminder",
+      title: "Contract Renewal Approaching",
+      message: `${contractor.firstName} ${contractor.lastName}'s contract "${contract.title}" expires in ${daysUntil} day${daysUntil === 1 ? "" : "s"}`,
+      entityType: "user",
+      entityId: contractor.id,
+      additionalEmailDetails: {
+        Contractor: `${contractor.firstName} ${contractor.lastName}`,
+        Contract: contract.title,
+        "End Date": contract.endDate,
+        "Notice Period": `${contract.noticePeriodDays} days`,
+      },
+    });
+  }
+}
+
 export async function notifyUserCreated(
   newUser: User,
   creatorId?: string

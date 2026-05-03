@@ -7,6 +7,8 @@ import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerWebSocketClient, unregisterWebSocketClient } from "./notificationService";
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
+import { storage } from "./storage";
+import { notifyContractExpiring } from "./notificationService";
 
 const app = express();
 const httpServer = createServer(app);
@@ -140,6 +142,28 @@ app.use((req, res, next) => {
           console.error("Session cleanup error:", e);
         }
       }, 60 * 60 * 1000);
+
+      const checkExpiringContracts = async () => {
+        try {
+          const all = await storage.getAllContracts();
+          const now = Date.now();
+          for (const c of all) {
+            const end = new Date(c.endDate).getTime();
+            const noticeMs = (c.noticePeriodDays || 30) * 24 * 60 * 60 * 1000;
+            const inWindow = end >= now && end - now <= noticeMs;
+            if (!inWindow) continue;
+            if (c.noticeAlertSentAt) continue;
+            const contractor = await storage.getUser(c.userId);
+            if (!contractor) continue;
+            await notifyContractExpiring(c, contractor);
+            await storage.updateContract(c.id, { noticeAlertSentAt: new Date() });
+          }
+        } catch (e) {
+          console.error("Contract renewal check error:", e);
+        }
+      };
+      setTimeout(checkExpiringContracts, 30 * 1000);
+      setInterval(checkExpiringContracts, 24 * 60 * 60 * 1000);
     },
   );
 })();

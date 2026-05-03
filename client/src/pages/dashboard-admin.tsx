@@ -15,10 +15,12 @@ import {
   ArrowRight,
   Calendar,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
 import type { User, ActivityLog } from "@shared/schema";
+import type { Contract } from "@/components/contracts-section";
 import { UserRole } from "@shared/schema";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 
 export default function DashboardAdmin() {
   const { user, isAdmin } = useAuth();
@@ -29,6 +31,11 @@ export default function DashboardAdmin() {
 
   const { data: activityLogs, isLoading: logsLoading } = useQuery<ActivityLog[]>({
     queryKey: ["/api/activity-logs"],
+    enabled: isAdmin,
+  });
+
+  const { data: expiringContracts } = useQuery<Contract[]>({
+    queryKey: ["/api/contracts/expiring"],
     enabled: isAdmin,
   });
 
@@ -54,6 +61,37 @@ export default function DashboardAdmin() {
           </Link>
         </Button>
       </div>
+
+      {expiringContracts && expiringContracts.length > 0 && (
+        <div
+          className="flex items-start gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          data-testid="banner-contracts-expiring"
+        >
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-sm">
+              {expiringContracts.length} contract{expiringContracts.length === 1 ? "" : "s"} approaching renewal
+            </p>
+            <ul className="mt-1 text-xs space-y-0.5">
+              {expiringContracts.slice(0, 5).map((c) => {
+                const days = differenceInDays(new Date(c.endDate), new Date());
+                return (
+                  <li key={c.id}>
+                    <Link
+                      href={`/team/${c.userId}?tab=contracts`}
+                      className="underline hover-elevate"
+                      data-testid={`link-expiring-contract-${c.id}`}
+                    >
+                      {c.title}
+                    </Link>
+                    {" "}— expires in {days} day{days === 1 ? "" : "s"}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

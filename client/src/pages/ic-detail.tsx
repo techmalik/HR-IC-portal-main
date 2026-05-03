@@ -40,8 +40,10 @@ import {
 } from "lucide-react";
 import type { User, Timesheet, Invoice, OOORequest, Evaluation, DailyEntry } from "@shared/schema";
 import { formatMoney } from "@/lib/currency";
+import { ContractsSection } from "@/components/contracts-section";
+import { FileSignature } from "lucide-react";
 
-const VALID_TABS = ["timesheets", "evaluations", "invoices", "time-offs"];
+const VALID_TABS = ["timesheets", "evaluations", "invoices", "time-offs", "contracts"];
 
 export default function ICDetailPage() {
   const [, params] = useRoute("/team/:userId");
@@ -329,7 +331,7 @@ export default function ICDetailPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="timesheets" data-testid="tab-timesheets">
             <Clock className="w-4 h-4 mr-2" />
             Timesheets
@@ -345,6 +347,10 @@ export default function ICDetailPage() {
           <TabsTrigger value="time-offs" data-testid="tab-time-offs">
             <Calendar className="w-4 h-4 mr-2" />
             Time-offs
+          </TabsTrigger>
+          <TabsTrigger value="contracts" data-testid="tab-contracts">
+            <FileSignature className="w-4 h-4 mr-2" />
+            Contracts
           </TabsTrigger>
         </TabsList>
 
@@ -731,6 +737,10 @@ export default function ICDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* CONTRACTS TAB */}
+        <TabsContent value="contracts" className="mt-6">
+          <ContractsSection userId={icUser.id} canManage={currentUser?.role === "admin" || currentUser?.role === "owner"} />
         </TabsContent>
       </Tabs>
 

@@ -27,9 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Bell, User, Lock } from "lucide-react";
+import { Loader2, Save, Bell, User, Lock, FileSignature } from "lucide-react";
 import type { NotificationPreferences } from "@shared/schema";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
+import { ContractsSection } from "@/components/contracts-section";
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -190,6 +191,10 @@ export default function ProfilePage() {
           <TabsTrigger value="security" className="flex-1" data-testid="tab-security">
             <Lock className="w-4 h-4 mr-2" />
             Security
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="flex-1" data-testid="tab-profile-contracts">
+            <FileSignature className="w-4 h-4 mr-2" />
+            Contracts
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex-1" data-testid="tab-notifications">
             <Bell className="w-4 h-4 mr-2" />
@@ -519,6 +524,10 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="contracts" className="mt-4">
+          {user?.id && <ContractsSection userId={user.id} canManage={false} />}
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-4">
