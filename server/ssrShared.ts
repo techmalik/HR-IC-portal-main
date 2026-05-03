@@ -42,7 +42,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     : `<span style="font-weight:700;font-size:1.2rem;color:#6366f1;">TeamFlow</span>`;
 
   const jsonLdScript = jsonLd
-    ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`
+    ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/<\/script/gi, "<\\/script")}</script>`
     : "";
 
   const baseUrl = "https://teamflow.app";

@@ -186,6 +186,24 @@ function requireRole(...allowedRoles: string[]) {
   };
 }
 
+// Platform-admin guard: only users whose email is listed in the
+// PLATFORM_ADMIN_EMAILS environment variable (comma-separated) may access
+// global content such as the blog and SEO pages.
+function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = req.authenticatedUser;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowedEmails.includes(user.email.toLowerCase())) {
+    return res.status(403).json({ error: "Forbidden - Platform admin access required" });
+  }
+  next();
+}
+
 function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
   if (!currentUser.organizationId) return true;
   return currentUser.organizationId === targetUser.organizationId;
@@ -4146,16 +4164,16 @@ export async function registerRoutes(
     })
   );
 
-  app.get("/api/admin/blog-subscribers", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog-subscribers", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const { getSubscribers } = await import("./seo/emailCapture");
     res.json(getSubscribers());
   }));
 
-  app.get("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getBlogArticles());
   }));
 
-  app.get("/api/admin/blog-analytics", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog-analytics", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const articles = getBlogArticles();
     const viewStats = getAllViewStats();
     const analytics = articles.map((a) => {
@@ -4172,7 +4190,7 @@ export async function registerRoutes(
     res.json(analytics);
   }));
 
-  app.post("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.post("/api/admin/blog", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const validationError = validateBlogArticleBody(req.body);
     if (validationError) return res.status(400).json({ error: validationError });
     const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
@@ -4184,7 +4202,7 @@ export async function registerRoutes(
     }
   }));
 
-  app.put("/api/admin/blog/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.put("/api/admin/blog/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const { slug: _bodySlug, ...rawUpdates } = req.body;
     const updates: Record<string, any> = {};
     const allowed = ["title", "metaDescription", "publishedDate", "updatedDate", "readingMinutes", "excerpt", "bodyHtml"] as const;
@@ -4213,7 +4231,7 @@ export async function registerRoutes(
     }
   }));
 
-  app.delete("/api/admin/blog/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.delete("/api/admin/blog/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try {
       deleteArticle(req.params.slug);
       res.json({ success: true });
@@ -4351,37 +4369,37 @@ export async function registerRoutes(
     }
   }
 
-  app.get("/api/admin/seo/industries", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+  app.get("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getIndustries());
   }));
-  app.post("/api/admin/seo/industries", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.post("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body);
     if (err) return res.status(400).json({ error: err });
     try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.put("/api/admin/seo/industries/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.put("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
     try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.delete("/api/admin/seo/industries/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.delete("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
-  app.get("/api/admin/seo/competitors", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+  app.get("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getCompetitors());
   }));
-  app.post("/api/admin/seo/competitors", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.post("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body);
     if (err) return res.status(400).json({ error: err });
     try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.put("/api/admin/seo/competitors/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.put("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
     try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.delete("/api/admin/seo/competitors/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+  app.delete("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
