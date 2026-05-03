@@ -47,6 +47,7 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "approved",
   "rejected",
   "revision_requested",
+  "paid",
 ]);
 
 export const oooRequestStatusEnum = pgEnum("ooo_request_status", [
@@ -139,6 +140,7 @@ export const InvoiceStatus = {
   APPROVED: "approved",
   REJECTED: "rejected",
   REVISION_REQUESTED: "revision_requested",
+  PAID: "paid",
 } as const;
 
 export type InvoiceStatusType = (typeof InvoiceStatus)[keyof typeof InvoiceStatus];
@@ -350,6 +352,9 @@ export const invoices = pgTable("invoices", {
   reviewedAt: timestamp("reviewed_at"),
   reviewNote: text("review_note"),
   timesheetId: varchar("timesheet_id"),
+  paidAt: timestamp("paid_at"),
+  paidBy: varchar("paid_by"),
+  paymentReference: text("payment_reference"),
 }, (table) => [
   index("invoices_user_id_idx").on(table.userId),
   index("invoices_organization_id_idx").on(table.organizationId),

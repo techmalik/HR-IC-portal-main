@@ -30,8 +30,11 @@ import {
   DollarSign,
   Calendar,
   Download,
-  Edit
+  Edit,
+  BadgeCheck
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Invoice, Timesheet, DailyEntry, OOORequest } from "@shared/schema";
 
@@ -63,6 +66,9 @@ export default function TeamInvoicesPage() {
   const [reviewNote, setReviewNote] = useState("");
   const [actionType, setActionType] = useState<"approve" | "reject" | "request_revision" | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceWithDetails | null>(null);
+  const [payingInvoice, setPayingInvoice] = useState<InvoiceWithDetails | null>(null);
+  const [paidDate, setPaidDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [paymentReference, setPaymentReference] = useState("");
   const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set());
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
   const { user } = useAuth();
@@ -273,8 +279,47 @@ export default function TeamInvoicesPage() {
 
   const getPendingReviewInvoices = () => pendingInvoices?.filter((i) => i.status === "pending_review" || i.status === "revision_requested") || [];
   const approvedInvoices = allInvoices?.filter((i) => i.status === "approved") || [];
+  const paidInvoices = allInvoices?.filter((i) => i.status === "paid") || [];
   const rejectedInvoices = allInvoices?.filter((i) => i.status === "rejected") || [];
   const revisionRequestedInvoices = allInvoices?.filter((i) => i.status === "revision_requested") || [];
+
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
+
+  const markPaidMutation = useMutation({
+    mutationFn: async ({ id, paidAt, paymentReference: ref }: { id: string; paidAt: string; paymentReference: string }) => {
+      return apiRequest("PATCH", `/api/invoices/${id}/mark-paid`, {
+        paidAt,
+        paymentReference: ref || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Invoice marked as paid",
+        description: "The invoice has been recorded as paid.",
+      });
+      setPayingInvoice(null);
+      setPaymentReference("");
+      setPaidDate(format(new Date(), "yyyy-MM-dd"));
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to mark invoice as paid.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const confirmMarkPaid = () => {
+    if (!payingInvoice) return;
+    markPaidMutation.mutate({
+      id: payingInvoice.id,
+      paidAt: paidDate,
+      paymentReference: paymentReference.trim(),
+    });
+  };
 
   const renderInvoiceCard = (invoice: InvoiceWithDetails, showActions: boolean = false) => {
     return (
@@ -436,7 +481,33 @@ export default function TeamInvoicesPage() {
               Download
             </Button>
           )}
+          {isAdmin && invoice.status === "approved" && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setPayingInvoice(invoice);
+                setPaidDate(format(new Date(), "yyyy-MM-dd"));
+                setPaymentReference("");
+              }}
+              data-testid={`button-mark-paid-${invoice.id}`}
+            >
+              <BadgeCheck className="w-4 h-4 mr-1" />
+              Mark as Paid
+            </Button>
+          )}
         </div>
+        {invoice.status === "paid" && (invoice as any).paidAt && (
+          <div className="pt-2 border-t text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Paid</span>{" "}
+            on {format(new Date((invoice as any).paidAt), "MMM d, yyyy")}
+            {(invoice as any).paymentReference && (
+              <> · Ref: <span className="font-mono">{(invoice as any).paymentReference}</span></>
+            )}
+            {(invoice as any).paidBy && getUserName((invoice as any).paidBy) && (
+              <> · by {getUserName((invoice as any).paidBy)}</>
+            )}
+          </div>
+        )}
         {invoice.reviewNote && (
           <div className="pt-2 border-t">
             <p className="text-sm text-muted-foreground">
@@ -464,6 +535,9 @@ export default function TeamInvoicesPage() {
           </TabsTrigger>
           <TabsTrigger value="approved" data-testid="tab-approved">
             Approved ({approvedInvoices.length})
+          </TabsTrigger>
+          <TabsTrigger value="paid" data-testid="tab-paid">
+            Paid ({paidInvoices.length})
           </TabsTrigger>
           <TabsTrigger value="rejected" data-testid="tab-rejected">
             Rejected ({rejectedInvoices.length})
@@ -529,6 +603,39 @@ export default function TeamInvoicesPage() {
                 <div className="text-center text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">No approved invoices</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="paid" className="mt-6">
+          {allLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : paidInvoices.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Paid Invoices</CardTitle>
+                <CardDescription>
+                  Invoices that have been paid out
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {paidInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  <BadgeCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No paid invoices yet</p>
+                  <p className="mt-1">Approved invoices marked as paid will appear here</p>
                 </div>
               </CardContent>
             </Card>
@@ -653,6 +760,75 @@ export default function TeamInvoicesPage() {
                 "Request Revision"
               ) : (
                 "Reject Invoice"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!payingInvoice} onOpenChange={(open) => { if (!open) { setPayingInvoice(null); setPaymentReference(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle data-testid="text-mark-paid-title">Mark Invoice as Paid</DialogTitle>
+            <DialogDescription>
+              Record the payment date and an optional reference (e.g., wire confirmation, transaction ID).
+            </DialogDescription>
+          </DialogHeader>
+          {payingInvoice && (
+            <div className="py-4 space-y-4">
+              <div className="p-4 rounded-md bg-muted/50">
+                <p className="font-medium">
+                  {getContractorName(payingInvoice)} - #{payingInvoice.invoiceNumber}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {format(new Date(payingInvoice.year, payingInvoice.month - 1), "MMMM yyyy")}
+                </p>
+                <p className="text-sm font-medium mt-1">
+                  Amount: {formatAmount(payingInvoice.amount)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paid-date">Payment date</Label>
+                <Input
+                  id="paid-date"
+                  type="date"
+                  value={paidDate}
+                  onChange={(e) => setPaidDate(e.target.value)}
+                  data-testid="input-paid-date"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment-reference">Payment reference (optional)</Label>
+                <Input
+                  id="payment-reference"
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="e.g. WIRE-2026-001234"
+                  maxLength={200}
+                  data-testid="input-payment-reference"
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => { setPayingInvoice(null); setPaymentReference(""); }}
+              data-testid="button-cancel-mark-paid"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmMarkPaid}
+              disabled={markPaidMutation.isPending || !paidDate}
+              data-testid="button-confirm-mark-paid"
+            >
+              {markPaidMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+              ) : (
+                <><BadgeCheck className="w-4 h-4 mr-1" />Mark as Paid</>
               )}
             </Button>
           </div>
@@ -902,6 +1078,21 @@ export default function TeamInvoicesPage() {
                   Approve
                 </Button>
               </>
+            )}
+            {viewingInvoice?.status === "approved" && isAdmin && (
+              <Button
+                onClick={() => {
+                  const inv = viewingInvoice!;
+                  setViewingInvoice(null);
+                  setPayingInvoice(inv);
+                  setPaidDate(format(new Date(), "yyyy-MM-dd"));
+                  setPaymentReference("");
+                }}
+                data-testid="button-mark-paid-from-view"
+              >
+                <BadgeCheck className="w-4 h-4 mr-1" />
+                Mark as Paid
+              </Button>
             )}
           </div>
         </DialogContent>

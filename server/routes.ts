@@ -1789,6 +1789,10 @@ export async function registerRoutes(
     if (invoice.status === "approved" && status) {
       return res.status(400).json({ error: "This invoice has already been approved and cannot be changed" });
     }
+    // Prevent reviewing paid invoices via this route
+    if (invoice.status === "paid" && status) {
+      return res.status(400).json({ error: "This invoice has been paid and cannot be changed" });
+    }
 
     const updates: any = {
       ...req.body,
@@ -1883,6 +1887,55 @@ export async function registerRoutes(
       fileUrl: normalizeFileUrl(updatedInvoice.fileUrl),
     });
   });
+
+  // Mark invoice as paid (admin/owner only)
+  app.patch("/api/invoices/:id/mark-paid", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const user = req.authenticatedUser!;
+    const invoice = await storage.getInvoice(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+    if (!checkOrgBoundary(user, invoice)) {
+      return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
+    if (invoice.status !== "approved") {
+      return res.status(400).json({ error: "Only approved invoices can be marked as paid" });
+    }
+
+    const { paidAt, paymentReference } = req.body || {};
+    const paidAtDate = paidAt ? new Date(paidAt) : new Date();
+    if (isNaN(paidAtDate.getTime())) {
+      return res.status(400).json({ error: "Invalid paidAt date" });
+    }
+
+    const updated = await storage.updateInvoice(req.params.id, {
+      status: "paid",
+      paidAt: paidAtDate,
+      paidBy: user.id,
+      paymentReference: paymentReference ? String(paymentReference).slice(0, 200) : null,
+    } as any);
+    if (!updated) {
+      return res.status(500).json({ error: "Failed to update invoice" });
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: user.id,
+        organizationId: user.organizationId,
+        action: "Invoice marked as paid",
+        details: `Marked invoice ${invoice.invoiceNumber} as paid${paymentReference ? ` (ref: ${paymentReference})` : ""}`,
+        entityType: "invoice",
+        entityId: invoice.id,
+      });
+    } catch (e) {
+      console.error("Failed to log mark-paid activity:", e);
+    }
+
+    res.json({
+      ...updated,
+      fileUrl: normalizeFileUrl(updated.fileUrl),
+    });
+  }));
 
   // Get pending invoices for review (for supervisors)
   app.get("/api/team/invoices", authMiddleware, async (req, res) => {
