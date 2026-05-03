@@ -88,40 +88,6 @@ const plans = [
   },
 ];
 
-const features = [
-  {
-    icon: Clock,
-    title: "Timesheet Management",
-    color: "from-blue-500/20 to-blue-600/10",
-    iconColor: "text-blue-500",
-    bullets: ["Calendar-based daily logging", "1-click supervisor approval", "Automatic monthly rollup"],
-    wide: true,
-  },
-  {
-    icon: CalendarOff,
-    title: "Leave Tracking",
-    color: "from-purple-500/20 to-purple-600/10",
-    iconColor: "text-purple-500",
-    description: "Handle OOO requests, half-day leave, and vacation scheduling with automated approval workflows.",
-    wide: false,
-  },
-  {
-    icon: FileText,
-    title: "Invoicing",
-    color: "from-emerald-500/20 to-emerald-600/10",
-    iconColor: "text-emerald-500",
-    description: "Upload, review, and approve contractor invoices with line-item detail and automatic calculations.",
-    wide: false,
-  },
-  {
-    icon: BarChart3,
-    title: "Performance Evaluations",
-    color: "from-orange-500/20 to-orange-600/10",
-    iconColor: "text-orange-500",
-    description: "Run structured review cycles with self-assessments, manager ratings, and seniority-scale scoring.",
-    wide: false,
-  },
-];
 
 const steps = [
   {
@@ -424,7 +390,8 @@ export default function LandingPage() {
                 {name}
               </span>
             ))}
-            <span className="hidden sm:flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium shrink-0 ml-2">
+            <span className="hidden sm:block text-border/80 select-none" aria-hidden>|</span>
+            <span className="hidden sm:flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
               <Zap className="w-3.5 h-3.5" />
               Up and running in 15 minutes
             </span>
