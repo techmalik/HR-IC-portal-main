@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, ty
 import type { User } from "@shared/schema";
 import { ForcePasswordChangeModal } from "@/components/force-password-change-modal";
 import { IdleTimeoutDialog } from "@/components/idle-timeout-dialog";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/queryClient";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_DURATION_S = 2 * 60;
@@ -139,6 +140,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    // When any API call returns 401, clear the in-memory user immediately so
+    // the UI stops showing authenticated state. The redirect to /login is
+    // handled in queryClient.ts.
+    const onUnauthorized = () => {
+      setUser(null);
+    };
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    };
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/me", {

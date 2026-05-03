@@ -1,6 +1,21 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+
 let unauthorizedHandled = false;
+
+// Endpoints that legitimately return 401 as a normal response (e.g. probing
+// whether the user has a session) — those must NOT trigger a redirect.
+const UNAUTHORIZED_IGNORE_PATHS = ["/api/auth/me", "/api/auth/login"];
+
+function shouldIgnore401For(url: string): boolean {
+  try {
+    const u = new URL(url, window.location.origin);
+    return UNAUTHORIZED_IGNORE_PATHS.some((p) => u.pathname === p);
+  } catch {
+    return UNAUTHORIZED_IGNORE_PATHS.some((p) => url.includes(p));
+  }
+}
 
 function handleUnauthorized() {
   // Avoid redirect loops on the login/signup pages, and avoid firing twice
@@ -9,12 +24,42 @@ function handleUnauthorized() {
   const currentPath = window.location.pathname;
   if (currentPath === "/login" || currentPath === "/signup") return;
   unauthorizedHandled = true;
+
+  // Notify the auth context (and anyone else who cares) so client state can
+  // be cleared before we redirect.
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
+  } catch {}
+
   const params = new URLSearchParams();
   params.set("expired", "1");
   if (currentPath && currentPath !== "/") {
     params.set("redirect", currentPath + window.location.search + window.location.hash);
   }
   window.location.href = `/login?${params.toString()}`;
+}
+
+// Install a global fetch interceptor so ANY fetch in the app — including
+// ad-hoc page-level queryFns that don't go through `apiRequest` or
+// `getQueryFn` — gets the same 401 -> redirect-to-login behavior.
+if (typeof window !== "undefined" && !(window as any).__authFetchInstalled) {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args: Parameters<typeof fetch>) => {
+    const response = await originalFetch(...args);
+    if (response.status === 401) {
+      const reqUrl =
+        typeof args[0] === "string"
+          ? args[0]
+          : args[0] instanceof Request
+          ? args[0].url
+          : (args[0] as URL).toString();
+      if (!shouldIgnore401For(reqUrl)) {
+        handleUnauthorized();
+      }
+    }
+    return response;
+  };
+  (window as any).__authFetchInstalled = true;
 }
 
 async function throwIfResNotOk(res: Response) {
