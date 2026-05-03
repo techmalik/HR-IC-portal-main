@@ -53,6 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **Landing Page** (`/`): Hero section, features, pricing cards, CTA buttons
 - **Login** (`/login`): Username/password authentication
 - **Signup** (`/signup`): Organization registration form (name, email, password, org name)
+- **Competitive Analysis** (`/competitive-analysis`): Strategy report with web preview + jsPDF download (data in `client/src/data/competitorData.ts`)
 
 ### Key Features
 - **Timesheets**: Monthly calendar-based hour logging with autosave

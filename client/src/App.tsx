@@ -40,6 +40,7 @@ import LandingPage from "@/pages/landing";
 import BillingPage from "@/pages/billing";
 import AdminBlogPage from "@/pages/admin-blog";
 import ExpensesPage from "@/pages/expenses";
+import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -479,6 +480,7 @@ function PublicRoutes() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
+      <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
       <Route component={LandingPage} />
     </Switch>
   );
@@ -497,7 +499,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    const publicPaths = ["/login", "/signup", "/"];
+    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
       window.location.replace(`/login?redirect=${encodeURIComponent(location)}`);
@@ -508,6 +510,12 @@ function ProtectedRoutes() {
       );
     }
     return <PublicRoutes />;
+  }
+
+  // Standalone strategy report — render outside the app shell to avoid
+  // a double header/sidebar for authenticated users.
+  if (location === "/competitive-analysis") {
+    return <CompetitiveAnalysisPage />;
   }
 
   const sidebarStyle = {
