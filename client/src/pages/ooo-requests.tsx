@@ -43,6 +43,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { trackFirst } from "@/lib/analytics";
+import { enqueueDraft } from "@/lib/offline-queue";
+import { Input } from "@/components/ui/input";
 import { Plus, CalendarIcon, Loader2, Clock, Edit2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { OOORequest, User } from "@shared/schema";
@@ -113,22 +116,46 @@ export default function OOORequestsPage() {
   const reasonValue = form.watch("reason") || "";
 
   const createMutation = useMutation({
-    mutationFn: async (data: OOOFormData) => {
-      return apiRequest("POST", "/api/ooo-requests", {
+    mutationFn: async (data: OOOFormData): Promise<{ queued: boolean }> => {
+      const payload = {
         ...data,
         userId: user?.id,
         startDate: format(data.startDate, "yyyy-MM-dd"),
         endDate: format(data.endDate, "yyyy-MM-dd"),
         oooType: data.oooType,
         status: "pending",
-      });
+      };
+      try {
+        await apiRequest("POST", "/api/ooo-requests", payload);
+        return { queued: false };
+      } catch (err) {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          enqueueDraft({
+            id: `ooo-${user?.id}-${payload.startDate}-${payload.endDate}-${Date.now()}`,
+            kind: "ooo",
+            url: "/api/ooo-requests",
+            method: "POST",
+            payload,
+          });
+          return { queued: true };
+        }
+        throw err;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/ooo-requests"] });
-      toast({
-        title: "Request submitted",
-        description: "Your out of office request has been submitted for approval.",
-      });
+      if (result.queued) {
+        toast({
+          title: "Saved offline",
+          description: "Your time off request will sync when you're back online.",
+        });
+      } else {
+        trackFirst("first_ooo_submitted");
+        toast({
+          title: "Request submitted",
+          description: "Your out of office request has been submitted for approval.",
+        });
+      }
       setIsDialogOpen(false);
       form.reset();
       setTimeout(() => {
@@ -273,33 +300,21 @@ export default function OOORequestsPage() {
                     name="startDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Start Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "justify-start text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                data-testid="input-start-date"
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : "Pick a date"}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date < today}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormLabel htmlFor="ooo-start-date">Start Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            id="ooo-start-date"
+                            type="date"
+                            min={format(today, "yyyy-MM-dd")}
+                            value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v ? new Date(v + "T00:00:00") : undefined);
+                            }}
+                            className="h-11 text-base"
+                            data-testid="input-start-date"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -309,33 +324,25 @@ export default function OOORequestsPage() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>End Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "justify-start text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                data-testid="input-end-date"
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : "Pick a date"}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date < today}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormLabel htmlFor="ooo-end-date">End Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            id="ooo-end-date"
+                            type="date"
+                            min={
+                              form.watch("startDate")
+                                ? format(form.watch("startDate"), "yyyy-MM-dd")
+                                : format(today, "yyyy-MM-dd")
+                            }
+                            value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v ? new Date(v + "T00:00:00") : undefined);
+                            }}
+                            className="h-11 text-base"
+                            data-testid="input-end-date"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

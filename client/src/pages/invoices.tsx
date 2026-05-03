@@ -38,7 +38,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw, Receipt } from "lucide-react";
+import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw, Receipt, Camera } from "lucide-react";
+import { trackFirst } from "@/lib/analytics";
 import type { Expense } from "@shared/schema";
 import { StatusBadge } from "@/components/status-badge";
 import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry, Organization } from "@shared/schema";
@@ -430,6 +431,7 @@ export default function InvoicesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+      trackFirst("first_invoice_submitted", { method: "upload" });
       toast({
         title: "Invoice uploaded",
         description: "Your invoice has been uploaded successfully.",
@@ -537,6 +539,7 @@ export default function InvoicesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+      trackFirst("first_invoice_submitted", { method: "generate" });
       toast({
         title: "Invoice generated",
         description: "Your PDF invoice has been generated. A preview window has opened.",
@@ -983,9 +986,11 @@ export default function InvoicesPage() {
                         type="number"
                         min="0"
                         step="0.01"
+                        inputMode="decimal"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="0.00"
+                        className="h-11 text-base"
                         data-testid="input-amount"
                       />
                     </div>
@@ -993,19 +998,43 @@ export default function InvoicesPage() {
                     <div className="space-y-2">
                       <Label>Invoice File</Label>
                       <div
-                        className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors min-h-[120px] flex items-center justify-center"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        aria-label="Choose invoice file or take a photo"
                       >
                         {selectedFile ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <FileText className="w-5 h-5 text-primary" />
-                            <span className="text-sm font-medium">{selectedFile.name}</span>
+                          <div className="flex flex-col items-center justify-center gap-2 w-full">
+                            {selectedFile.type.startsWith("image/") ? (
+                              <img
+                                src={URL.createObjectURL(selectedFile)}
+                                alt="Invoice preview"
+                                className="max-h-40 rounded border object-contain"
+                                onLoad={(e) =>
+                                  URL.revokeObjectURL((e.target as HTMLImageElement).src)
+                                }
+                              />
+                            ) : (
+                              <FileText className="w-8 h-8 text-primary" />
+                            )}
+                            <span className="text-sm font-medium break-all">{selectedFile.name}</span>
+                            <span className="text-xs text-muted-foreground">Tap to choose a different file</span>
                           </div>
                         ) : (
                           <div>
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                            <div className="flex items-center justify-center gap-3 mb-2 text-muted-foreground">
+                              <Camera className="w-7 h-7" />
+                              <Upload className="w-7 h-7" />
+                            </div>
                             <p className="text-sm text-muted-foreground">
-                              Click to upload or drag and drop
+                              Tap to take a photo or choose a file
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
                               PDF, PNG, JPG up to 5MB
@@ -1016,7 +1045,8 @@ export default function InvoicesPage() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
+                        accept="image/*,.pdf"
+                        capture="environment"
                         onChange={handleFileChange}
                         className="hidden"
                         data-testid="input-file"

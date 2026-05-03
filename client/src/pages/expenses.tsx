@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatMoney, normalizeCurrency } from "@/lib/currency";
+import { trackFirst } from "@/lib/analytics";
 import type { Expense, User } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 import {
@@ -194,6 +195,7 @@ export default function ExpensesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/pending-count"] });
+      trackFirst("first_expense_submitted");
       toast({
         title: "Expense submitted",
         description: "Your expense was sent to your manager for review.",
@@ -432,9 +434,11 @@ export default function ExpensesPage() {
                     type="number"
                     step="0.01"
                     min="0"
+                    inputMode="decimal"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
+                    className="h-11 text-base"
                     data-testid="input-expense-amount"
                   />
                 </div>
@@ -482,9 +486,32 @@ export default function ExpensesPage() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*,application/pdf"
+                  capture="environment"
                   onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  className="h-11 text-base file:mr-2"
                   data-testid="input-expense-receipt"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tap to take a photo of your receipt or pick one from your library.
+                </p>
+                {receiptFile && receiptFile.type.startsWith("image/") && (
+                  <div className="mt-2">
+                    <img
+                      src={URL.createObjectURL(receiptFile)}
+                      alt="Receipt preview"
+                      className="max-h-48 w-auto rounded border object-contain"
+                      onLoad={(e) =>
+                        URL.revokeObjectURL((e.target as HTMLImageElement).src)
+                      }
+                      data-testid="img-receipt-preview"
+                    />
+                  </div>
+                )}
+                {receiptFile && !receiptFile.type.startsWith("image/") && (
+                  <p className="mt-2 text-xs text-muted-foreground break-all">
+                    Selected: {receiptFile.name}
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>

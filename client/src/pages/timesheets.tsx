@@ -14,13 +14,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { trackFirst } from "@/lib/analytics";
+import { enqueueDraft } from "@/lib/offline-queue";
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle, Lock, Clock, Check, CloudOff, RefreshCw } from "lucide-react";
 import type { Timesheet, DailyEntry, OvertimeRequest } from "@shared/schema";
 
@@ -62,6 +72,7 @@ export default function TimesheetsPage() {
   const [entries, setEntries] = useState<Map<string, DayEntry>>(new Map());
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
@@ -133,16 +144,38 @@ export default function TimesheetsPage() {
   const saveMutation = useMutation({
     mutationFn: async (entriesToSave?: DayEntry[]) => {
       const entriesArray = entriesToSave || Array.from(entries.values());
-      const response = await apiRequest("POST", "/api/timesheets/save", {
+      const payload = {
         userId: user?.id,
         month,
         year,
         entries: entriesArray,
-      });
-      const data = await response.json() as { id: string };
-      queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-entries"] });
-      return data;
+      };
+      try {
+        const response = await apiRequest("POST", "/api/timesheets/save", payload);
+        const data = await response.json() as { id: string };
+        queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-entries"] });
+        // Only count it as a real first submit when the server persists.
+        trackFirst("first_timesheet_saved");
+        return data;
+      } catch (err) {
+        // Network unavailable: queue the draft so it syncs on reconnect.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          enqueueDraft({
+            id: `timesheet-${user?.id}-${year}-${month}`,
+            kind: "timesheet",
+            url: "/api/timesheets/save",
+            method: "POST",
+            payload,
+          });
+          toast({
+            title: "Saved offline",
+            description: "We'll sync your hours as soon as you're back online.",
+          });
+          return { id: timesheet?.id || "offline-draft" } as { id: string };
+        }
+        throw err;
+      }
     },
     onError: () => {
       toast({
@@ -518,8 +551,8 @@ export default function TimesheetsPage() {
                           }}
                           disabled={isFullDayOOO || (!isEditable && !hasEntry)}
                           className={cn(
-                            "aspect-square rounded-md border text-sm font-medium transition-colors relative",
-                            "flex flex-col items-center justify-center gap-1",
+                            "aspect-square min-h-[44px] rounded-md border text-sm font-medium transition-colors relative",
+                            "flex flex-col items-center justify-center gap-1 active:scale-95",
                             isWeekend && "bg-muted/30",
                             isFullDayOOO && "bg-red-500/20 border-red-500/50 cursor-not-allowed",
                             isHalfDayOOO && "bg-amber-500/20 border-amber-500/50",
@@ -648,52 +681,74 @@ export default function TimesheetsPage() {
         </div>
       </div>
 
-      <Dialog open={!!selectedDay} onOpenChange={() => { setSelectedDay(null); setViewOnly(false); }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDay && format(new Date(selectedDay.date), "EEEE, MMMM d, yyyy")}
-            </DialogTitle>
-            <DialogDescription>
-              {viewOnly ? "View entry details (read-only)" : "Log your hours and activities for this day"}
-            </DialogDescription>
-          </DialogHeader>
+      {(() => {
+        const recentActivities = Array.from(
+          new Set(
+            Array.from(entries.values())
+              .map((e) => e.activityLog?.trim())
+              .filter((t): t is string => !!t && t.length > 0 && t.length <= 60)
+          )
+        )
+          .filter((t) => t !== selectedDay?.activityLog)
+          .slice(0, 5);
 
-          {selectedDay && getOOOForDate(selectedDay.date)?.oooType === "half_day" && !viewOnly && (
+        const halfDayBanner =
+          selectedDay && getOOOForDate(selectedDay.date)?.oooType === "half_day" && !viewOnly ? (
             <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md">
               <Clock className="w-4 h-4 text-amber-600" />
               <p className="text-sm text-amber-600">
                 Half-day leave: You can only log up to {HALF_DAY_HOURS} hours.
               </p>
             </div>
-          )}
+          ) : null;
 
-          {viewOnly ? (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Hours Worked</label>
-                <div className="p-3 rounded-md bg-muted/50">
-                  <span className="text-lg font-semibold">{selectedDay?.hours || 0}h</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Activity Log</label>
-                <div className="p-3 rounded-md bg-muted/50 min-h-[80px]">
-                  <p className="text-sm whitespace-pre-wrap">
-                    {selectedDay?.activityLog || "No activity log recorded"}
-                  </p>
-                </div>
+        const body = viewOnly ? (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Hours Worked</label>
+              <div className="p-3 rounded-md bg-muted/50">
+                <span className="text-lg font-semibold">{selectedDay?.hours || 0}h</span>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Hours Worked</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Activity Log</label>
+              <div className="p-3 rounded-md bg-muted/50 min-h-[80px]">
+                <p className="text-sm whitespace-pre-wrap">
+                  {selectedDay?.activityLog || "No activity log recorded"}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="hours-input">Hours Worked</label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label="Decrease hours"
+                  onClick={() =>
+                    setSelectedDay((prev) =>
+                      prev
+                        ? { ...prev, hours: Math.max(0, +(prev.hours - 0.5).toFixed(1)) }
+                        : null
+                    )
+                  }
+                  data-testid="button-decrement-hours"
+                >
+                  −
+                </Button>
                 <Input
+                  id="hours-input"
                   type="number"
                   min="0"
                   max={getMaxHoursForSelectedDay()}
                   step="0.5"
+                  inputMode="decimal"
+                  className="h-11 text-base text-center"
                   value={selectedDay?.hours || ""}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value) || 0;
@@ -706,34 +761,105 @@ export default function TimesheetsPage() {
                   placeholder="0"
                   data-testid="input-hours"
                 />
-                {selectedDay && selectedDay.hours > STANDARD_HOURS && (
-                  <p className="text-xs text-amber-600">
-                    <AlertCircle className="w-3 h-3 inline mr-1" />
-                    Hours over {STANDARD_HOURS} will require manager approval.
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Activity Log <span className="text-red-500">*</span></label>
-                <Textarea
-                  value={selectedDay?.activityLog || ""}
-                  onChange={(e) =>
-                    setSelectedDay((prev) =>
-                      prev ? { ...prev, activityLog: e.target.value } : null
-                    )
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label="Increase hours"
+                  onClick={() =>
+                    setSelectedDay((prev) => {
+                      if (!prev) return null;
+                      const max = getMaxHoursForSelectedDay();
+                      return { ...prev, hours: Math.min(max, +(prev.hours + 0.5).toFixed(1)) };
+                    })
                   }
-                  placeholder="What did you work on today? (Required)"
-                  rows={4}
-                  className="resize-none"
-                  data-testid="input-activity-log"
-                />
-                <p className="text-xs text-muted-foreground">Required when logging hours</p>
+                  data-testid="button-increment-hours"
+                >
+                  +
+                </Button>
               </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[4, 6, 8].map((preset) => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-9"
+                    onClick={() =>
+                      setSelectedDay((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              hours: Math.min(getMaxHoursForSelectedDay(), preset),
+                            }
+                          : null
+                      )
+                    }
+                    data-testid={`button-preset-${preset}h`}
+                  >
+                    {preset}h
+                  </Button>
+                ))}
+              </div>
+              {selectedDay && selectedDay.hours > STANDARD_HOURS && (
+                <p className="text-xs text-amber-600">
+                  <AlertCircle className="w-3 h-3 inline mr-1" />
+                  Hours over {STANDARD_HOURS} will require manager approval.
+                </p>
+              )}
             </div>
-          )}
-          <div className="flex justify-end gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="activity-log-input">
+                Activity Log <span className="text-red-500">*</span>
+              </label>
+              {recentActivities.length > 0 && (
+                <div
+                  className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
+                  data-testid="recent-activities"
+                  aria-label="Recent activities"
+                >
+                  {recentActivities.map((activity) => (
+                    <button
+                      key={activity}
+                      type="button"
+                      onClick={() =>
+                        setSelectedDay((prev) =>
+                          prev ? { ...prev, activityLog: activity } : null
+                        )
+                      }
+                      className="shrink-0 inline-flex items-center h-9 px-3 rounded-full border bg-background text-xs text-foreground hover:bg-muted whitespace-nowrap max-w-[220px] truncate"
+                      data-testid="recent-activity-chip"
+                    >
+                      {activity}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Textarea
+                id="activity-log-input"
+                value={selectedDay?.activityLog || ""}
+                onChange={(e) =>
+                  setSelectedDay((prev) =>
+                    prev ? { ...prev, activityLog: e.target.value } : null
+                  )
+                }
+                placeholder="What did you work on today? (Required)"
+                rows={4}
+                className="resize-none text-base"
+                data-testid="input-activity-log"
+              />
+              <p className="text-xs text-muted-foreground">Required when logging hours</p>
+            </div>
+          </div>
+        );
+
+        const footer = (
+          <div className="flex justify-end gap-3 pt-2">
             <Button
               variant="outline"
+              className="h-11 flex-1 md:flex-none"
               onClick={() => { setSelectedDay(null); setViewOnly(false); }}
               data-testid="button-cancel-day"
             >
@@ -743,6 +869,7 @@ export default function TimesheetsPage() {
               <Button
                 onClick={handleSaveDay}
                 disabled={createOvertimeMutation.isPending}
+                className="h-11 flex-1 md:flex-none"
                 data-testid="button-save-day"
               >
                 {createOvertimeMutation.isPending ? (
@@ -756,8 +883,58 @@ export default function TimesheetsPage() {
               </Button>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        );
+
+        const titleText = selectedDay ? format(new Date(selectedDay.date), "EEEE, MMMM d, yyyy") : "";
+        const descText = viewOnly ? "View entry details (read-only)" : "Log your hours and activities for this day";
+
+        if (isMobile) {
+          return (
+            <Drawer
+              open={!!selectedDay}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setSelectedDay(null);
+                  setViewOnly(false);
+                }
+              }}
+            >
+              <DrawerContent
+                className="px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]"
+                data-testid="day-entry-sheet"
+              >
+                <DrawerHeader className="px-0 text-left">
+                  <DrawerTitle>{titleText}</DrawerTitle>
+                  <DrawerDescription>{descText}</DrawerDescription>
+                </DrawerHeader>
+                {halfDayBanner}
+                {body}
+                {footer}
+              </DrawerContent>
+            </Drawer>
+          );
+        }
+
+        return (
+          <Dialog
+            open={!!selectedDay}
+            onOpenChange={() => {
+              setSelectedDay(null);
+              setViewOnly(false);
+            }}
+          >
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{titleText}</DialogTitle>
+                <DialogDescription>{descText}</DialogDescription>
+              </DialogHeader>
+              {halfDayBanner}
+              {body}
+              {footer}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
+import { MobileBottomTabs } from "@/components/mobile-bottom-tabs";
+import { InstallPwaHint } from "@/components/install-pwa-hint";
 import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from "@/components/onboarding-tour";
 import NotFound from "@/pages/not-found";
 import AccessDenied from "@/pages/access-denied";
@@ -550,7 +552,7 @@ function ProtectedRoutes() {
           <AppSidebar />
           <div className="flex-1 flex flex-col">
             <DynamicPageHeader />
-            <main className="flex-1 overflow-auto bg-background" data-testid="tour-target-dashboard">
+            <main className="flex-1 overflow-auto bg-background pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0" data-testid="tour-target-dashboard">
               <Switch>
                 <Route path="/" component={Dashboard} />
                 <Route path="/ooo-requests" component={OOORequestsPage} />
@@ -586,6 +588,8 @@ function ProtectedRoutes() {
           </div>
         </div>
         <PortalTourWrapper />
+        {user.role === UserRole.IC && <MobileBottomTabs />}
+        <InstallPwaHint />
       </SidebarProvider>
     </TourProvider>
   );
