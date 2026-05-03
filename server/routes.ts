@@ -222,7 +222,6 @@ import {
   notifyInvoiceRejected,
   notifyInvoiceRevisionRequested,
   notifyUserCreated,
-  notifyContractExpiring,
   createNotification,
 } from "./notificationService";
 

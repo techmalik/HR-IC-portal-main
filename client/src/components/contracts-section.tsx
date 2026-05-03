@@ -67,9 +67,9 @@ export function ContractsSection({ userId, canManage }: ContractsSectionProps) {
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("File required");
-      const MAX_BYTES = 10 * 1024 * 1024;
+      const MAX_BYTES = 7 * 1024 * 1024;
       if (file.size > MAX_BYTES) {
-        throw new Error("File exceeds 10MB limit");
+        throw new Error("File exceeds 7MB limit");
       }
       const fileData: string = await new Promise((resolve, reject) => {
         const reader = new FileReader();
