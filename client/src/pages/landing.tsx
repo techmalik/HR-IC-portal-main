@@ -173,13 +173,14 @@ export default function LandingPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
-  const motionProps = (props: object) =>
-    shouldReduceMotion ? {} : props;
+  const animFadeUp = shouldReduceMotion ? { hidden: {}, visible: {} } : fadeUp;
+  const animStagger = shouldReduceMotion ? { hidden: {}, visible: {} } : staggerContainer;
+  const animStaggerFast = shouldReduceMotion ? { hidden: {}, visible: {} } : staggerFast;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
-      {/* ─── NAV ─── */}
+      {/* Nav */}
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -217,7 +218,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ─── HERO ─── */}
+      {/* Hero */}
       <section className="relative overflow-hidden pt-20 pb-16 sm:pt-28 sm:pb-24">
         {/* Background layers */}
         <div
@@ -238,16 +239,16 @@ export default function LandingPage() {
               className="flex-1 text-center lg:text-left"
               initial="hidden"
               animate="visible"
-              variants={staggerContainer}
+              variants={animStagger}
             >
-              <motion.div variants={fadeUp} className="inline-flex items-center gap-2 border border-primary/30 bg-primary/8 text-primary text-sm rounded-full px-4 py-1.5 mb-6 font-medium">
+              <motion.div variants={animFadeUp} className="inline-flex items-center gap-2 border border-primary/30 bg-primary/8 text-primary text-sm rounded-full px-4 py-1.5 mb-6 font-medium">
                 <span className="text-xs">✦</span>
                 Contractor management, simplified
                 <ArrowRight className="w-3 h-3" />
               </motion.div>
 
               <motion.h1
-                variants={fadeUp}
+                variants={animFadeUp}
                 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none mb-6"
               >
                 Stop chasing contractors.<br />
@@ -255,13 +256,13 @@ export default function LandingPage() {
               </motion.h1>
 
               <motion.p
-                variants={fadeUp}
+                variants={animFadeUp}
                 className="text-lg sm:text-xl text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-8"
               >
                 Timesheets, leave tracking, invoicing, and performance reviews — all in one platform built for teams that work with independent contractors.
               </motion.p>
 
-              <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-4">
+              <motion.div variants={animFadeUp} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mb-4">
                 <Button
                   size="lg"
                   onClick={() => setLocation("/signup")}
@@ -282,13 +283,13 @@ export default function LandingPage() {
                   See how it works
                 </Button>
               </motion.div>
-              <motion.p variants={fadeUp} className="text-xs text-muted-foreground">
+              <motion.p variants={animFadeUp} className="text-xs text-muted-foreground">
                 No credit card required · Free plan available
               </motion.p>
 
               {/* Stats */}
               <motion.div
-                variants={fadeUp}
+                variants={animFadeUp}
                 className="mt-10 flex items-center justify-center lg:justify-start gap-6 divide-x divide-border"
               >
                 {[
@@ -309,9 +310,9 @@ export default function LandingPage() {
             {/* Right column — dashboard mockup */}
             <motion.div
               className="flex-1 relative w-full max-w-lg lg:max-w-none"
-              initial={{ opacity: 0, y: 40 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
+              transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.3, duration: 0.7, ease: "easeOut" }}
             >
               <div className="relative">
                 {/* Floating badges */}
@@ -319,6 +320,7 @@ export default function LandingPage() {
                   className="absolute -left-6 top-10 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
                   animate={shouldReduceMotion ? {} : { y: [0, -6, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  style={{ willChange: "transform" }}
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                   ✓ Invoice approved
@@ -327,6 +329,7 @@ export default function LandingPage() {
                   className="absolute -right-4 top-1/3 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
                   animate={shouldReduceMotion ? {} : { y: [0, 6, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  style={{ willChange: "transform" }}
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                   3 timesheets pending
@@ -335,6 +338,7 @@ export default function LandingPage() {
                   className="absolute -left-2 bottom-10 z-10 bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 text-sm font-medium"
                   animate={shouldReduceMotion ? {} : { y: [0, -4, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                  style={{ willChange: "transform" }}
                 >
                   <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
                   OOO request →
@@ -410,7 +414,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── TRUSTED BY ─── */}
+      {/* Trusted by */}
       <section className="bg-muted/40 border-y border-border/50 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
@@ -428,7 +432,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FEATURES BENTO ─── */}
+      {/* Features */}
       <section id="features" className="py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -436,15 +440,15 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
+            variants={animStagger}
           >
-            <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
+            <motion.p variants={animFadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
               Features
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
+            <motion.h2 variants={animFadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
               Everything in one place
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <motion.p variants={animFadeUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
               From onboarding to payment, TeamFlow streamlines every step of working with independent contractors.
             </motion.p>
           </motion.div>
@@ -454,11 +458,11 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            variants={staggerFast}
+            variants={animStaggerFast}
           >
             {/* Wide card */}
             <motion.div
-              variants={fadeUp}
+              variants={animFadeUp}
               className="lg:col-span-2 rounded-2xl border border-border/60 bg-gradient-to-br from-card to-muted/20 backdrop-blur-sm p-6 shadow-sm overflow-hidden relative group hover:shadow-md transition-shadow"
             >
               <div className="absolute top-0 right-0 w-48 h-48 opacity-30 pointer-events-none">
@@ -490,7 +494,7 @@ export default function LandingPage() {
 
             {/* Small card — Leave */}
             <motion.div
-              variants={fadeUp}
+              variants={animFadeUp}
               className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-muted/20 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center mb-4">
@@ -504,7 +508,7 @@ export default function LandingPage() {
 
             {/* Small card — Invoicing */}
             <motion.div
-              variants={fadeUp}
+              variants={animFadeUp}
               className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-muted/20 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center mb-4">
@@ -518,7 +522,7 @@ export default function LandingPage() {
 
             {/* Small card — Evaluations */}
             <motion.div
-              variants={fadeUp}
+              variants={animFadeUp}
               className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-muted/20 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow group"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center mb-4">
@@ -532,7 +536,7 @@ export default function LandingPage() {
 
             {/* Full-width bottom card */}
             <motion.div
-              variants={fadeUp}
+              variants={animFadeUp}
               className="md:col-span-2 lg:col-span-3 rounded-2xl border border-border/60 bg-gradient-to-r from-primary/5 via-card to-card p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4"
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
@@ -552,7 +556,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── HOW IT WORKS ─── */}
+      {/* How it works */}
       <section id="how-it-works" className="py-20 sm:py-28 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -560,15 +564,15 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            variants={staggerContainer}
+            variants={animStagger}
           >
-            <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
+            <motion.p variants={animFadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
               How it works
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
+            <motion.h2 variants={animFadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
               Get your team set up in minutes
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-xl mx-auto">
+            <motion.p variants={animFadeUp} className="text-lg text-muted-foreground max-w-xl mx-auto">
               Three steps and you're live. No IT department required.
             </motion.p>
           </motion.div>
@@ -587,7 +591,7 @@ export default function LandingPage() {
             {steps.map((step, i) => (
               <motion.div
                 key={i}
-                variants={fadeUp}
+                variants={animFadeUp}
                 className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left"
               >
                 <div className="relative mb-5">
@@ -606,10 +610,10 @@ export default function LandingPage() {
 
           <motion.div
             className="text-center mt-12"
-            initial={{ opacity: 0, y: 16 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.4 }}
           >
             <Button onClick={() => setLocation("/signup")} size="lg" className="shadow-lg shadow-primary/20">
               Start for free — it takes 2 minutes
@@ -619,7 +623,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── TESTIMONIALS ─── */}
+      {/* Testimonials */}
       <section className="py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -627,15 +631,15 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            variants={staggerContainer}
+            variants={animStagger}
           >
-            <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
+            <motion.p variants={animFadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
               Social proof
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
+            <motion.h2 variants={animFadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
               Loved by ops teams
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-muted-foreground text-lg max-w-xl mx-auto">
+            <motion.p variants={animFadeUp} className="text-muted-foreground text-lg max-w-xl mx-auto">
               From startups to mid-size companies, TeamFlow saves ops teams hours every month.
             </motion.p>
           </motion.div>
@@ -650,8 +654,8 @@ export default function LandingPage() {
             {testimonials.map((t, i) => (
               <motion.div
                 key={i}
-                variants={fadeUp}
-                whileHover={{ y: -4 }}
+                variants={animFadeUp}
+                whileHover={shouldReduceMotion ? {} : { y: -4 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className="bg-card border border-border/60 rounded-2xl p-6 shadow-sm cursor-default"
               >
@@ -672,7 +676,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── PRICING ─── */}
+      {/* Pricing */}
       <section id="pricing" className="py-20 sm:py-28 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -680,20 +684,20 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            variants={staggerContainer}
+            variants={animStagger}
           >
-            <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
+            <motion.p variants={animFadeUp} className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">
               Pricing
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
+            <motion.h2 variants={animFadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
               Simple, transparent pricing
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
+            <motion.p variants={animFadeUp} className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
               Start free and scale as your team grows. No hidden fees, no surprises.
             </motion.p>
 
             {/* Billing toggle */}
-            <motion.div variants={fadeUp} className="inline-flex items-center bg-muted rounded-full p-1 relative">
+            <motion.div variants={animFadeUp} className="inline-flex items-center bg-muted rounded-full p-1 relative">
               {/* Animated sliding pill indicator */}
               <motion.div
                 className="absolute top-1 bottom-1 bg-card rounded-full shadow-sm"
@@ -740,7 +744,7 @@ export default function LandingPage() {
               return (
                 <motion.div
                   key={plan.name}
-                  variants={fadeUp}
+                  variants={animFadeUp}
                   className={`relative rounded-2xl border p-6 flex flex-col transition-shadow hover:shadow-lg ${
                     plan.highlight
                       ? "border-primary/40 bg-gradient-to-b from-primary/5 to-card shadow-lg ring-2 ring-primary/20"
@@ -781,7 +785,7 @@ export default function LandingPage() {
                   <Button
                     className="w-full"
                     variant={plan.highlight ? "default" : "outline"}
-                    onClick={() => setLocation(plan.name === "Enterprise" ? "#" : "/signup")}
+                    onClick={() => plan.name === "Enterprise" ? window.open("mailto:sales@teamflow.com") : setLocation("/signup")}
                   >
                     {plan.name === "Enterprise" ? "Contact Sales" : plan.monthlyPrice === 0 ? "Get Started Free" : "Get Started"}
                   </Button>
@@ -792,7 +796,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── CTA BANNER ─── */}
+      {/* CTA banner */}
       <section className="relative overflow-hidden py-20 sm:py-28">
         <div
           className="absolute inset-0 -z-10"
@@ -824,15 +828,15 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-60px" }}
-            variants={staggerContainer}
+            variants={animStagger}
           >
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl font-extrabold mb-4 tracking-tight">
+            <motion.h2 variants={animFadeUp} className="text-3xl sm:text-5xl font-extrabold mb-4 tracking-tight">
               Ready to simplify contractor management?
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/75 text-lg mb-8 max-w-xl mx-auto">
+            <motion.p variants={animFadeUp} className="text-white/75 text-lg mb-8 max-w-xl mx-auto">
               Join hundreds of teams who replaced spreadsheet chaos with one clean platform.
             </motion.p>
-            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <motion.div variants={animFadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 size="lg"
                 onClick={() => setLocation("/signup")}
@@ -847,7 +851,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
+      {/* Footer */}
       <footer className="border-t border-border bg-card py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
