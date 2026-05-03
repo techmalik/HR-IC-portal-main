@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import type { InsertNotification, User, NotificationType } from "@shared/schema";
+import type { InsertNotification, User, NotificationType, Contract } from "@shared/schema";
 import { sendNotificationEmail } from "./emailService";
 
 export interface NotificationPayload {
@@ -500,7 +500,7 @@ export async function notifyInvoiceRevisionRequested(
 }
 
 export async function notifyContractExpiring(
-  contract: any,
+  contract: Contract,
   contractor: User
 ): Promise<void> {
   const admins = await storage.getUsersByRole("admin", contractor.organizationId || undefined);

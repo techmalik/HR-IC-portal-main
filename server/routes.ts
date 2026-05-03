@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
 import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
-import type { User, UserRoleType } from "@shared/schema";
+import type { User, UserRoleType, InsertContract } from "@shared/schema";
 
 import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
@@ -2189,17 +2189,32 @@ export async function registerRoutes(
         storedFileUrl = uploaded;
       }
 
-      const created = await storage.createContract({
+      const noticeDaysNum = Number(noticePeriodDays);
+      const validNoticeDays = Number.isFinite(noticeDaysNum) && noticeDaysNum > 0 ? Math.floor(noticeDaysNum) : 30;
+      const startDateStr = String(startDate);
+      const endDateStr = String(endDate);
+      if (
+        Number.isNaN(new Date(startDateStr).getTime()) ||
+        Number.isNaN(new Date(endDateStr).getTime())
+      ) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+      if (new Date(endDateStr) < new Date(startDateStr)) {
+        return res.status(400).json({ error: "End date must be after start date" });
+      }
+
+      const insertPayload: InsertContract = {
         organizationId: currentUser.organizationId ?? null,
         userId,
-        title,
-        startDate,
-        endDate,
-        noticePeriodDays: Number(noticePeriodDays) || 30,
+        title: String(title),
+        startDate: startDateStr,
+        endDate: endDateStr,
+        noticePeriodDays: validNoticeDays,
         fileUrl: storedFileUrl,
-        fileName,
+        fileName: String(fileName),
         createdBy: currentUser.id,
-      } as any);
+      };
+      const created = await storage.createContract(insertPayload);
 
       await storage.createActivityLog({
         userId: currentUser.id,

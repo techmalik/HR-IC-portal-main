@@ -40,8 +40,9 @@ import {
 } from "lucide-react";
 import type { User, Timesheet, Invoice, OOORequest, Evaluation, DailyEntry } from "@shared/schema";
 import { formatMoney } from "@/lib/currency";
-import { ContractsSection } from "@/components/contracts-section";
-import { FileSignature } from "lucide-react";
+import { ContractsSection, type Contract } from "@/components/contracts-section";
+import { FileSignature, AlertTriangle } from "lucide-react";
+import { differenceInDays } from "date-fns";
 
 const VALID_TABS = ["timesheets", "evaluations", "invoices", "time-offs", "contracts"];
 
@@ -120,6 +121,26 @@ export default function ICDetailPage() {
     },
     enabled: !!userId,
   });
+
+  // Fetch IC contracts (used for header-level renewal warning)
+  const { data: icContracts } = useQuery<Contract[]>({
+    queryKey: ["/api/contracts", { userId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/contracts?userId=${userId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch contracts");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const expiringContracts = useMemo(() => {
+    if (!icContracts) return [] as Contract[];
+    const now = new Date();
+    return icContracts.filter((c) => {
+      const days = differenceInDays(new Date(c.endDate), now);
+      return days >= 0 && days <= (c.noticePeriodDays || 30);
+    });
+  }, [icContracts]);
 
   // Fetch IC evaluations
   const { data: evaluations, isLoading: evaluationsLoading } = useQuery<Evaluation[]>({
@@ -329,6 +350,30 @@ export default function ICDetailPage() {
           </div>
         </div>
       </div>
+
+      {expiringContracts.length > 0 && (
+        <div
+          className="flex items-start gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          data-testid="banner-ic-contract-expiring"
+        >
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium">
+              {expiringContracts.length} contract{expiringContracts.length === 1 ? "" : "s"} approaching renewal
+            </p>
+            <ul className="mt-1 text-xs space-y-0.5">
+              {expiringContracts.map((c) => {
+                const days = differenceInDays(new Date(c.endDate), new Date());
+                return (
+                  <li key={c.id}>
+                    <span className="font-medium">{c.title}</span> — expires in {days} day{days === 1 ? "" : "s"}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
