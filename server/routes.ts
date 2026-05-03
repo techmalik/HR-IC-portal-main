@@ -2318,9 +2318,16 @@ export async function registerRoutes(
     res.json({ linked });
   }));
 
-  // Pending expense count for the current user as reviewing manager (sidebar badge)
+  // Pending expense count for the sidebar/dashboard badge.
+  // Admins see org-wide pending count; managers see expenses awaiting their review.
   app.get("/api/expenses/pending-count", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (isAdmin) {
+      const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      const count = all.filter((e) => e.status === "pending").length;
+      return res.json({ count });
+    }
     const list = await storage.getPendingExpensesByManager(currentUser.id);
     res.json({ count: list.length });
   }));

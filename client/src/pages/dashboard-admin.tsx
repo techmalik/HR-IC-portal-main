@@ -16,6 +16,7 @@ import {
   Calendar,
   FileText,
   AlertTriangle,
+  Receipt,
 } from "lucide-react";
 import type { User, ActivityLog } from "@shared/schema";
 import type { Contract } from "@/components/contracts-section";
@@ -36,6 +37,11 @@ export default function DashboardAdmin() {
 
   const { data: expiringContracts } = useQuery<Contract[]>({
     queryKey: ["/api/contracts/expiring"],
+    enabled: isAdmin,
+  });
+
+  const { data: pendingExpensesData } = useQuery<{ count: number }>({
+    queryKey: ["/api/expenses/pending-count"],
     enabled: isAdmin,
   });
 
@@ -93,6 +99,28 @@ export default function DashboardAdmin() {
         </div>
       )}
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {pendingExpensesData && pendingExpensesData.count > 0 && (
+          <Link
+            href="/expenses"
+            className="md:col-span-4 flex items-center justify-between gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover-elevate"
+            data-testid="banner-expenses-pending"
+          >
+            <div className="flex items-center gap-3">
+              <Receipt className="w-5 h-5 shrink-0" />
+              <div>
+                <p className="font-medium text-sm">
+                  {pendingExpensesData.count} expense{pendingExpensesData.count === 1 ? "" : "s"} awaiting review
+                </p>
+                <p className="text-xs">
+                  Review and approve reimbursement requests across the organization.
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 shrink-0" />
+          </Link>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">

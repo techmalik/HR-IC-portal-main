@@ -103,12 +103,15 @@ export default function ExpensesPage() {
     enabled: !!user?.id,
   });
 
-  // Team approval queue
+  // Approval queue. Admins see org-wide expenses; managers see only the
+  // expenses for which they are the reviewing manager.
+  const teamScopeKey = isAdmin ? "all" : "team";
   const { data: teamExpenses, isLoading: teamLoading } = useQuery<ExpenseWithUser[]>({
-    queryKey: ["/api/expenses", { scope: "team" }],
+    queryKey: ["/api/expenses", { scope: teamScopeKey }],
     queryFn: async () => {
-      const res = await fetch(`/api/expenses?scope=team`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch team expenses");
+      const url = isAdmin ? `/api/expenses` : `/api/expenses?scope=team`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch expenses queue");
       return res.json();
     },
     enabled: !!user?.id && isSupervisor,
