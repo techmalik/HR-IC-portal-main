@@ -64,6 +64,7 @@ import { UserPlus, MoreHorizontal, KeyRound, Trash2, Loader2, Search, Users, Upl
 import type { User } from "@shared/schema";
 import { UserRole } from "@shared/schema";
 import { useRef } from "react";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 
 const userFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -74,6 +75,7 @@ const userFormSchema = z.object({
   role: z.string().min(1, "Please select a role"),
   supervisorId: z.string().optional(),
   jobTitle: z.string().optional(),
+  currency: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -87,6 +89,7 @@ type EditedUserData = {
   role: string;
   supervisorId: string;
   isActive: boolean;
+  currency: string;
 };
 
 export default function UsersPage() {
@@ -124,6 +127,7 @@ export default function UsersPage() {
       role: "ic",
       supervisorId: "",
       jobTitle: "",
+      currency: "USD",
     },
   });
 
@@ -140,6 +144,7 @@ export default function UsersPage() {
         role: u.role,
         supervisorId: u.supervisorId || "",
         isActive: u.isActive,
+        currency: (u as User & { currency?: string }).currency || "USD",
       });
     });
     setEditedUsers(editMap);
@@ -178,6 +183,7 @@ export default function UsersPage() {
       const originalUser = users.find(u => u.id === userId);
       if (!originalUser) return;
       
+      const originalCurrency = (originalUser as User & { currency?: string }).currency || "USD";
       const hasChanges = 
         editedData.firstName !== (originalUser.firstName || "") ||
         editedData.lastName !== (originalUser.lastName || "") ||
@@ -185,7 +191,8 @@ export default function UsersPage() {
         editedData.jobTitle !== (originalUser.jobTitle || "") ||
         editedData.role !== originalUser.role ||
         editedData.supervisorId !== (originalUser.supervisorId || "") ||
-        editedData.isActive !== originalUser.isActive;
+        editedData.isActive !== originalUser.isActive ||
+        editedData.currency !== originalCurrency;
       
       if (hasChanges) {
         if (editedData.supervisorId === userId) {
@@ -230,6 +237,7 @@ export default function UsersPage() {
           role: userData.role,
           supervisorId: userData.supervisorId || undefined,
           isActive: userData.isActive,
+          currency: userData.currency || "USD",
         });
         successCount++;
       } catch (error) {
@@ -522,6 +530,21 @@ export default function UsersPage() {
                   className="h-8 w-52"
                   data-testid={`input-jobtitle-${u.id}`}
                 />
+                <Select
+                  value={editData.currency}
+                  onValueChange={(value) => updateUserField(u.id, "currency", value)}
+                >
+                  <SelectTrigger className="h-8 w-28" data-testid={`select-currency-${u.id}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           ) : (
@@ -845,6 +868,31 @@ export default function UsersPage() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Currency</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "USD"}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-new-user-currency">
+                              <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {SUPPORTED_CURRENCIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.code} — {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Button
