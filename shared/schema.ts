@@ -820,6 +820,8 @@ export const NotificationType = {
   EXPENSE_SUBMITTED: "expense_submitted",
   EXPENSE_APPROVED: "expense_approved",
   EXPENSE_REJECTED: "expense_rejected",
+  EVALUATION_OUTCOME: "evaluation_outcome",
+  CONTRACT_RENEWAL_DUE: "contract_renewal_due",
 } as const;
 
 export type NotificationTypeValue = (typeof NotificationType)[keyof typeof NotificationType];
@@ -867,6 +869,13 @@ export const notificationPreferences = pgTable("notification_preferences", {
   timesheetNotifications: boolean("timesheet_notifications").notNull().default(true),
   overtimeNotifications: boolean("overtime_notifications").notNull().default(true),
   invoiceNotifications: boolean("invoice_notifications").notNull().default(true),
+  oooEmail: boolean("ooo_email").notNull().default(true),
+  timesheetEmail: boolean("timesheet_email").notNull().default(true),
+  overtimeEmail: boolean("overtime_email").notNull().default(true),
+  invoiceEmail: boolean("invoice_email").notNull().default(true),
+  deadlineEmail: boolean("deadline_email").notNull().default(true),
+  evaluationEmail: boolean("evaluation_email").notNull().default(true),
+  teamActionEmail: boolean("team_action_email").notNull().default(true),
   deadlineReminders: boolean("deadline_reminders").notNull().default(true),
   evaluationNotifications: boolean("evaluation_notifications").notNull().default(true),
   teamActionNotifications: boolean("team_action_notifications").notNull().default(true),

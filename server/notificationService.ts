@@ -43,16 +43,28 @@ async function sendToWebSocket(userId: string, notification: any) {
   }
 }
 
+import { NOTIFICATION_REGISTRY, type NotificationCategory } from "./notificationRegistry";
+
 // Map a notification type to the preference category that controls it.
 // Used by both in-app and email pre-checks so toggling one place actually works.
+//
+// The registry is the single source of truth — any NotificationType value
+// guaranteed to live in the registry (enforced at compile time via
+// `satisfies Record<NotificationTypeValue, NotificationSpec>`) automatically
+// gets its category from there. We retain a small prefix-based fallback only
+// for legacy/string-typed callers (e.g. ad-hoc types passed via createNotification).
 export function getPreferenceCategory(
   notificationType: string,
-): "oooNotifications" | "timesheetNotifications" | "overtimeNotifications" | "invoiceNotifications" | "deadlineReminders" | "evaluationNotifications" | "teamActionNotifications" | null {
+): NotificationCategory | null {
+  const registered = (NOTIFICATION_REGISTRY as Record<string, { category: NotificationCategory }>)[notificationType];
+  if (registered) return registered.category;
+
+  // Prefix fallback for any not-yet-registered callers.
   if (notificationType.startsWith("ooo_")) return "oooNotifications";
   if (notificationType.startsWith("timesheet_")) return "timesheetNotifications";
   if (notificationType.startsWith("overtime_")) return "overtimeNotifications";
   if (notificationType.startsWith("invoice_") || notificationType.startsWith("expense_")) return "invoiceNotifications";
-  if (notificationType === "deadline_reminder") return "deadlineReminders";
+  if (notificationType === "deadline_reminder" || notificationType.startsWith("contract_")) return "deadlineReminders";
   if (notificationType.startsWith("evaluation_") || notificationType === "feedback_requested") return "evaluationNotifications";
   if (notificationType === "user_created" || notificationType === "user_updated") return "teamActionNotifications";
   return null;
@@ -523,11 +535,12 @@ export async function notifyContractExpiring(
     (new Date(contract.endDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
   );
 
+  // Admin/owner-facing notification
   for (const r of recipients) {
     if (seen.has(r.id)) continue;
     seen.add(r.id);
     await createNotification(r.id, {
-      type: "deadline_reminder",
+      type: "contract_renewal_due",
       title: "Contract Renewal Approaching",
       message: `${contractor.firstName} ${contractor.lastName}'s contract "${contract.title}" expires in ${daysUntil} day${daysUntil === 1 ? "" : "s"}`,
       entityType: "user",
@@ -540,6 +553,55 @@ export async function notifyContractExpiring(
       },
     });
   }
+
+  // IC-facing notification (subject of the contract)
+  if (!seen.has(contractor.id)) {
+    await createNotification(contractor.id, {
+      type: "contract_renewal_due",
+      title: "Your Contract Is Up for Renewal",
+      message: `Your contract "${contract.title}" expires in ${daysUntil} day${daysUntil === 1 ? "" : "s"}. Please reach out to your admin to confirm next steps.`,
+      entityType: "user",
+      entityId: contractor.id,
+      additionalEmailDetails: {
+        Contract: contract.title,
+        "End Date": contract.endDate,
+        "Notice Period": `${contract.noticePeriodDays} days`,
+      },
+    });
+  }
+}
+
+const EVALUATION_OUTCOME_LABELS: Record<string, string> = {
+  raise: "Received a raise",
+  bonus: "Bonus awarded",
+  promoted: "Promoted",
+  title_change: "Title change",
+  contract_extended: "Contract extended",
+  pip: "Performance Improvement Plan",
+  demoted: "Demoted",
+  terminated: "Contract terminated",
+  no_change: "No change",
+};
+
+export async function notifyEvaluationOutcome(
+  evaluationId: string,
+  icUserId: string,
+  outcomes: ReadonlyArray<string>,
+  managerId: string,
+): Promise<void> {
+  if (!outcomes || outcomes.length === 0) return;
+  const labels = outcomes.map(o => EVALUATION_OUTCOME_LABELS[o] || o).join(", ");
+  await createNotification(icUserId, {
+    type: "evaluation_outcome",
+    title: "Evaluation Outcome",
+    message: `Your evaluation outcome: ${labels}.`,
+    entityType: "evaluation",
+    entityId: evaluationId,
+    actorId: managerId,
+    additionalEmailDetails: {
+      "Outcome": labels,
+    },
+  });
 }
 
 export async function notifyUserCreated(

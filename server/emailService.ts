@@ -24,8 +24,22 @@ export interface EmailPayload {
 
 import { getPreferenceCategory } from "./notificationService";
 
+// Map prefix-derived in-app category to its email-specific column. This is what
+// powers per-category email vs. in-app independence in the preferences UI.
+const EMAIL_COLUMN_BY_CATEGORY: Record<string, keyof NotificationPreferences> = {
+  oooNotifications: "oooEmail",
+  timesheetNotifications: "timesheetEmail",
+  overtimeNotifications: "overtimeEmail",
+  invoiceNotifications: "invoiceEmail",
+  deadlineReminders: "deadlineEmail",
+  evaluationNotifications: "evaluationEmail",
+  teamActionNotifications: "teamActionEmail",
+};
+
 function getEmailCategoryFromType(type: string): keyof NotificationPreferences | null {
-  return getPreferenceCategory(type) as keyof NotificationPreferences | null;
+  const cat = getPreferenceCategory(type);
+  if (!cat) return null;
+  return EMAIL_COLUMN_BY_CATEGORY[cat] ?? null;
 }
 
 async function shouldSendEmail(userId: string, notificationType: string): Promise<boolean> {
@@ -34,8 +48,8 @@ async function shouldSendEmail(userId: string, notificationType: string): Promis
   if (!prefs) return true;
   if (!prefs.emailEnabled) return false;
 
-  const category = getEmailCategoryFromType(notificationType);
-  if (category && prefs[category] === false) return false;
+  const column = getEmailCategoryFromType(notificationType);
+  if (column && prefs[column] === false) return false;
 
   return true;
 }

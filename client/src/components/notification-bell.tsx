@@ -15,7 +15,13 @@ import type { Notification } from "@shared/schema";
 function getDeepLink(n: Notification): string | null {
   const { entityType, entityId, type } = n;
   if ((entityType === "ooo" || entityType === "ooo_request") && entityId) return `/ooo-requests?highlight=${entityId}`;
-  if ((entityType === "timesheet" || entityType === "timesheet_entry")) return entityId ? `/timesheets?highlight=${entityId}` : "/timesheets";
+  if ((entityType === "timesheet" || entityType === "timesheet_entry")) {
+    // Timesheet reminders use a synthetic period-key entityId (e.g.
+    // "ts-reminder:2026-05") which doesn't correspond to a real record;
+    // route those to the page without a highlight.
+    if (entityId && !entityId.startsWith("ts-reminder:")) return `/timesheets?highlight=${entityId}`;
+    return "/timesheets";
+  }
   if (entityType === "invoice" && entityId) return `/invoices?highlight=${entityId}`;
   if ((entityType === "overtime" || entityType === "overtime_request") && entityId) return `/overtime-approvals?highlight=${entityId}`;
   if (entityType === "evaluation" && entityId) return `/evaluations?highlight=${entityId}`;

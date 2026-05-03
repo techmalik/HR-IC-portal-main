@@ -229,6 +229,7 @@ import {
   notifyTimesheetUnlocked,
   notifyInvoicePaid,
   notifyFeedbackRequested,
+  notifyEvaluationOutcome,
   createNotification,
 } from "./notificationService";
 
@@ -2785,6 +2786,19 @@ export async function registerRoutes(
           entityId: evaluation.id,
           actorId: manager.id,
         });
+
+        if (evaluation.outcomes && evaluation.outcomes.length > 0) {
+          try {
+            await notifyEvaluationOutcome(
+              evaluation.id,
+              ic.id,
+              evaluation.outcomes,
+              manager.id,
+            );
+          } catch (err) {
+            console.error("Failed to send evaluation outcome notification:", err);
+          }
+        }
 
         if (evaluation.newExperienceLevel && evaluation.newExperienceLevel !== ic.experienceLevel) {
           await storage.updateUser(ic.id, { experienceLevel: evaluation.newExperienceLevel });

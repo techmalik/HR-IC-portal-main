@@ -633,99 +633,40 @@ function NotificationPreferencesSection({ userId, isAdmin }: { userId: string; i
 
         <div className="border-t pt-4 space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground">Notification Categories</h4>
+          <div className="grid grid-cols-[1fr,auto,auto] gap-x-6 gap-y-3 items-center text-xs text-muted-foreground">
+            <span />
+            <span className="text-center">In-App</span>
+            <span className="text-center">Email</span>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">OOO Requests</label>
-              <p className="text-xs text-muted-foreground">Leave request approvals and updates</p>
-            </div>
-            <Switch
-              checked={preferences?.oooNotifications ?? true}
-              onCheckedChange={(checked) => handleToggle("oooNotifications", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-ooo"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Timesheets</label>
-              <p className="text-xs text-muted-foreground">Timesheet submissions and reviews</p>
-            </div>
-            <Switch
-              checked={preferences?.timesheetNotifications ?? true}
-              onCheckedChange={(checked) => handleToggle("timesheetNotifications", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-timesheets"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Overtime</label>
-              <p className="text-xs text-muted-foreground">Overtime request approvals</p>
-            </div>
-            <Switch
-              checked={preferences?.overtimeNotifications ?? true}
-              onCheckedChange={(checked) => handleToggle("overtimeNotifications", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-overtime"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Invoices</label>
-              <p className="text-xs text-muted-foreground">Invoice uploads and processing</p>
-            </div>
-            <Switch
-              checked={preferences?.invoiceNotifications ?? true}
-              onCheckedChange={(checked) => handleToggle("invoiceNotifications", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-invoices"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Deadline Reminders</label>
-              <p className="text-xs text-muted-foreground">Reminders for upcoming deadlines</p>
-            </div>
-            <Switch
-              checked={preferences?.deadlineReminders ?? true}
-              onCheckedChange={(checked) => handleToggle("deadlineReminders", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-deadlines"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Evaluations & Feedback</label>
-              <p className="text-xs text-muted-foreground">Performance evaluations and peer feedback requests</p>
-            </div>
-            <Switch
-              checked={preferences?.evaluationNotifications ?? true}
-              onCheckedChange={(checked) => handleToggle("evaluationNotifications", checked)}
-              disabled={updateMutation.isPending}
-              data-testid="switch-evaluations"
-            />
-          </div>
-
-          {isAdmin && (
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <label className="text-sm font-medium">Team Activity</label>
-                <p className="text-xs text-muted-foreground">Updates on your team's submissions and approvals</p>
+            {([
+              { label: "OOO Requests", desc: "Leave request approvals and updates", inApp: "oooNotifications", email: "oooEmail", testid: "ooo" },
+              { label: "Timesheets", desc: "Timesheet submissions and reviews", inApp: "timesheetNotifications", email: "timesheetEmail", testid: "timesheets" },
+              { label: "Overtime", desc: "Overtime request approvals", inApp: "overtimeNotifications", email: "overtimeEmail", testid: "overtime" },
+              { label: "Invoices & Expenses", desc: "Invoice uploads, processing and expense reimbursements", inApp: "invoiceNotifications", email: "invoiceEmail", testid: "invoices" },
+              { label: "Deadline Reminders", desc: "Reminders for upcoming deadlines and contract renewals", inApp: "deadlineReminders", email: "deadlineEmail", testid: "deadlines" },
+              { label: "Evaluations & Feedback", desc: "Performance evaluations, outcomes, peer feedback", inApp: "evaluationNotifications", email: "evaluationEmail", testid: "evaluations" },
+              ...(isAdmin ? [{ label: "Team Activity", desc: "Updates on your team's submissions and approvals", inApp: "teamActionNotifications", email: "teamActionEmail", testid: "team-actions" }] : []),
+            ] as Array<{ label: string; desc: string; inApp: keyof NotificationPreferences; email: keyof NotificationPreferences; testid: string }>).map(row => (
+              <div key={row.testid} className="contents">
+                <div className="space-y-0.5 text-foreground">
+                  <label className="text-sm font-medium">{row.label}</label>
+                  <p className="text-xs text-muted-foreground">{row.desc}</p>
+                </div>
+                <Switch
+                  checked={(preferences?.[row.inApp] as boolean | undefined) ?? true}
+                  onCheckedChange={(checked) => handleToggle(row.inApp, checked)}
+                  disabled={updateMutation.isPending}
+                  data-testid={`switch-${row.testid}-inapp`}
+                />
+                <Switch
+                  checked={(preferences?.[row.email] as boolean | undefined) ?? true}
+                  onCheckedChange={(checked) => handleToggle(row.email, checked)}
+                  disabled={updateMutation.isPending}
+                  data-testid={`switch-${row.testid}-email`}
+                />
               </div>
-              <Switch
-                checked={preferences?.teamActionNotifications ?? true}
-                onCheckedChange={(checked) => handleToggle("teamActionNotifications", checked)}
-                disabled={updateMutation.isPending}
-                data-testid="switch-team-actions"
-              />
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
