@@ -256,7 +256,7 @@ export async function registerRoutes(
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const clientIp = req.socket?.remoteAddress || req.ip || 'unknown';
     
     if (!checkRateLimit(clientIp)) {
       return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
@@ -712,6 +712,15 @@ export async function registerRoutes(
     if (!isAdmin && !isSelf) {
       return res.status(403).json({ error: "Cannot change other users' passwords" });
     }
+
+    const userRecord = await storage.getUser(targetUserId);
+    if (!userRecord) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (isAdmin && !isSelf && !checkOrgBoundary(currentUser, userRecord)) {
+      return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
     
     const { newPassword, currentPassword } = req.body;
     if (!newPassword || newPassword.length < 6) {
@@ -720,10 +729,6 @@ export async function registerRoutes(
 
     // If currentPassword is provided (voluntary change via profile), verify it
     if (currentPassword) {
-      const userRecord = await storage.getUser(targetUserId);
-      if (!userRecord) {
-        return res.status(404).json({ error: "User not found" });
-      }
       const isValid = await comparePassword(currentPassword, userRecord.password);
       if (!isValid) {
         return res.status(401).json({ error: "Current password is incorrect" });
@@ -836,11 +841,82 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No users provided" });
       }
 
+      const currentUser = req.authenticatedUser!;
+      const callerOrgId = currentUser.organizationId;
+
+      const validRoles = ["ic", "admin"];
+      if (currentUser.role === "owner") validRoles.push("owner");
+
+      const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? undefined);
+      const existingEmails = new Set(existingOrgUsers.map(u => u.email?.toLowerCase()));
+
+      const seenInPayload = new Set<string>();
       const createdUsers = [];
       for (const userData of users) {
         try {
+          const {
+            username,
+            password,
+            email,
+            firstName,
+            lastName,
+            jobTitle,
+            phone,
+            supervisorId,
+            managerId,
+            hourlyRate,
+            monthlyCap,
+            currency,
+            startDate,
+            role: requestedRole,
+          } = userData;
+
+          if (!username || !password || !email || !firstName || !lastName) {
+            console.error("Skipping bulk user — required fields missing:", email);
+            continue;
+          }
+
+          const emailKey = (email as string).toLowerCase();
+          const usernameKey = (username as string).toLowerCase();
+
+          if (seenInPayload.has(emailKey) || seenInPayload.has(usernameKey)) {
+            console.error("Skipping bulk user — duplicate within payload:", email);
+            continue;
+          }
+
+          const existingByUsername = await storage.getUserByUsername(username);
+          if (existingByUsername) {
+            console.error("Skipping bulk user — username already in use:", username);
+            continue;
+          }
+
+          if (existingEmails.has(emailKey)) {
+            console.error("Skipping bulk user — email already in use within org:", email);
+            continue;
+          }
+
+          seenInPayload.add(emailKey);
+          seenInPayload.add(usernameKey);
+          existingEmails.add(emailKey);
+
+          const role = requestedRole && validRoles.includes(requestedRole) ? requestedRole : "ic";
+
           const user = await storage.createUser({
-            ...userData,
+            username,
+            password,
+            email,
+            firstName,
+            lastName,
+            jobTitle,
+            phone,
+            supervisorId,
+            managerId,
+            hourlyRate,
+            monthlyCap,
+            currency: normalizeCurrencyInput(currency) || "USD",
+            startDate,
+            role,
+            organizationId: callerOrgId,
             isActive: true,
           });
           createdUsers.push(user);
@@ -864,6 +940,10 @@ export async function registerRoutes(
       return res.status(404).json({ error: "User not found" });
     }
 
+    if (!checkOrgBoundary(req.authenticatedUser!, user)) {
+      return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
+
     const tempPassword = "temp" + Math.random().toString(36).slice(2, 8);
     await storage.updateUser(req.params.id, { password: tempPassword, mustChangePassword: true });
 
@@ -880,7 +960,7 @@ export async function registerRoutes(
       console.error("Failed to create activity log:", e);
     }
 
-    res.json({ message: "Password reset successfully", tempPassword });
+    res.json({ message: "Password reset successfully" });
   });
 
   // OOO Request routes - protected
