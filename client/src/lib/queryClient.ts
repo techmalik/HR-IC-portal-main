@@ -2,6 +2,12 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
 
+declare global {
+  interface Window {
+    __authFetchInstalled?: boolean;
+  }
+}
+
 let unauthorizedHandled = false;
 
 // Endpoints that legitimately return 401 as a normal response (e.g. probing
@@ -27,9 +33,7 @@ function handleUnauthorized() {
 
   // Notify the auth context (and anyone else who cares) so client state can
   // be cleared before we redirect.
-  try {
-    window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
-  } catch {}
+  window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
 
   const params = new URLSearchParams();
   params.set("expired", "1");
@@ -42,24 +46,24 @@ function handleUnauthorized() {
 // Install a global fetch interceptor so ANY fetch in the app — including
 // ad-hoc page-level queryFns that don't go through `apiRequest` or
 // `getQueryFn` — gets the same 401 -> redirect-to-login behavior.
-if (typeof window !== "undefined" && !(window as any).__authFetchInstalled) {
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (...args: Parameters<typeof fetch>) => {
-    const response = await originalFetch(...args);
+if (typeof window !== "undefined" && !window.__authFetchInstalled) {
+  const originalFetch: typeof fetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await originalFetch(input, init);
     if (response.status === 401) {
       const reqUrl =
-        typeof args[0] === "string"
-          ? args[0]
-          : args[0] instanceof Request
-          ? args[0].url
-          : (args[0] as URL).toString();
+        typeof input === "string"
+          ? input
+          : input instanceof Request
+          ? input.url
+          : input.toString();
       if (!shouldIgnore401For(reqUrl)) {
         handleUnauthorized();
       }
     }
     return response;
   };
-  (window as any).__authFetchInstalled = true;
+  window.__authFetchInstalled = true;
 }
 
 async function throwIfResNotOk(res: Response) {
