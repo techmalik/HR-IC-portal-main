@@ -6,6 +6,11 @@ import {
   categoryForRegisteredType,
   getNotificationSpec,
 } from "../notificationRegistry.ts";
+import {
+  ALL_TRANSITION_KINDS,
+  transitionToNotificationType,
+  type ApprovalTransitionKind,
+} from "../notificationTransitions.ts";
 
 test("registry covers every NotificationType (no missing entries)", () => {
   const allTypes = Object.values(NotificationType) as NotificationTypeValue[];
@@ -18,10 +23,26 @@ test("registry covers every NotificationType (no missing entries)", () => {
 });
 
 test("registry has no extra entries beyond NotificationType", () => {
-  const allTypes = new Set(Object.values(NotificationType));
+  const allTypes: ReadonlySet<string> = new Set(Object.values(NotificationType));
   for (const k of Object.keys(NOTIFICATION_REGISTRY)) {
-    assert.ok(allTypes.has(k as any), `Unexpected registry key: ${k}`);
+    assert.ok(allTypes.has(k), `Unexpected registry key: ${k}`);
   }
+});
+
+test("every approval transition maps to a registered notification type", () => {
+  for (const kind of ALL_TRANSITION_KINDS) {
+    const type = transitionToNotificationType({ kind } as { kind: ApprovalTransitionKind });
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(NOTIFICATION_REGISTRY, type),
+      `Transition ${kind} maps to unregistered notification type ${type}`,
+    );
+  }
+});
+
+test("ALL_TRANSITION_KINDS is exhaustive vs ApprovalTransition union", () => {
+  // If the union grows, the count diverges and forces an update here.
+  const seen = new Set(ALL_TRANSITION_KINDS);
+  assert.equal(seen.size, ALL_TRANSITION_KINDS.length, "duplicate transition kinds");
 });
 
 test("each spec has a non-empty recipient list and a category", () => {
