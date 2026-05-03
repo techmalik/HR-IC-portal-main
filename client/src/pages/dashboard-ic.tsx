@@ -327,9 +327,12 @@ export default function DashboardIC() {
                         </p>
                       </div>
                     </div>
-                    {invoice.amount && (
-                      <span className="font-medium">${(invoice.amount / 100).toFixed(2)}</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {invoice.amount && (
+                        <span className="font-medium">${(invoice.amount / 100).toFixed(2)}</span>
+                      )}
+                      <StatusBadge status={invoice.status === "pending_review" ? "pending" : invoice.status} />
+                    </div>
                   </div>
                 ))}
                 <Button variant="ghost" size="sm" className="w-full mt-2" asChild>

@@ -303,10 +303,10 @@ export default function TeamInvoicesPage() {
       setPaymentReference("");
       setPaidDate(format(new Date(), "yyyy-MM-dd"));
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       toast({
         title: "Error",
-        description: e?.message || "Failed to mark invoice as paid.",
+        description: e.message || "Failed to mark invoice as paid.",
         variant: "destructive",
       });
     },
@@ -496,15 +496,15 @@ export default function TeamInvoicesPage() {
             </Button>
           )}
         </div>
-        {invoice.status === "paid" && (invoice as any).paidAt && (
+        {invoice.status === "paid" && invoice.paidAt && (
           <div className="pt-2 border-t text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Paid</span>{" "}
-            on {format(new Date((invoice as any).paidAt), "MMM d, yyyy")}
-            {(invoice as any).paymentReference && (
-              <> · Ref: <span className="font-mono">{(invoice as any).paymentReference}</span></>
+            on {format(new Date(invoice.paidAt), "MMM d, yyyy")}
+            {invoice.paymentReference && (
+              <> · Ref: <span className="font-mono">{invoice.paymentReference}</span></>
             )}
-            {(invoice as any).paidBy && getUserName((invoice as any).paidBy) && (
-              <> · by {getUserName((invoice as any).paidBy)}</>
+            {invoice.paidBy && getUserName(invoice.paidBy) && (
+              <> · by {getUserName(invoice.paidBy)}</>
             )}
           </div>
         )}

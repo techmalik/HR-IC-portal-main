@@ -1913,7 +1913,7 @@ export async function registerRoutes(
       paidAt: paidAtDate,
       paidBy: user.id,
       paymentReference: paymentReference ? String(paymentReference).slice(0, 200) : null,
-    } as any);
+    });
     if (!updated) {
       return res.status(500).json({ error: "Failed to update invoice" });
     }
