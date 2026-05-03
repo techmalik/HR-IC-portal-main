@@ -20,7 +20,42 @@ function getRelatedArticles(currentSlug: string, count = 3): BlogArticle[] {
   return rotated.slice(0, count);
 }
 
-export function getBlogIndexHtml(): string {
+function emailCaptureFormHtml(returnTo: string, subscribed: boolean, error?: string): string {
+  const safeReturnTo = escAttr(returnTo);
+  if (subscribed) {
+    return `
+    <aside class="ssr-email-capture">
+      <h3>Get contractor ops tips in your inbox</h3>
+      <div class="ssr-email-success">You're subscribed! We'll send practical tips straight to your inbox.</div>
+    </aside>`;
+  }
+  return `
+    <aside class="ssr-email-capture">
+      <h3>Get contractor ops tips in your inbox</h3>
+      <p>Practical guides on timesheets, invoices, compliance, and remote team management — delivered free.</p>
+      <form class="ssr-email-form" method="POST" action="/api/blog/subscribe">
+        <input type="hidden" name="returnTo" value="${safeReturnTo}">
+        <input
+          class="ssr-email-input"
+          type="email"
+          name="email"
+          placeholder="you@company.com"
+          required
+          autocomplete="email"
+          aria-label="Email address"
+        >
+        <button class="ssr-email-submit" type="submit">Subscribe free</button>
+      </form>
+      ${error ? `<p class="ssr-email-error">${escHtml(error)}</p>` : ""}
+    </aside>`;
+}
+
+export interface BlogPageOptions {
+  subscribed?: boolean;
+  error?: string;
+}
+
+export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
   const articles = getArticles();
   const cardsHtml = articles
     .map(
@@ -36,12 +71,15 @@ export function getBlogIndexHtml(): string {
     )
     .join("\n");
 
+  const captureForm = emailCaptureFormHtml("/blog", opts.subscribed ?? false, opts.error);
+
   const bodyHtml = `
     <div class="ssr-hero">
       <h1>The TeamFlow Blog</h1>
       <p>Practical guides for SaaS teams managing independent contractors — timesheets, invoices, compliance, and remote ops.</p>
     </div>
     <main class="ssr-main">
+      ${captureForm}
       <div class="ssr-blog-grid">
         ${cardsHtml}
       </div>
@@ -71,7 +109,7 @@ export function getBlogIndexHtml(): string {
   });
 }
 
-export function getBlogArticleHtml(slug: string): string | null {
+export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): string | null {
   const article = getArticleBySlug(slug);
   if (!article) return null;
 
@@ -85,6 +123,9 @@ export function getBlogArticleHtml(slug: string): string | null {
     </div>`
     )
     .join("\n");
+
+  const returnTo = `/blog/${slug}`;
+  const captureForm = emailCaptureFormHtml(returnTo, opts.subscribed ?? false, opts.error);
 
   const bodyHtml = `
     <main class="ssr-main">
@@ -106,6 +147,8 @@ export function getBlogArticleHtml(slug: string): string | null {
       </div>
 
       ${article.bodyHtml}
+
+      ${captureForm}
 
       <section class="ssr-related">
         <h3>Related Articles</h3>

@@ -2760,6 +2760,7 @@ export async function registerRoutes(
   // so that Googlebot receives fully server-rendered HTML.
 
   const { getBlogIndexHtml, getBlogArticleHtml } = await import("./seo/blogPages");
+  const { addSubscriber, isValidEmail } = await import("./seo/emailCapture");
   const { getFaqHtml } = await import("./seo/faqPages");
   const { getArticles: getBlogArticles, createArticle, updateArticle, deleteArticle, BlogNotFoundError, BlogConflictError } = await import("./seo/blogStorage");
   const { FAQ_LAST_UPDATED } = await import("./seo/faqData");
@@ -2798,6 +2799,11 @@ export async function registerRoutes(
   }
 
   // ── Admin Blog API routes (auth-protected, admin only) ─────────────────
+  app.get("/api/admin/blog-subscribers", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+    const { getSubscribers } = await import("./seo/emailCapture");
+    res.json(getSubscribers());
+  }));
+
   app.get("/api/admin/blog", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
     res.json(getBlogArticles());
   }));
@@ -2869,21 +2875,49 @@ export async function registerRoutes(
     }
   }));
 
-  app.get("/blog", (_req, res) => {
+  app.post("/api/blog/subscribe", (req, res) => {
+    const email = (req.body?.email ?? "").toString().trim();
+    const rawReturnTo = (req.body?.returnTo ?? "/blog").toString().trim();
+    const returnTo = /^\/blog(\/[a-z0-9-]*)?$/.test(rawReturnTo) ? rawReturnTo : "/blog";
+
+    if (!email || !isValidEmail(email)) {
+      const opts = { error: "Please enter a valid email address." };
+      const html = returnTo.startsWith("/blog/")
+        ? getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
+        : getBlogIndexHtml(opts);
+      if (!html) {
+        res.redirect(`${returnTo}?error=invalid`);
+        return;
+      }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(html);
+      return;
+    }
+
+    addSubscriber(email, returnTo);
+    res.redirect(`${returnTo}?subscribed=1`);
+  });
+
+  app.get("/blog", (req, res) => {
+    const subscribed = req.query.subscribed === "1";
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getBlogIndexHtml());
+    res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
+    res.send(getBlogIndexHtml({ subscribed }));
   });
 
   app.get("/blog/:slug", (req, res) => {
-    const html = getBlogArticleHtml(req.params.slug);
+    const subscribed = req.query.subscribed === "1";
+    const html = getBlogArticleHtml(req.params.slug, { subscribed });
     if (!html) {
       res.status(404).send("<h1>Article not found</h1>");
       return;
     }
-    recordView(req.params.slug, req.headers.referer);
+    if (!subscribed) {
+      recordView(req.params.slug, req.headers.referer);
+    }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", BLOG_CACHE);
+    res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
     res.send(html);
   });
 

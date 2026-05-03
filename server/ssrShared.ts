@@ -262,6 +262,77 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     details[open] summary::after { content: '−'; }
     .faq-answer { padding: 0 18px 16px; font-size: 0.9375rem; color: var(--text-muted); }
 
+    /* ── Email capture ── */
+    .ssr-email-capture {
+      background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin: 40px 0;
+    }
+    .ssr-email-capture h3 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .ssr-email-capture p {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin-bottom: 16px;
+    }
+    .ssr-email-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ssr-email-input {
+      flex: 1 1 220px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .ssr-email-input:focus { border-color: var(--primary); }
+    .ssr-email-submit {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: var(--radius);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .ssr-email-submit:hover { background: var(--primary-dark); }
+    .ssr-email-success {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      color: #166534;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      margin-top: 0;
+    }
+    .ssr-email-success::before { content: '✓'; font-size: 1.1rem; font-weight: 700; color: #16a34a; }
+    .ssr-email-error {
+      color: #991b1b;
+      font-size: 0.875rem;
+      margin-top: 8px;
+    }
+
     /* ── Footer ── */
     .ssr-footer {
       background: var(--bg-muted);
