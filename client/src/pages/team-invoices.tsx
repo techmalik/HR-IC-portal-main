@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Invoice, Timesheet, DailyEntry, OOORequest } from "@shared/schema";
+import { formatMoney } from "@/lib/currency";
 
 import { CalendarOff } from "lucide-react";
 
@@ -272,9 +273,9 @@ export default function TeamInvoicesPage() {
     return "?";
   };
 
-  const formatAmount = (amount: number | null | undefined) => {
-    if (!amount) return "N/A";
-    return `$${(amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatAmount = (amount: number | null | undefined, currency?: string | null) => {
+    if (amount === null || amount === undefined) return "N/A";
+    return formatMoney(amount, currency);
   };
 
   const getPendingReviewInvoices = () => pendingInvoices?.filter((i) => i.status === "pending_review" || i.status === "revision_requested") || [];
@@ -348,7 +349,7 @@ export default function TeamInvoicesPage() {
               </div>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 <p className="text-sm font-medium">
-                  {formatAmount(invoice.amount)}
+                  {formatAmount(invoice.amount, invoice.currency)}
                 </p>
                 {invoice.timesheet && (
                   <span className="text-xs text-muted-foreground">
@@ -439,7 +440,7 @@ export default function TeamInvoicesPage() {
                 </p>
               </div>
               <p className="text-sm font-medium mt-1">
-                {formatAmount(invoice.amount)}
+                {formatAmount(invoice.amount, invoice.currency)}
               </p>
             </div>
           </div>
@@ -702,7 +703,7 @@ export default function TeamInvoicesPage() {
                   {format(new Date(selectedInvoice.year, selectedInvoice.month - 1), "MMMM yyyy")}
                 </p>
                 <p className="text-sm font-medium mt-1">
-                  Amount: {formatAmount(selectedInvoice.amount)}
+                  Amount: {formatAmount(selectedInvoice.amount, selectedInvoice.currency)}
                 </p>
               </div>
 
@@ -784,7 +785,7 @@ export default function TeamInvoicesPage() {
                   {format(new Date(payingInvoice.year, payingInvoice.month - 1), "MMMM yyyy")}
                 </p>
                 <p className="text-sm font-medium mt-1">
-                  Amount: {formatAmount(payingInvoice.amount)}
+                  Amount: {formatAmount(payingInvoice.amount, payingInvoice.currency)}
                 </p>
               </div>
 
@@ -851,7 +852,7 @@ export default function TeamInvoicesPage() {
               <div className="grid grid-cols-2 gap-4 p-4 rounded-md bg-muted/50 min-w-0">
                 <div>
                   <p className="text-xs text-muted-foreground">Amount</p>
-                  <p className="font-semibold text-lg">{formatAmount(viewingInvoice.amount)}</p>
+                  <p className="font-semibold text-lg">{formatAmount(viewingInvoice.amount, viewingInvoice.currency)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Status</p>

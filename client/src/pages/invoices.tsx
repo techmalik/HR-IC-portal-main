@@ -41,6 +41,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Upload, FileText, Download, Loader2, Plus, FileCheck, Trash2, Save, Eye, AlertCircle, RefreshCw } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry, Organization } from "@shared/schema";
+import { formatMoney, getCurrencySymbol, normalizeCurrency } from "@/lib/currency";
 import { OnboardingTour, invoicesTourConfig } from "@/components/onboarding-tour";
 
 interface LineItem {
@@ -64,6 +65,8 @@ export default function InvoicesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
+  const userCurrency = normalizeCurrency((user as any)?.currency);
+  const currencySymbol = getCurrencySymbol(userCurrency);
 
   useEffect(() => {
     if (!user) return;
@@ -348,6 +351,7 @@ export default function InvoicesPage() {
         fileName: standardizedFileName,
         fileUrl: fileData,
         amount: amount ? parseFloat(amount) * 100 : null,
+        currency: userCurrency,
         contractorCategory: contractorCategory || undefined,
       });
 
@@ -409,6 +413,7 @@ export default function InvoicesPage() {
         fileUrl: fileData,
         amount: calculatedSubtotal,
         subtotal: calculatedSubtotal,
+        currency: userCurrency,
         contractorName,
         contractorAddress,
         contractorPhone,
@@ -703,8 +708,8 @@ export default function InvoicesPage() {
       const total = calculateLineTotal(item.rate, item.quantity);
       doc.text(item.description.substring(0, 50), 22, y);
       doc.text(item.quantity, 120, y);
-      doc.text(`$${formatCurrency(parseFloat(item.rate.replace(/,/g, "")))}`, 145, y);
-      doc.text(`$${formatCurrency(total)}`, pageWidth - 22, y, { align: "right" });
+      doc.text(`${currencySymbol}${formatCurrency(parseFloat(item.rate.replace(/,/g, "")))}`, 145, y);
+      doc.text(`${currencySymbol}${formatCurrency(total)}`, pageWidth - 22, y, { align: "right" });
       doc.setDrawColor(229, 229, 229);
       doc.line(20, y + 2, pageWidth - 20, y + 2);
       y += 8;
@@ -720,7 +725,7 @@ export default function InvoicesPage() {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80, 80, 80);
     doc.text("Sub-Total:", labelColumnX, y, { align: "right" });
-    doc.text(`$${subtotalDollars}`, summaryAmountX, y, { align: "right" });
+    doc.text(`${currencySymbol}${subtotalDollars}`, summaryAmountX, y, { align: "right" });
     
     y += 14;
     doc.setDrawColor(30, 58, 95);
@@ -731,7 +736,7 @@ export default function InvoicesPage() {
     doc.setFontSize(14);
     doc.setTextColor(30, 58, 95);
     doc.text("Balance Due:", labelColumnX, y, { align: "right" });
-    doc.text(`$${subtotalDollars}`, summaryAmountX, y, { align: "right" });
+    doc.text(`${currencySymbol}${subtotalDollars}`, summaryAmountX, y, { align: "right" });
     doc.setLineWidth(0.2);
 
     if (formatBankDetailsText()) {
@@ -897,7 +902,7 @@ export default function InvoicesPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Amount (USD)</Label>
+                      <Label>Amount ({userCurrency})</Label>
                       <Input
                         type="number"
                         min="0"
@@ -1141,7 +1146,7 @@ export default function InvoicesPage() {
                       <div className="space-y-3">
                         <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground">
                           <div className="col-span-5">Description</div>
-                          <div className="col-span-2">Rate ($)</div>
+                          <div className="col-span-2">Rate ({currencySymbol})</div>
                           <div className="col-span-2">Qty</div>
                           <div className="col-span-2 text-right">Total</div>
                           <div className="col-span-1"></div>
@@ -1181,7 +1186,7 @@ export default function InvoicesPage() {
                               />
                             </div>
                             <div className="col-span-2 text-right font-medium">
-                              ${formatCurrency(calculateLineTotal(item.rate, item.quantity))}
+                              {currencySymbol}{formatCurrency(calculateLineTotal(item.rate, item.quantity))}
                             </div>
                             <div className="col-span-1 flex justify-end">
                               <Button
@@ -1201,7 +1206,7 @@ export default function InvoicesPage() {
                       <div className="flex justify-end pt-2">
                         <div className="text-right">
                           <div className="text-sm text-muted-foreground">Subtotal</div>
-                          <div className="text-xl font-semibold">${subtotalDisplay}</div>
+                          <div className="text-xl font-semibold">{currencySymbol}{subtotalDisplay}</div>
                         </div>
                       </div>
                     </div>
@@ -1404,7 +1409,7 @@ export default function InvoicesPage() {
                     <div className="flex items-center gap-3" data-testid={index === 0 ? "tour-target-invoice-status" : undefined}>
                       {invoice.amount && (
                         <span className="font-semibold text-lg" data-testid={`amount-${invoice.id}`}>
-                          ${formatCurrency(invoice.amount / 100)}
+                          {formatMoney(invoice.amount, invoice.currency)}
                         </span>
                       )}
                       <Button

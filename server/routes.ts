@@ -17,6 +17,18 @@ function isWeekend(dateString: string): boolean {
 
 const objectStorageService = new ObjectStorageService();
 
+// Allowed ISO 4217 currency codes for invoices/users — kept in sync with
+// `client/src/lib/currency.ts` SUPPORTED_CURRENCIES.
+const ALLOWED_CURRENCIES = new Set([
+  "USD", "EUR", "GBP", "CAD", "AUD", "MXN", "BRL", "INR", "JPY",
+  "CHF", "SEK", "NOK", "PLN", "ZAR", "ARS", "COP", "PHP", "SGD",
+]);
+function normalizeCurrencyInput(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const upper = value.trim().toUpperCase();
+  return ALLOWED_CURRENCIES.has(upper) ? upper : undefined;
+}
+
 // Helper function to normalize file URLs - converts absolute URLs to relative paths
 function normalizeFileUrl(fileUrl: string | null | undefined): string | null {
   if (!fileUrl) return null;
@@ -526,6 +538,7 @@ export async function registerRoutes(
         managerId,
         hourlyRate,
         monthlyCap,
+        currency,
         startDate,
         role: requestedRole,
         isActive: requestedIsActive,
@@ -552,6 +565,7 @@ export async function registerRoutes(
         managerId,
         hourlyRate,
         monthlyCap,
+        currency: normalizeCurrencyInput(currency) || "USD",
         startDate,
         role,
         isActive: requestedIsActive !== undefined ? requestedIsActive : true,
@@ -630,6 +644,7 @@ export async function registerRoutes(
       managerId,
       hourlyRate,
       monthlyCap,
+      currency,
       startDate,
       role,
       isActive,
@@ -643,6 +658,13 @@ export async function registerRoutes(
     if (jobTitle !== undefined) allowedUpdates.jobTitle = jobTitle;
     if (phone !== undefined) allowedUpdates.phone = phone;
     if (avatar !== undefined) allowedUpdates.avatar = avatar;
+    if (currency !== undefined) {
+      const normalized = normalizeCurrencyInput(currency);
+      if (!normalized) {
+        return res.status(400).json({ error: "Unsupported currency code" });
+      }
+      allowedUpdates.currency = normalized;
+    }
     if (isAdmin) {
       if (supervisorId !== undefined) allowedUpdates.supervisorId = supervisorId;
       if (managerId !== undefined) allowedUpdates.managerId = managerId;
@@ -1653,9 +1675,18 @@ export async function registerRoutes(
       
       // Link invoice to timesheet if exists
       const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
-      
+
+      // Default invoice currency to the contractor's preferred currency
+      let invoiceCurrency = normalizeCurrencyInput(req.body.currency) || "";
+      if (!invoiceCurrency && userId) {
+        const invoiceUser = await storage.getUser(userId);
+        invoiceCurrency = normalizeCurrencyInput(invoiceUser?.currency) || "USD";
+      }
+      if (!invoiceCurrency) invoiceCurrency = "USD";
+
       const invoiceData = {
         ...req.body,
+        currency: invoiceCurrency,
         status: "pending_review",
         timesheetId: timesheet?.id || null,
         organizationId: req.authenticatedUser!.organizationId,

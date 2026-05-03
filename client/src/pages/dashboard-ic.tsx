@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
 import { Calendar, Clock, FileText, Plus, ArrowRight, Timer } from "lucide-react";
 import type { OOORequest, Timesheet, Invoice, OvertimeRequest } from "@shared/schema";
+import { formatMoney } from "@/lib/currency";
 import { format, getDaysInMonth } from "date-fns";
 
 export default function DashboardIC() {
@@ -329,7 +330,7 @@ export default function DashboardIC() {
                     </div>
                     <div className="flex items-center gap-3">
                       {invoice.amount && (
-                        <span className="font-medium">${(invoice.amount / 100).toFixed(2)}</span>
+                        <span className="font-medium">{formatMoney(invoice.amount, invoice.currency)}</span>
                       )}
                       <StatusBadge status={invoice.status === "pending_review" ? "pending" : invoice.status} />
                     </div>

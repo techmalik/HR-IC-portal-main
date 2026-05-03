@@ -39,6 +39,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { User, Timesheet, Invoice, OOORequest, Evaluation, DailyEntry } from "@shared/schema";
+import { formatMoney } from "@/lib/currency";
 
 const VALID_TABS = ["timesheets", "evaluations", "invoices", "time-offs"];
 
@@ -638,7 +639,7 @@ export default function ICDetailPage() {
                           <p className="font-medium text-sm">{invoice.fileName}</p>
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")}
-                            {invoice.amount && ` - $${(invoice.amount / 100).toFixed(2)}`}
+                            {invoice.amount && ` - ${formatMoney(invoice.amount, invoice.currency)}`}
                           </p>
                         </div>
                       </div>

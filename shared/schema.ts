@@ -177,6 +177,7 @@ export const users = pgTable("users", {
   contractorCategory: text("contractor_category"),
   hourlyRate: integer("hourly_rate"),
   monthlyCap: integer("monthly_cap"),
+  currency: text("currency").notNull().default("USD"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   completedOnboarding: jsonb("completed_onboarding").default(sql`'{}'::jsonb`),
 }, (table) => [
@@ -337,6 +338,7 @@ export const invoices = pgTable("invoices", {
   fileUrl: text("file_url").notNull(),
   amount: integer("amount"),
   subtotal: integer("subtotal"),
+  currency: text("currency").notNull().default("USD"),
   contractorName: text("contractor_name"),
   contractorAddress: text("contractor_address"),
   contractorPhone: text("contractor_phone"),

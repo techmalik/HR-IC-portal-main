@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Save, Bell, User, Lock } from "lucide-react";
 import type { NotificationPreferences } from "@shared/schema";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -39,6 +40,7 @@ const profileFormSchema = z.object({
   team: z.string().optional(),
   experienceLevel: z.number().min(1).max(7).optional(),
   contractorStatus: z.string().optional(),
+  currency: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
@@ -86,6 +88,7 @@ export default function ProfilePage() {
       team: (user as any)?.team || "",
       experienceLevel: (user as any)?.experienceLevel || 1,
       contractorStatus: (user as any)?.contractorStatus || "engaged",
+      currency: (user as any)?.currency || "USD",
     },
   });
 
@@ -350,6 +353,31 @@ export default function ProfilePage() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={profileForm.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Currency</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "USD"}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-currency">
+                              <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {SUPPORTED_CURRENCIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code} data-testid={`option-currency-${c.code}`}>
+                                {c.code} — {c.name} ({c.symbol})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="flex justify-end pt-4">
                     <Button
