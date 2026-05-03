@@ -244,6 +244,7 @@ export function AppSidebar() {
           { title: "Billing", url: "/billing", icon: CreditCard },
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
           { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
+          { title: "SEO Content", url: "/admin/seo", icon: BookOpen },
         ],
       });
     }

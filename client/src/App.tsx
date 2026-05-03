@@ -40,6 +40,7 @@ import SignupPage from "@/pages/signup";
 import LandingPage from "@/pages/landing";
 import BillingPage from "@/pages/billing";
 import AdminBlogPage from "@/pages/admin-blog";
+import AdminSeoPage from "@/pages/admin-seo";
 import ExpensesPage from "@/pages/expenses";
 import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
 
@@ -356,6 +357,15 @@ function getRouteConfig(pathname: string, userRole?: string, hasDirectReports?: 
       backHref: "/",
       backLabel: "Dashboard",
     },
+    "/admin/seo": {
+      title: "SEO Content",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/" },
+        { label: "SEO Content" },
+      ],
+      backHref: "/",
+      backLabel: "Dashboard",
+    },
     "/profile": {
       title: "Profile Settings",
       breadcrumbs: [
@@ -566,6 +576,7 @@ function ProtectedRoutes() {
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
                 <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
                 <Route path="/admin/blog">{() => <AdminOnlyRoute component={AdminBlogPage} />}</Route>
+                <Route path="/admin/seo">{() => <AdminOnlyRoute component={AdminSeoPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />

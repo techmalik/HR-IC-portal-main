@@ -3331,6 +3331,26 @@ export async function registerRoutes(
   const { getArticles: getBlogArticles, createArticle, updateArticle, deleteArticle, BlogNotFoundError, BlogConflictError } = await import("./seo/blogStorage");
   const { FAQ_LAST_UPDATED } = await import("./seo/faqData");
   const { recordView, getAllViewStats } = await import("./seo/blogViews");
+  const {
+    getIndustryHtml,
+    getCompetitorHtml,
+    getIndustriesIndexHtml,
+    getCompetitorsIndexHtml,
+  } = await import("./seo/programmaticPages");
+  const {
+    getIndustries,
+    getCompetitors,
+    getPublishedIndustries,
+    getPublishedCompetitors,
+    createIndustry,
+    updateIndustry,
+    deleteIndustry,
+    createCompetitor,
+    updateCompetitor,
+    deleteCompetitor,
+    ProgrammaticNotFoundError,
+    ProgrammaticConflictError,
+  } = await import("./seo/programmaticStorage");
 
   const SEO_CACHE = "public, max-age=86400, stale-while-revalidate=3600";
   // Blog pages are user-editable; use a shorter cache so edits appear within minutes
@@ -4136,6 +4156,123 @@ export async function registerRoutes(
     res.send(html);
   });
 
+  // ── Programmatic SEO: industry pages ──
+  app.get("/contractor-management-for-:industry", (req, res) => {
+    const html = getIndustryHtml(req.params.industry);
+    if (!html) {
+      res.status(404).send("<h1>Page not found</h1>");
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", BLOG_CACHE);
+    res.send(html);
+  });
+
+  app.get("/industries", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", BLOG_CACHE);
+    res.send(getIndustriesIndexHtml());
+  });
+
+  // ── Programmatic SEO: competitor comparison pages ──
+  app.get("/compare", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", BLOG_CACHE);
+    res.send(getCompetitorsIndexHtml());
+  });
+
+  app.get(/^\/([a-z0-9-]+-alternative)$/, (req, res) => {
+    const slug = req.params[0];
+    const html = getCompetitorHtml(slug);
+    if (!html) {
+      res.status(404).send("<h1>Page not found</h1>");
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", BLOG_CACHE);
+    res.send(html);
+  });
+
+  // ── Programmatic SEO: admin CRUD ──
+  const ALLOWED_STATUSES = new Set(["draft", "published"]);
+  function validateStatusField(b: any): string | null {
+    if (b.status !== undefined && !ALLOWED_STATUSES.has(b.status)) {
+      return `status must be "draft" or "published"`;
+    }
+    return null;
+  }
+  function validateIndustryBody(b: any, mode: "create" | "update" = "create"): string | null {
+    if (b == null || typeof b !== "object") return "request body must be an object";
+    const required = ["slug", "name", "shortName", "heroTitle", "metaTitle", "metaDescription", "intro", "painPoints", "useCases", "faqs", "updatedDate"];
+    if (mode === "create") {
+      for (const k of required) if (b[k] == null) return `Field "${k}" is required`;
+    }
+    if (b.slug !== undefined && !SLUG_RE.test(b.slug)) return "slug must be lowercase letters, numbers, and hyphens";
+    if (b.metaDescription !== undefined && (typeof b.metaDescription !== "string" || b.metaDescription.length > 200)) return "metaDescription must be a string ≤ 200 chars";
+    if (b.painPoints !== undefined && !Array.isArray(b.painPoints)) return "painPoints must be an array";
+    if (b.useCases !== undefined && !Array.isArray(b.useCases)) return "useCases must be an array";
+    if (b.faqs !== undefined && !Array.isArray(b.faqs)) return "faqs must be an array";
+    return validateStatusField(b);
+  }
+  function validateCompetitorBody(b: any, mode: "create" | "update" = "create"): string | null {
+    if (b == null || typeof b !== "object") return "request body must be an object";
+    const required = ["slug", "competitorName", "metaTitle", "metaDescription", "intro", "positioning", "competitorWeaknesses", "teamflowStrengths", "comparison", "pricingNote", "faqs", "updatedDate"];
+    if (mode === "create") {
+      for (const k of required) if (b[k] == null) return `Field "${k}" is required`;
+    }
+    if (b.slug !== undefined) {
+      if (!SLUG_RE.test(b.slug)) return "slug must be lowercase letters, numbers, and hyphens";
+      if (!b.slug.endsWith("-alternative")) return "competitor slug must end with '-alternative'";
+    }
+    if (b.metaDescription !== undefined && (typeof b.metaDescription !== "string" || b.metaDescription.length > 200)) return "metaDescription must be a string ≤ 200 chars";
+    if (b.competitorWeaknesses !== undefined && !Array.isArray(b.competitorWeaknesses)) return "competitorWeaknesses must be an array";
+    if (b.teamflowStrengths !== undefined && !Array.isArray(b.teamflowStrengths)) return "teamflowStrengths must be an array";
+    if (b.comparison !== undefined && !Array.isArray(b.comparison)) return "comparison must be an array";
+    if (b.faqs !== undefined && !Array.isArray(b.faqs)) return "faqs must be an array";
+    return validateStatusField(b);
+  }
+  function handleProgrammaticError(err: unknown, res: Response): void {
+    if (err instanceof ProgrammaticNotFoundError || err instanceof ProgrammaticConflictError) {
+      (res as any).status(err.status).json({ error: err.message });
+    } else {
+      throw err;
+    }
+  }
+
+  app.get("/api/admin/seo/industries", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+    res.json(getIndustries());
+  }));
+  app.post("/api/admin/seo/industries", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const err = validateIndustryBody(req.body);
+    if (err) return res.status(400).json({ error: err });
+    try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+  app.put("/api/admin/seo/industries/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const err = validateIndustryBody(req.body, "update");
+    if (err) return res.status(400).json({ error: err });
+    try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+  app.delete("/api/admin/seo/industries/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+
+  app.get("/api/admin/seo/competitors", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (_req, res) => {
+    res.json(getCompetitors());
+  }));
+  app.post("/api/admin/seo/competitors", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const err = validateCompetitorBody(req.body);
+    if (err) return res.status(400).json({ error: err });
+    try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+  app.put("/api/admin/seo/competitors/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const err = validateCompetitorBody(req.body, "update");
+    if (err) return res.status(400).json({ error: err });
+    try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+  app.delete("/api/admin/seo/competitors/:slug", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+  }));
+
   app.get("/faq", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
@@ -4146,7 +4283,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(
-      `User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\nSitemap: /sitemap-blog.xml\n`
+      `User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\nSitemap: /sitemap-blog.xml\nSitemap: /sitemap-programmatic.xml\n`
     );
   });
 
@@ -4175,12 +4312,53 @@ export async function registerRoutes(
       changefreq: "monthly" as const,
       priority: "0.7",
     }));
+    const industryUrls = getPublishedIndustries().map((i) => ({
+      loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
+      lastmod: i.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.8",
+    }));
+    const competitorUrls = getPublishedCompetitors().map((c) => ({
+      loc: `${BASE_URL}/${c.slug}`,
+      lastmod: c.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.8",
+    }));
     const xml = buildSitemapXml([
       { loc: `${BASE_URL}/`, lastmod: today, changefreq: "weekly", priority: "1.0" },
       { loc: `${BASE_URL}/blog`, lastmod: mostRecentArticleDate, changefreq: "weekly", priority: "0.9" },
       { loc: `${BASE_URL}/faq`, lastmod: FAQ_LAST_UPDATED, changefreq: "monthly", priority: "0.8" },
+      { loc: `${BASE_URL}/industries`, lastmod: today, changefreq: "weekly", priority: "0.85" },
+      { loc: `${BASE_URL}/compare`, lastmod: today, changefreq: "weekly", priority: "0.85" },
       { loc: `${BASE_URL}/signup`, lastmod: today, changefreq: "monthly", priority: "0.8" },
       ...articleUrls,
+      ...industryUrls,
+      ...competitorUrls,
+    ]);
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(xml);
+  });
+
+  app.get("/sitemap-programmatic.xml", (_req, res) => {
+    const industryUrls = getPublishedIndustries().map((i) => ({
+      loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
+      lastmod: i.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.8",
+    }));
+    const competitorUrls = getPublishedCompetitors().map((c) => ({
+      loc: `${BASE_URL}/${c.slug}`,
+      lastmod: c.updatedDate,
+      changefreq: "monthly" as const,
+      priority: "0.8",
+    }));
+    const today = new Date().toISOString().slice(0, 10);
+    const xml = buildSitemapXml([
+      { loc: `${BASE_URL}/industries`, lastmod: today, changefreq: "weekly", priority: "0.85" },
+      { loc: `${BASE_URL}/compare`, lastmod: today, changefreq: "weekly", priority: "0.85" },
+      ...industryUrls,
+      ...competitorUrls,
     ]);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
