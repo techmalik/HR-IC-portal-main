@@ -249,7 +249,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   // Register Object Storage routes for serving uploaded files
-  registerObjectStorageRoutes(app);
+  registerObjectStorageRoutes(app, authMiddleware, storage);
 
   // Migration file upload route - admin only
   app.use(createMigrateFilesRouter(authMiddleware, requireRole("admin")));
@@ -1738,11 +1738,28 @@ export async function registerRoutes(
   // Invoice routes - protected
   app.get("/api/invoices", authMiddleware, async (req, res) => {
     const { userId } = req.query;
+    const currentUser = req.authenticatedUser!;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     let invoices;
     if (userId) {
-      invoices = await storage.getInvoicesByUser(userId as string);
+      const targetUserId = userId as string;
+      if (isAdmin) {
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+          return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+        }
+      } else if (currentUser.id !== targetUserId) {
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(targetUserId)) {
+          return res.status(403).json({ error: "Forbidden - Cannot access invoices for this user" });
+        }
+      }
+      invoices = await storage.getInvoicesByUser(targetUserId);
     } else {
-      invoices = await storage.getAllInvoices(req.authenticatedUser!.organizationId ?? undefined);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+      }
+      invoices = await storage.getAllInvoices(currentUser.organizationId ?? undefined);
     }
     
     // Enrich invoices with user data and normalize file URLs
@@ -1865,6 +1882,21 @@ export async function registerRoutes(
     if (!invoice) {
       return res.status(404).json({ error: "Invoice not found" });
     }
+    const currentUser = req.authenticatedUser!;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isOwner = currentUser.id === invoice.userId;
+
+    if (isAdmin) {
+      if (currentUser.organizationId !== invoice.organizationId) {
+        return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+      }
+    } else if (!isOwner) {
+      const teamMemberIds = await getTeamMemberIds(currentUser.id);
+      if (!teamMemberIds.includes(invoice.userId)) {
+        return res.status(403).json({ error: "Forbidden - Cannot access this invoice" });
+      }
+    }
+
     res.json({
       ...invoice,
       fileUrl: normalizeFileUrl(invoice.fileUrl),

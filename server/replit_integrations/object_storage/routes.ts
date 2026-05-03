@@ -1,6 +1,7 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import { Client } from "@replit/object-storage";
 import path from "path";
+import type { IStorage } from "../../storage";
 
 const MIME_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -14,7 +15,55 @@ const MIME_TYPES: Record<string, string> = {
   ".json": "application/json",
 };
 
-export function registerObjectStorageRoutes(app: Express): void {
+async function isAuthorizedForObject(
+  callerFileUrl: string,
+  caller: Express.Request["authenticatedUser"] & {},
+  storage: IStorage,
+): Promise<boolean> {
+  const isAdmin = caller.role === "admin" || caller.role === "owner";
+  const callerOrgId = caller.organizationId;
+
+  const invoice = await storage.getInvoiceByFileUrl(callerFileUrl);
+  if (invoice) {
+    if (caller.id === invoice.userId) return true;
+    if (isAdmin) return callerOrgId === invoice.organizationId;
+    const directReports = await storage.getUsersBySupervisor(caller.id);
+    return (
+      directReports.some((u) => u.id === invoice.userId) &&
+      callerOrgId === invoice.organizationId
+    );
+  }
+
+  const contract = await storage.getContractByFileUrl(callerFileUrl);
+  if (contract) {
+    if (caller.id === contract.userId) return true;
+    if (isAdmin) return callerOrgId === contract.organizationId;
+    const directReports = await storage.getUsersBySupervisor(caller.id);
+    return (
+      directReports.some((u) => u.id === contract.userId) &&
+      callerOrgId === contract.organizationId
+    );
+  }
+
+  const expense = await storage.getExpenseByReceiptUrl(callerFileUrl);
+  if (expense) {
+    if (caller.id === expense.userId) return true;
+    if (isAdmin) return callerOrgId === expense.organizationId;
+    const directReports = await storage.getUsersBySupervisor(caller.id);
+    return (
+      directReports.some((u) => u.id === expense.userId) &&
+      callerOrgId === expense.organizationId
+    );
+  }
+
+  return isAdmin;
+}
+
+export function registerObjectStorageRoutes(
+  app: Express,
+  authMiddleware: RequestHandler,
+  storage: IStorage,
+): void {
   const storageClient = new Client();
 
   app.post("/api/uploads/request-url", async (req, res) => {
@@ -43,10 +92,21 @@ export function registerObjectStorageRoutes(app: Express): void {
     }
   });
 
-  app.get("/objects/:objectPath(*)", async (req, res) => {
+  app.get("/objects/:objectPath(*)", authMiddleware, async (req, res) => {
     try {
       const requestedPath = req.params.objectPath || req.path.replace(/^\/objects\//, "");
       const storagePath = `.private/${requestedPath}`;
+      const callerFileUrl = `/objects/${requestedPath}`;
+
+      const caller = req.authenticatedUser;
+      if (!caller) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const authorized = await isAuthorizedForObject(callerFileUrl, caller, storage);
+      if (!authorized) {
+        return res.status(403).json({ error: "Forbidden - Access denied" });
+      }
 
       let fileBuffer: Buffer | null = null;
       let resolvedPath = storagePath;

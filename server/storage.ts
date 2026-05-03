@@ -118,6 +118,7 @@ export interface IStorage {
   getOvertimeRequestByTimesheetAndDate(timesheetId: string, date: string): Promise<OvertimeRequest | undefined>;
 
   getInvoice(id: string): Promise<Invoice | undefined>;
+  getInvoiceByFileUrl(fileUrl: string): Promise<Invoice | undefined>;
   getInvoicesByUser(userId: string): Promise<Invoice[]>;
   getAllInvoices(organizationId?: string): Promise<Invoice[]>;
   getPendingInvoices(organizationId?: string): Promise<Invoice[]>;
@@ -185,6 +186,7 @@ export interface IStorage {
   getUserCountByOrganization(organizationId: string): Promise<number>;
 
   getContract(id: string): Promise<Contract | undefined>;
+  getContractByFileUrl(fileUrl: string): Promise<Contract | undefined>;
   getContractsByUser(userId: string): Promise<Contract[]>;
   getAllContracts(organizationId?: string): Promise<Contract[]>;
   createContract(contract: InsertContract): Promise<Contract>;
@@ -192,6 +194,7 @@ export interface IStorage {
   updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined>;
 
   getExpense(id: string): Promise<Expense | undefined>;
+  getExpenseByReceiptUrl(receiptUrl: string): Promise<Expense | undefined>;
   getExpensesByUser(userId: string): Promise<Expense[]>;
   getExpensesByManager(managerId: string): Promise<Expense[]>;
   getPendingExpensesByManager(managerId: string): Promise<Expense[]>;
@@ -440,6 +443,11 @@ export class DatabaseStorage implements IStorage {
 
   async getInvoice(id: string): Promise<Invoice | undefined> {
     const result = await db.select().from(invoices).where(eq(invoices.id, id));
+    return result[0];
+  }
+
+  async getInvoiceByFileUrl(fileUrl: string): Promise<Invoice | undefined> {
+    const result = await db.select().from(invoices).where(eq(invoices.fileUrl, fileUrl));
     return result[0];
   }
 
@@ -727,6 +735,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getContractByFileUrl(fileUrl: string): Promise<Contract | undefined> {
+    const result = await db.select().from(contracts).where(eq(contracts.fileUrl, fileUrl));
+    return result[0];
+  }
+
   async getContractsByUser(userId: string): Promise<Contract[]> {
     return db.select().from(contracts).where(eq(contracts.userId, userId)).orderBy(desc(contracts.createdAt));
   }
@@ -755,6 +768,11 @@ export class DatabaseStorage implements IStorage {
 
   async getExpense(id: string): Promise<Expense | undefined> {
     const result = await db.select().from(expenses).where(eq(expenses.id, id));
+    return result[0];
+  }
+
+  async getExpenseByReceiptUrl(receiptUrl: string): Promise<Expense | undefined> {
+    const result = await db.select().from(expenses).where(eq(expenses.receiptUrl, receiptUrl));
     return result[0];
   }
 
