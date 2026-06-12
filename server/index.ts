@@ -138,7 +138,7 @@ app.use((req, res, next) => {
 
       const checkExpiringContracts = async () => {
         try {
-          const all = await storage.getAllContracts();
+          const all = await storage.getAllContractsForScheduler();
           const now = Date.now();
           for (const c of all) {
             const end = new Date(c.endDate).getTime();
@@ -187,7 +187,7 @@ app.use((req, res, next) => {
           }
           const periodKey = timesheetReminderPeriodKey(targetMonth, targetYear);
 
-          const allUsers = await storage.getAllUsers();
+          const allUsers = await storage.getAllUsersForScheduler();
           for (const u of allUsers) {
             if (!u.isActive || u.role !== "ic") continue;
 

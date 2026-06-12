@@ -237,17 +237,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(organizationId?: string): Promise<User[]> {
-    if (organizationId) {
-      return db.select().from(users).where(eq(users.organizationId, organizationId));
-    }
+    if (!organizationId) return [];
+    return db.select().from(users).where(eq(users.organizationId, organizationId));
+  }
+
+  // Platform-level scheduler use only — returns users across all orgs.
+  async getAllUsersForScheduler(): Promise<User[]> {
     return db.select().from(users);
   }
 
   async getUsersByRole(role: string, organizationId?: string): Promise<User[]> {
-    if (organizationId) {
-      return db.select().from(users).where(and(eq(users.role, role), eq(users.organizationId, organizationId)));
-    }
-    return db.select().from(users).where(eq(users.role, role));
+    if (!organizationId) return [];
+    return db.select().from(users).where(and(eq(users.role, role), eq(users.organizationId, organizationId)));
   }
 
   async getUsersBySupervisor(supervisorId: string): Promise<User[]> {
@@ -255,9 +256,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getManagers(organizationId?: string): Promise<User[]> {
-    const allUsers = organizationId
-      ? await db.select().from(users).where(eq(users.organizationId, organizationId))
-      : await db.select().from(users);
+    if (!organizationId) return [];
+    const allUsers = await db.select().from(users).where(eq(users.organizationId, organizationId));
     const admins = allUsers.filter(u => u.role === UserRole.ADMIN || u.role === UserRole.OWNER);
     
     const supervisorIds = new Set(allUsers.filter(u => u.supervisorId).map(u => u.supervisorId));
@@ -269,10 +269,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSupervisors(organizationId?: string): Promise<User[]> {
-    if (organizationId) {
-      return db.select().from(users).where(eq(users.organizationId, organizationId));
-    }
-    return db.select().from(users);
+    if (!organizationId) return [];
+    return db.select().from(users).where(eq(users.organizationId, organizationId));
   }
 
   async getOOORequest(id: string): Promise<OOORequest | undefined> {
@@ -289,17 +287,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingOOORequests(organizationId?: string): Promise<OOORequest[]> {
-    if (organizationId) {
-      return db.select().from(oooRequests).where(and(eq(oooRequests.status, "pending"), eq(oooRequests.organizationId, organizationId)));
-    }
-    return db.select().from(oooRequests).where(eq(oooRequests.status, "pending"));
+    if (!organizationId) return [];
+    return db.select().from(oooRequests).where(and(eq(oooRequests.status, "pending"), eq(oooRequests.organizationId, organizationId)));
   }
 
   async getAllOOORequests(organizationId?: string): Promise<OOORequest[]> {
-    if (organizationId) {
-      return db.select().from(oooRequests).where(eq(oooRequests.organizationId, organizationId));
-    }
-    return db.select().from(oooRequests);
+    if (!organizationId) return [];
+    return db.select().from(oooRequests).where(eq(oooRequests.organizationId, organizationId));
   }
 
   async createOOORequest(request: InsertOOORequest): Promise<OOORequest> {
@@ -333,17 +327,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSubmittedTimesheets(organizationId?: string): Promise<Timesheet[]> {
-    if (organizationId) {
-      return db.select().from(timesheets).where(and(eq(timesheets.status, "submitted"), eq(timesheets.organizationId, organizationId)));
-    }
-    return db.select().from(timesheets).where(eq(timesheets.status, "submitted"));
+    if (!organizationId) return [];
+    return db.select().from(timesheets).where(and(eq(timesheets.status, "submitted"), eq(timesheets.organizationId, organizationId)));
   }
 
   async getAllTimesheets(organizationId?: string): Promise<Timesheet[]> {
-    if (organizationId) {
-      return db.select().from(timesheets).where(eq(timesheets.organizationId, organizationId));
-    }
-    return db.select().from(timesheets);
+    if (!organizationId) return [];
+    return db.select().from(timesheets).where(eq(timesheets.organizationId, organizationId));
   }
 
   async createTimesheet(timesheet: InsertTimesheet): Promise<Timesheet> {
@@ -405,10 +395,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllOvertimeRequests(organizationId?: string): Promise<OvertimeRequest[]> {
-    if (organizationId) {
-      return db.select().from(overtimeRequests).where(eq(overtimeRequests.organizationId, organizationId));
-    }
-    return db.select().from(overtimeRequests);
+    if (!organizationId) return [];
+    return db.select().from(overtimeRequests).where(eq(overtimeRequests.organizationId, organizationId));
   }
 
   async createOvertimeRequest(request: InsertOvertimeRequest): Promise<OvertimeRequest> {
@@ -456,17 +444,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllInvoices(organizationId?: string): Promise<Invoice[]> {
-    if (organizationId) {
-      return db.select().from(invoices).where(eq(invoices.organizationId, organizationId)).orderBy(desc(invoices.uploadedAt));
-    }
-    return db.select().from(invoices).orderBy(desc(invoices.uploadedAt));
+    if (!organizationId) return [];
+    return db.select().from(invoices).where(eq(invoices.organizationId, organizationId)).orderBy(desc(invoices.uploadedAt));
   }
 
   async getPendingInvoices(organizationId?: string): Promise<Invoice[]> {
-    if (organizationId) {
-      return db.select().from(invoices).where(and(eq(invoices.status, "pending_review"), eq(invoices.organizationId, organizationId))).orderBy(desc(invoices.uploadedAt));
-    }
-    return db.select().from(invoices).where(eq(invoices.status, "pending_review")).orderBy(desc(invoices.uploadedAt));
+    if (!organizationId) return [];
+    return db.select().from(invoices).where(and(eq(invoices.status, "pending_review"), eq(invoices.organizationId, organizationId))).orderBy(desc(invoices.uploadedAt));
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
@@ -553,10 +537,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllEvaluations(organizationId?: string): Promise<Evaluation[]> {
-    if (organizationId) {
-      return db.select().from(evaluations).where(eq(evaluations.organizationId, organizationId));
-    }
-    return db.select().from(evaluations);
+    if (!organizationId) return [];
+    return db.select().from(evaluations).where(eq(evaluations.organizationId, organizationId));
   }
 
   async createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation> {
@@ -745,9 +727,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllContracts(organizationId?: string): Promise<Contract[]> {
-    if (organizationId) {
-      return db.select().from(contracts).where(eq(contracts.organizationId, organizationId)).orderBy(desc(contracts.createdAt));
-    }
+    if (!organizationId) return [];
+    return db.select().from(contracts).where(eq(contracts.organizationId, organizationId)).orderBy(desc(contracts.createdAt));
+  }
+
+  // Platform-level scheduler use only — returns contracts across all orgs.
+  async getAllContractsForScheduler(): Promise<Contract[]> {
     return db.select().from(contracts).orderBy(desc(contracts.createdAt));
   }
 
@@ -791,10 +776,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllExpenses(organizationId?: string): Promise<Expense[]> {
-    if (organizationId) {
-      return db.select().from(expenses).where(eq(expenses.organizationId, organizationId)).orderBy(desc(expenses.createdAt));
-    }
-    return db.select().from(expenses).orderBy(desc(expenses.createdAt));
+    if (!organizationId) return [];
+    return db.select().from(expenses).where(eq(expenses.organizationId, organizationId)).orderBy(desc(expenses.createdAt));
   }
 
   async getApprovedExpensesForInvoice(userId: string, month: number, year: number): Promise<Expense[]> {
