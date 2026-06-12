@@ -112,31 +112,33 @@ declare global {
   }
 }
 
-// Rate limiting state
+// Rate limiting state — keyed on "ip:username" so shared IPs don't block each other
+// and per-username limits still hold regardless of IP rotation.
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_LOGIN_ATTEMPTS = 5;
 
-function checkRateLimit(ip: string): boolean {
+function checkRateLimit(ip: string, username: string): boolean {
+  const key = `${ip}:${username.toLowerCase()}`;
   const now = Date.now();
-  const attempts = loginAttempts.get(ip);
-  
+  const attempts = loginAttempts.get(key);
+
   if (!attempts || (now - attempts.lastAttempt) > RATE_LIMIT_WINDOW) {
-    loginAttempts.set(ip, { count: 1, lastAttempt: now });
+    loginAttempts.set(key, { count: 1, lastAttempt: now });
     return true;
   }
-  
+
   if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
     return false;
   }
-  
+
   attempts.count++;
   attempts.lastAttempt = now;
   return true;
 }
 
-function resetRateLimit(ip: string): void {
-  loginAttempts.delete(ip);
+function resetRateLimit(ip: string, username: string): void {
+  loginAttempts.delete(`${ip}:${username.toLowerCase()}`);
 }
 
 // Get current user from session cookie
@@ -274,20 +276,21 @@ export async function registerRoutes(
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
-    const clientIp = req.socket?.remoteAddress || req.ip || 'unknown';
-    
-    if (!checkRateLimit(clientIp)) {
-      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
-    }
-    
+    // req.ip respects trust proxy setting; fall back to socket address only as last resort
+    const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
+
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
     }
 
+    if (!checkRateLimit(clientIp, username)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
+    }
+
     const user = await storage.getUserByUsername(username);
-    
+
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -302,7 +305,7 @@ export async function registerRoutes(
     }
 
     // Successful login - reset rate limit
-    resetRateLimit(clientIp);
+    resetRateLimit(clientIp, username);
 
     const sessionToken = await createSession(user.id, user.username);
 
@@ -441,8 +444,13 @@ export async function registerRoutes(
     }
     const directReports = await storage.getUsersBySupervisor(user.id);
     const hasDirectReports = directReports.length > 0;
+    const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isPlatformAdmin = allowedEmails.includes(user.email.toLowerCase());
     const { password: _, ...userWithoutPassword } = user;
-    res.json({ ...userWithoutPassword, hasDirectReports });
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin });
   });
 
   // User routes - protected with auth middleware
@@ -582,8 +590,15 @@ export async function registerRoutes(
         organizationId: requestedOrgId,
       } = req.body;
 
-      // Only owners can set a role; default to "ic" otherwise
-      const role = (currentUser.role === "owner" && requestedRole) ? requestedRole : (requestedRole || "ic");
+      // Only owners can set roles above "ic"; admins cannot escalate to owner
+      const allowedRoles = ["ic", "admin"] as const;
+      type AllowedRole = typeof allowedRoles[number];
+      let role: string = "ic";
+      if (currentUser.role === "owner" && requestedRole) {
+        role = requestedRole;
+      } else if (currentUser.role === "admin" && requestedRole && allowedRoles.includes(requestedRole as AllowedRole)) {
+        role = requestedRole;
+      }
 
       // Reject attempts to assign user to a different organization
       if (requestedOrgId && requestedOrgId !== currentUser.organizationId) {
@@ -745,8 +760,12 @@ export async function registerRoutes(
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
-    // If currentPassword is provided (voluntary change via profile), verify it
-    if (currentPassword) {
+    // Self-change requires current password verification; admins changing another user's
+    // password skip it (they use an admin reset flow, not the same form).
+    if (isSelf) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: "Current password is required" });
+      }
       const isValid = await comparePassword(currentPassword, userRecord.password);
       if (!isValid) {
         return res.status(401).json({ error: "Current password is incorrect" });
@@ -3406,49 +3425,12 @@ export async function registerRoutes(
     res.json({ currentSeats, maxSeats, plan, percentUsed });
   });
 
-  app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
-    const currentUser = req.authenticatedUser!;
-    const { plan } = req.body;
-    if (!currentUser.organizationId) {
-      return res.status(400).json({ error: "User is not associated with an organization" });
-    }
-    const { PLAN_LIMITS } = await import("@shared/schema");
-    const validPlans = Object.keys(PLAN_LIMITS);
-    if (!plan || !validPlans.includes(plan)) {
-      return res.status(400).json({ error: "Invalid plan. Must be one of: " + validPlans.join(", ") });
-    }
-    if (plan === "enterprise") {
-      return res.status(400).json({ error: "Please contact sales for Enterprise plan" });
-    }
-    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
-    if (!subscription) {
-      return res.status(404).json({ error: "Subscription not found" });
-    }
-    const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
-    const newLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
-    if (currentSeats > newLimits.maxSeats) {
-      return res.status(400).json({
-        error: `Cannot downgrade to ${newLimits.name} plan. You currently have ${currentSeats} users but the plan allows only ${newLimits.maxSeats}. Please remove users first.`,
-      });
-    }
-    const updated = await storage.updateSubscription(subscription.id, {
-      plan,
-      maxSeats: newLimits.maxSeats,
-      updatedAt: new Date(),
+  // Paid plan changes require Stripe integration which is not yet wired up.
+  // Return 402 so the frontend can show a "coming soon" message.
+  app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), (_req, res) => {
+    return res.status(402).json({
+      error: "Plan upgrades are coming soon. Please contact support to change your plan.",
     });
-    try {
-      await storage.createActivityLog({
-        userId: currentUser.id,
-        organizationId: currentUser.organizationId,
-        action: "Subscription plan changed",
-        details: `Changed plan from ${subscription.plan} to ${plan}`,
-        entityType: "subscription",
-        entityId: subscription.id,
-      });
-    } catch (e) {
-      console.error("Failed to create activity log:", e);
-    }
-    res.json(updated);
   });
 
   // ── SEO / Public content routes ──────────────────────────────────────────

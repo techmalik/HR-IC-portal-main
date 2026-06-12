@@ -66,7 +66,7 @@ export function registerObjectStorageRoutes(
 ): void {
   const storageClient = new Client();
 
-  app.post("/api/uploads/request-url", async (req, res) => {
+  app.post("/api/uploads/request-url", authMiddleware, async (req, res) => {
     try {
       const { name } = req.body;
 

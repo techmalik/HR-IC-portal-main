@@ -447,6 +447,14 @@ function AdminOnlyRoute({ component: Component }: { component: () => JSX.Element
   return <Component />;
 }
 
+function PlatformAdminRoute({ component: Component }: { component: () => JSX.Element }) {
+  const { isPlatformAdmin } = useAuth();
+  if (!isPlatformAdmin) {
+    return <AccessDenied />;
+  }
+  return <Component />;
+}
+
 function PortalTourWrapper() {
   const { user } = useAuth();
   const { activeTour, completeTour } = useTourContext();
@@ -534,11 +542,6 @@ function ProtectedRoutes() {
     return <PublicRoutes />;
   }
 
-  // Standalone strategy report — render outside the app shell to avoid
-  // a double header/sidebar for authenticated users.
-  if (location === "/competitive-analysis") {
-    return <CompetitiveAnalysisPage />;
-  }
 
   const sidebarStyle = {
     "--sidebar-width": "16rem",
@@ -579,6 +582,7 @@ function ProtectedRoutes() {
                 <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
                 <Route path="/admin/blog">{() => <AdminOnlyRoute component={AdminBlogPage} />}</Route>
                 <Route path="/admin/seo">{() => <AdminOnlyRoute component={AdminSeoPage} />}</Route>
+                <Route path="/competitive-analysis">{() => <PlatformAdminRoute component={CompetitiveAnalysisPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />

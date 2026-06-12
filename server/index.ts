@@ -11,6 +11,8 @@ import { storage } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
 
 const app = express();
+// Trust the first proxy (Replit's load balancer) so req.ip reflects the real client IP
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
@@ -97,7 +99,9 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    if (status >= 500) {
+      console.error("Unhandled error:", err);
+    }
   });
 
   // importantly only setup vite in development and after

@@ -6,3 +6,5 @@ vite.config.ts.*
 *.tar.gz
 *.sql
 db_backup*.sql
+data/
+attached_assets/
