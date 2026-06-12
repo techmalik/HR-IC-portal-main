@@ -1616,10 +1616,18 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Only approved timesheets can be unlocked" });
       }
 
-      // Verify the user is a supervisor of the timesheet owner
-      const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
-      if (!isSupervisor) {
-        return res.status(403).json({ error: "Only supervisors can unlock timesheets" });
+      // Org boundary
+      if (currentUser.organizationId !== timesheet.organizationId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Must be an admin/owner or the timesheet owner's direct supervisor
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdmin) {
+        const directReports = await storage.getUsersBySupervisor(currentUser.id);
+        if (!directReports.some((u) => u.id === timesheet.userId)) {
+          return res.status(403).json({ error: "Only the timesheet owner's supervisor can unlock it" });
+        }
       }
 
       // Update timesheet to draft status and add unlock note
@@ -1958,27 +1966,54 @@ export async function registerRoutes(
 
   app.post("/api/invoices", authMiddleware, async (req, res) => {
     try {
-      const { userId, month, year } = req.body;
-      
+      const currentUser = req.authenticatedUser!;
+      const { month, year } = req.body;
+
+      // Invoices are always created by the contractor for themselves —
+      // ignore any client-supplied userId.
+      const userId = currentUser.id;
+
       // Link invoice to timesheet if exists
       const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
 
       // Default invoice currency to the contractor's preferred currency
       let invoiceCurrency = normalizeCurrencyInput(req.body.currency) || "";
-      if (!invoiceCurrency && userId) {
-        const invoiceUser = await storage.getUser(userId);
-        invoiceCurrency = normalizeCurrencyInput(invoiceUser?.currency) || "USD";
+      if (!invoiceCurrency) {
+        invoiceCurrency = normalizeCurrencyInput(currentUser.currency) || "USD";
       }
-      if (!invoiceCurrency) invoiceCurrency = "USD";
+
+      // Whitelist creation fields; server controls userId, status, timesheetId, org
+      const {
+        invoiceNumber, issueDate, fileName, fileUrl, amount, subtotal,
+        contractorName, contractorAddress, contractorPhone, contractorEmail,
+        contractorVatNo, billToName, billToAddress, billToVatNo, bankDetails,
+      } = req.body;
 
       const invoiceData = {
-        ...req.body,
+        userId,
+        invoiceNumber,
+        month,
+        year,
+        issueDate,
+        fileName,
+        fileUrl,
+        amount,
+        subtotal,
+        contractorName,
+        contractorAddress,
+        contractorPhone,
+        contractorEmail,
+        contractorVatNo,
+        billToName,
+        billToAddress,
+        billToVatNo,
+        bankDetails,
         currency: invoiceCurrency,
         status: "pending_review",
         timesheetId: timesheet?.id || null,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId,
       };
-      
+
       const invoice = await storage.createInvoice(invoiceData);
 
       // When invoice is submitted, auto-submit timesheet if in draft status
@@ -2919,26 +2954,40 @@ export async function registerRoutes(
   }));
 
   // Evaluation routes - protected
-  app.get("/api/evaluations", authMiddleware, async (req, res) => {
+  app.get("/api/evaluations", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
-    if (currentUser.role === "ic") {
-      const evaluations = await storage.getEvaluationsByIC(currentUser.id);
-      return res.json(evaluations);
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    if (!isAdmin) {
+      // ICs see their own evaluations; ICs with direct reports (supervisors)
+      // also see the evaluations they manage.
+      const own = await storage.getEvaluationsByIC(currentUser.id);
+      const managed = await storage.getEvaluationsByManager(currentUser.id);
+      const deduped = new Map([...own, ...managed].map((e) => [e.id, e]));
+      return res.json(Array.from(deduped.values()));
     }
-    
+
     const { managerId, icId } = req.query;
+    // Admin filters must stay inside their own org
     if (managerId) {
+      const target = await storage.getUser(managerId as string);
+      if (!target || !checkOrgBoundary(currentUser, target)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const evaluations = await storage.getEvaluationsByManager(managerId as string);
       res.json(evaluations);
     } else if (icId) {
+      const target = await storage.getUser(icId as string);
+      if (!target || !checkOrgBoundary(currentUser, target)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const evaluations = await storage.getEvaluationsByIC(icId as string);
       res.json(evaluations);
     } else {
       const evaluations = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
       res.json(evaluations);
     }
-  });
+  }));
 
   app.get("/api/evaluations/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
@@ -2958,33 +3007,41 @@ export async function registerRoutes(
     res.json({ count });
   });
 
+  // Shared read-access rule: the evaluated IC, the evaluating manager, or an
+  // admin/owner in the same organization.
+  function canReadEvaluation(currentUser: User, evaluation: { icId: string; managerId: string; organizationId: string | null }): boolean {
+    if (currentUser.id === evaluation.icId || currentUser.id === evaluation.managerId) return true;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    return isAdmin && currentUser.organizationId === evaluation.organizationId;
+  }
+
   app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
     if (!evaluation) {
       return res.status(404).json({ error: "Evaluation not found" });
     }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+
+    if (!canReadEvaluation(currentUser, evaluation)) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     res.json(evaluation);
   });
 
   app.get("/api/evaluations/:id/sections", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
     if (!evaluation) {
       return res.status(404).json({ error: "Evaluation not found" });
     }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+
+    if (!canReadEvaluation(currentUser, evaluation)) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     const sections = await storage.getEvaluationSections(req.params.id);
     res.json(sections);
   });
@@ -3425,8 +3482,8 @@ export async function registerRoutes(
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Users can only access their own notifications (admins/cofounders can access any)
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3444,8 +3501,8 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const userId = req.params.userId;
     
-    // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3460,8 +3517,8 @@ export async function registerRoutes(
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3478,8 +3535,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Not found" });
     }
     
-    // Users can only access their own notifications
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3495,8 +3552,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Notification not found" });
     }
     
-    // Users can only mark their own notifications as read
-    if (notification.userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (notification.userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3511,8 +3568,8 @@ export async function registerRoutes(
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Users can only mark their own notifications as read
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Notifications are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
@@ -3528,11 +3585,11 @@ export async function registerRoutes(
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Users can only access their own preferences
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Preferences are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     let prefs = await storage.getNotificationPreferences(userId as string);
     if (!prefs) {
       prefs = await storage.createNotificationPreferences({
@@ -3557,8 +3614,8 @@ export async function registerRoutes(
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Users can only update their own preferences
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
+    // Preferences are personal — self-only access
+    if (userId !== currentUser.id) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
