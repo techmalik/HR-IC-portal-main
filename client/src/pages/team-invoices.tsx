@@ -74,7 +74,7 @@ export default function TeamInvoicesPage() {
   const [paidDate, setPaidDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentReference, setPaymentReference] = useState("");
   const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set());
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -208,7 +208,7 @@ export default function TeamInvoicesPage() {
     }
   }, [weeklyGroups]);
 
-  const toggleEntryExpand = (entryId: number) => {
+  const toggleEntryExpand = (entryId: string) => {
     setExpandedEntries((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(entryId)) {

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { blogArticles as hardcodedArticles, type BlogArticle } from "./blogData";
+export type { BlogArticle };
 
 const DATA_FILE = path.resolve(process.cwd(), "data/blog-articles.json");
 

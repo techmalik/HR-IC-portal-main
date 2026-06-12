@@ -628,13 +628,11 @@ export async function registerRoutes(
         firstName,
         lastName,
         jobTitle,
-        phone,
         supervisorId,
         managerId,
         hourlyRate,
         monthlyCap,
         currency: normalizeCurrencyInput(currency) || "USD",
-        startDate,
         role,
         isActive: requestedIsActive !== undefined ? requestedIsActive : true,
         organizationId: currentUser.organizationId,
@@ -961,13 +959,11 @@ export async function registerRoutes(
             firstName,
             lastName,
             jobTitle,
-            phone,
             supervisorId,
             managerId,
             hourlyRate,
             monthlyCap,
             currency: normalizeCurrencyInput(currency) || "USD",
-            startDate,
             role,
             organizationId: callerOrgId,
             isActive: true,
@@ -1121,7 +1117,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Cannot create requests for other users" });
       }
 
-      const { startDate, endDate, reason, type, managerId } = req.body;
+      const { startDate, endDate, reason, oooType, managerId } = req.body;
       if (!startDate || !endDate) {
         return res.status(400).json({ error: "startDate and endDate are required" });
       }
@@ -1133,7 +1129,7 @@ export async function registerRoutes(
         startDate,
         endDate,
         reason,
-        type,
+        oooType,
         managerId,
         status: "pending",
       });
@@ -1141,10 +1137,10 @@ export async function registerRoutes(
 
       try {
         await storage.createActivityLog({
-          userId: req.body.userId,
+          userId: currentUser.id,
           organizationId: currentUser.organizationId,
           action: "OOO request created",
-          details: `Requested time off from ${req.body.startDate} to ${req.body.endDate}`,
+          details: `Requested time off from ${startDate} to ${endDate}`,
           entityType: "ooo_request",
           entityId: request.id,
         });
@@ -2018,7 +2014,7 @@ export async function registerRoutes(
         billToVatNo,
         bankDetails,
         currency: invoiceCurrency,
-        status: "pending_review",
+        status: "pending_review" as const,
         timesheetId: timesheet?.id || null,
         organizationId: currentUser.organizationId,
       };
@@ -2431,14 +2427,14 @@ export async function registerRoutes(
     if (currentUser.id !== invoice.userId && currentUser.role !== "admin" && currentUser.role !== "owner") {
       return res.status(403).json({ error: "Forbidden" });
     }
-    const { description, quantity, unitPrice, amount } = req.body;
+    const { description, quantity, rate, total } = req.body;
     const lineItem = await storage.createInvoiceLineItem({
       invoiceId: req.params.invoiceId,
       organizationId: currentUser.organizationId,
       description,
       quantity,
-      unitPrice,
-      amount,
+      rate,
+      total,
     });
     res.status(201).json(lineItem);
   }));

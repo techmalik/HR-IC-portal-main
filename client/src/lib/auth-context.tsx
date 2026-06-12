@@ -9,7 +9,7 @@ const WARNING_DURATION_S = 2 * 60;
 
 const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "touchstart"] as const;
 
-interface AuthUser extends Omit<User, 'mustChangePassword'> {
+export interface AuthUser extends Omit<User, 'mustChangePassword'> {
   hasDirectReports?: boolean;
   mustChangePassword?: boolean;
   isPlatformAdmin?: boolean;

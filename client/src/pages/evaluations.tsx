@@ -48,6 +48,7 @@ import {
   ChevronDown, Hash, Briefcase, Users, Award, RefreshCw
 } from "lucide-react";
 import type { Evaluation, EvaluationSection, IcResponsibility, User as UserType } from "@shared/schema";
+import type { AuthUser } from "@/lib/auth-context";
 import { SENIORITY_SCALE, EVALUATION_OUTCOMES } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -663,7 +664,7 @@ function EvaluationDetailView({
 }: {
   evaluation: Evaluation;
   onBack: () => void;
-  currentUser: UserType;
+  currentUser: AuthUser;
   getUserById: (id: string) => UserType | undefined;
 }) {
   const { toast } = useToast();

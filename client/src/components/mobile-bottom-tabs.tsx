@@ -18,7 +18,8 @@ export function MobileBottomTabs() {
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    return subscribeQueue((count) => setPending(count));
+    const unsubscribe = subscribeQueue((count) => setPending(count));
+    return () => { unsubscribe(); };
   }, []);
 
   return (

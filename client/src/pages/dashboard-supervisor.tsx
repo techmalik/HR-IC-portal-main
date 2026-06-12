@@ -78,7 +78,7 @@ export default function DashboardSupervisor() {
   const evaluationsDueCount = evaluationsDueData?.count ?? 0;
 
   const pendingTimesheets = teamTimesheets?.filter((t) => t.status === "submitted");
-  const pendingInvoices = teamInvoices?.filter((i) => i.status === "submitted");
+  const pendingInvoices = teamInvoices?.filter((i) => i.status === "pending_review");
   const pendingOoo = myOooRequests?.filter((r) => r.status === "pending") || [];
   const currentMonthTimesheet = myTimesheets?.find(
     (t) => t.month === new Date().getMonth() + 1 && t.year === new Date().getFullYear()
