@@ -221,12 +221,12 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 | # | Task | Files | Acceptance criteria | Effort | Risk | Deps |
 |---|---|---|---|---|---|---|
 | 1.1 | **Fix approval authz on legacy endpoints** (C1–C3, H1, H3): port the bulk-review guard (org boundary → team membership or admin → status transition) into `PATCH timesheets/:id`, `PATCH ooo-requests/:id`, `PATCH overtime-requests/:id`, `PATCH invoices/:id`, `POST timesheets/:id/unlock`. Replace `...req.body` with explicit `{status, reviewNote}` allowlist; always set `reviewedBy = currentUser.id` | routes.ts:1113, 1428, 1641, 1952, 1472 | 0.2 cases green; client flows still work | M | Medium (could 403 legitimate flows — mirror bulk logic exactly) | 0.2 |
-| 1.2 | **Fix IDOR reads/writes** (C4, C5): timesheets save/submit force `userId = currentUser.id` (or explicit supervisor-for-team branch if needed); add owner/team/admin+org guards to timesheet list/entries, line-items, ic-responsibilities, last-evaluation, invoices/next-number | routes.ts:1170, 1251, 1256, 1336, 1889, 2180-2196, 2251-2279, 2772 | 0.2 cases green | M | Medium | 0.2 |
+| 1.2 | **Fix IDOR reads/writes** (C4, C5): timesheets save/submit force `userId = currentUser.id` — strictly owner-only, NO supervisor branch (Decision #5); add owner/team/admin+org guards to timesheet list/entries, line-items, ic-responsibilities, last-evaluation, invoices/next-number | routes.ts:1170, 1251, 1256, 1336, 1889, 2180-2196, 2251-2279, 2772 | 0.2 cases green | M | Medium | 0.2 |
 | 1.3 | **Fix role-escalation ternary** (C6): non-owners can only create `ic` (or reject the request); add test | routes.ts:586 | Admin creating `owner` → 403 | S | Low | 0.2 |
 | 1.4 | **Require current password for self-change** (C7): mandatory unless `mustChangePassword` is set or caller is an admin resetting another user | routes.ts:743-754 | Self-change w/o currentPassword → 401 | S | Low | 0.2 |
-| 1.5 | **Tenancy fail-closed** (C8): `checkOrgBoundary` returns false on null org; make `organizationId` required in `getAll*` signatures; decide policy for org-less users (block or backfill) | routes.ts:207-210, storage.ts | Compile-enforced; org-less account sees nothing tenant-wide | M | **High** (could break platform-admin/legacy accounts — audit DB for null orgs first) | 0.2 |
-| 1.6 | **Remove competitive-analysis from the client** (C9): delete `competitorData.ts` from bundle; either drop the page or serve data from a `requirePlatformAdmin` API; gate route | client/src/data/competitorData.ts, App.tsx:539, pages/competitive-analysis.tsx | Strategy data absent from built JS bundle | S | Low | — |
-| 1.7 | **Repair or replace the upload flow** (C10, H5): add `authMiddleware` to `request-url`; have the server return a real signed `uploadURL` (Replit sidecar signing) or switch to authenticated multipart upload reusing migrate-files plumbing; then migrate invoice upload off base64 | object_storage/routes.ts:69-93, use-upload.ts, invoices.tsx | File upload works E2E; unauthenticated request-url → 401 | L | Medium | — |
+| 1.5 | **Tenancy fail-closed** (C8): `checkOrgBoundary` returns false on null org; make `organizationId` required in `getAll*` signatures; assign the seeded org-less admin an organization (per Decision #2, no production data exists — no migration plan needed) | routes.ts:207-210, storage.ts, seed.ts | Compile-enforced; org-less account sees nothing tenant-wide | M | Low (dev-only data, per Decision #2) | 0.2 |
+| 1.6 | **Gate competitive-analysis to platform admins** (C9, per Decision #3): delete `competitorData.ts` from the client bundle; serve the data from a `requirePlatformAdmin` API; gate the route | client/src/data/competitorData.ts, App.tsx:539, pages/competitive-analysis.tsx | Strategy data absent from built JS bundle; non-platform-admins → 403 | S | Low | — |
+| 1.7 | **Repair the upload flow** (C10, H5): add `authMiddleware` to `request-url`; switch to authenticated multipart upload reusing migrate-files plumbing (preferred over Replit-sidecar presigning per Decision #4 — hosting portability); then migrate invoice upload off base64 | object_storage/routes.ts:69-93, use-upload.ts, invoices.tsx | File upload works E2E; unauthenticated request-url → 401 | L | Medium | — |
 | 1.8 | **Fix login rate limiting** (H9): `app.set('trust proxy', 1)` + key on `req.ip`+username, or adopt `express-rate-limit`; cap map size | routes.ts:116-140, index.ts | One attacker can't lock out other users; limit survives proxy | S | Low | — |
 | 1.9 | **Error handler**: remove `throw err` after responding; log instead | index.ts:95-101 | No rethrow; 500s logged once | S | Low | — |
 | 1.10 | **Org-scope admin notification/preference access** (H6) and evaluation queries (H8) | routes.ts:3195-3327, 2710-2716 | Cross-org admin read → 403 | S | Low | 0.2 |
@@ -248,14 +248,14 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 
 | # | Task | Effort | Notes |
 |---|---|---|---|
-| 3.1 | Billing decision: wire Stripe Checkout + webhook (set `rawBody` already exists, index.ts:56-59) **or** hide upgrade UI behind a flag | L / S | Needs Open Question #1 |
+| 3.1 | Billing: mark paid plans "Coming soon", disable upgrade buttons, reject paid-plan changes server-side in `change-plan` (per Decision #1 — do NOT wire Stripe now) | S | Decided; promote to M1-adjacent since it closes the free-upgrade hole |
 | 3.2 | Decompose invoices.tsx / evaluations.tsx / users.tsx into feature components; extract shared `InvoiceCard`, `STATUS_COLORS`, currency formatting into `lib/` | L | Pure refactor; do after 2.x API stabilization |
 | 3.3 | Standardize React Query keys + post-mutation invalidation map (fixes M9 stale lists) | M | |
 | 3.4 | Extend offline queue to invoices/expenses (M10); surface swallowed client fetch errors as toasts (invoices.tsx:261-266, auth-context.tsx:167) | M | |
 | 3.5 | Fix `getSupervisors()` to actually return supervisors (M7); fix supervisor evaluation listing (M6) | S | Verify client expectations first |
 | 3.6 | Self-service password reset via Resend; raise password minimum to 10–12; optional email verification | M | |
 | 3.7 | Hash session tokens at rest; sliding expiration | S | |
-| 3.8 | Repo hygiene: delete `main.py`/`pyproject.toml`/duplicate `script/`; move `attached_assets/` out of the repo (history rewrite optional — decide; it contains a user PDF); gitignore `data/`; add `.env.example`; update README (roles, env vars, owner concept) | S | |
+| 3.8 | Repo hygiene: delete `main.py`/`pyproject.toml`/duplicate `script/`; purge `attached_assets/` from git history (approved, Decision #6 — run `git filter-repo` as a standalone coordinated step) and gitignore it; gitignore `data/`; add `.env.example`; update README (roles, env vars, owner concept) | S | History rewrite needs force-push to main |
 | 3.9 | Structured logging (pino) with request IDs; basic error reporting | M | |
 | 3.10 | Eval module UX: decompose page, add manager/IC rating divergence view; notification deep-link validation (L1) | L | Product input useful |
 
@@ -288,16 +288,20 @@ Approach: one domain at a time: create `server/routes/timesheets.ts` exporting `
 
 ---
 
-## 6. Open Questions (need a human decision)
+## 6. Decisions from the owner (2026-06-12) — binding for implementation
 
-1. **Billing**: is monetization planned now? Wire Stripe (real effort, webhooks, tax) or visibly mark plans as "coming soon"? Current state silently grants free upgrades.
-2. **Org-less users** (`organizationId = null`): does the production DB contain any (e.g., the seeded `malik` admin)? Fail-closed tenancy (1.5) will cut their access — backfill or designate them platform admins via `PLATFORM_ADMIN_EMAILS`?
-3. **Competitive-analysis page**: who is the intended audience? Internal-only → platform-admin gate; if it was a one-off deliverable, delete it.
-4. **Hosting target**: staying on Replit? Determines urgency of H12 (JSON-on-disk), the `/uploads` static dir question (M5), and whether the Replit sidecar can sign upload URLs for 1.7.
-5. **Supervisor timesheet edit**: should supervisors be able to save/submit timesheets *for* their reports? Decides whether 1.2 locks save/submit strictly to self.
-6. **`attached_assets/` history**: it contains a user's PDF (a name is visible in the filename). OK to rewrite git history to purge, or is the repo private enough to just delete going forward?
-7. **Evaluation workflow intent**: should supervisors see their team's evaluations in the list view (currently they can't — M6)? Assumed yes.
-8. **Data retention**: notifications and activity logs grow forever; any retention policy required (also relevant to the reminder idempotency design in 2.6)?
+The original open questions were answered by the project owner. Implementers must follow these:
+
+1. **Billing → "coming soon."** Do NOT wire Stripe now. Task 3.1 resolves to its S-effort variant: mark paid plans as "Coming soon" in the billing UI, disable the upgrade buttons, and make `POST /api/billing/change-plan` (routes.ts:3409) reject changes to paid plans (e.g. 400 "Plan upgrades are coming soon") so the free upgrade hole is closed server-side. Keep the seat-limit enforcement as is. Remove the unused `stripe` dependency (task 2.8).
+2. **No production environment exists yet — everything is development.** Consequences: tenancy fail-closed (task 1.5) can land without a data backfill/migration plan; the seeded org-less admin should simply be assigned an organization (or listed in `PLATFORM_ADMIN_EMAILS`) as part of the change; breaking-change caution flags on M1 tasks are relaxed — correctness over compatibility. M0.3 (backup routine) drops to documentation-only priority.
+3. **Competitive-analysis page → platform-admin only.** Implement task 1.6 as: remove `competitorData.ts` from the client bundle, serve the data from an API behind `requirePlatformAdmin` (routes.ts:192), and gate the `/competitive-analysis` route to platform admins. Do not delete the feature.
+4. **Hosting undecided (Replit or elsewhere); changes are being made via Claude/Codex agents.** Keep the code hosting-portable: task 2.5 (JSON → Postgres) stays HIGH priority since ephemeral disk can't be relied on either way; for task 1.7 prefer the authenticated multipart upload path over Replit-sidecar presigning so the upload flow survives a host move; avoid adding new Replit-specific dependencies.
+5. **Timesheet editing is strictly owner-only.** Supervisors may only approve or send back (reject/unlock) — never edit. Task 1.2 therefore locks `POST /api/timesheets/save` and `/submit` (routes.ts:1256, 1336) to `userId === req.authenticatedUser.id` with no supervisor branch, and task 1.1's review guards must not permit supervisors to modify entries or totals — only `{status, reviewNote}` transitions.
+6. **`attached_assets/` purge approved.** Rewrite git history to remove `attached_assets/` (it contains a user's PDF with a personal name) — e.g. `git filter-repo --path attached_assets --invert-paths` — then force-push and have collaborators re-clone. Also delete the directory going forward and add it to `.gitignore`. Note: this rewrites `main` and requires force-push rights; coordinate it as a standalone step, not mixed into a feature branch.
+
+Still open (lower stakes, defaults chosen):
+- **Evaluation workflow intent**: should supervisors see their team's evaluations in the list view (currently they can't — M6)? Assumed yes until contradicted.
+- **Data retention**: notifications and activity logs grow forever; no policy required yet — revisit before production launch (relevant to the reminder idempotency design in 2.6).
 
 ---
 
