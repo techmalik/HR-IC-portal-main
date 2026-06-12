@@ -307,5 +307,59 @@ Still open (lower stakes, defaults chosen):
 
 ---
 
+## 7. MVP & Monetization Gap Analysis (product, not just code)
+
+This section answers a different question from the audit above: not "what's broken," but "what's *missing* to have a marketable SaaS that orgs will register for and pay for." Grounded in the codebase as it stands 2026-06-12 (facts verified by reading routes/schema/pages).
+
+### 7.0 The launch-sequence decision (resolves the billing tension)
+Owner Decision #1 marked billing "coming soon," but the goal is to earn. These reconcile via go-to-market sequencing, which is also the correct path for this maturity:
+- **Phase A — Free private beta:** ship M0/M1 security fixes + the Tier-1 activation funnel below; onboard 5–15 real orgs free; prove orgs complete the loop (signup → invite contractors → timesheets/invoices submitted → admin approves). "Coming soon" billing is fine here.
+- **Phase B — Turn on paid:** wire Stripe, convert beta orgs, open self-serve signup. Revenue is impossible without this, so Stripe moves from "deferred" to a **dated launch milestone**, not an open question.
+
+### 7.1 Verified MVP-funnel gaps (facts)
+- **No email user-invitation flow.** Admins create users with a password and convey it manually (routes.ts:548 create-user; no invite endpoint). Breaks at the first real org.
+- **Admin password reset is effectively broken.** `POST /api/users/:id/reset-password` (routes.ts:955) generates `tempPassword` and **never returns or emails it** — nobody learns the new password.
+- **No self-service "forgot password"** — no public reset route at all.
+- **No email verification** at signup (routes.ts:338 register creates org immediately).
+- **No legal/compliance pages** — only `landing.tsx`; no ToS, Privacy, DPA, or GDPR export/delete, despite storing cross-tenant bank details (IBAN/SWIFT).
+- **Client analytics is localStorage-only** (`client/src/lib/analytics.ts`) — no server-side funnel/cohort visibility across users.
+- **Stripe wiring absent** — schema has `TRIALING` status and `currentPeriodEnd` (schema.ts:21, 92) but no Stripe customer/subscription IDs and no checkout/webhook handlers; `stripe` dependency unused.
+
+### 7.2 Tier 1 — MVP launch blockers (cannot charge or be trusted without these)
+
+| # | Item | Why it blocks launch | Effort |
+|---|---|---|---|
+| MVP-1 | **Email invitations**: admin invites by email → signed link → invitee sets own password → lands in app. Also fixes broken admin reset | First-org activation; manual password handoff doesn't scale | M |
+| MVP-2 | **Self-service password reset** (forgot-password via Resend, time-limited token) | Every lockout is otherwise a support ticket | S |
+| MVP-3 | **Stripe billing (Phase B)**: Checkout, subscription lifecycle (trial→active→past_due→canceled), customer/sub IDs, webhooks (rawBody already captured, index.ts:56-59), dunning, subscription receipts | No revenue without it | L |
+| MVP-4 | **Legal/compliance**: ToS, Privacy Policy, DPA, cookie consent (EU), GDPR data-export + account-deletion | Procurement/sales blocker; holding cross-tenant PII + bank details | M |
+| MVP-5 | **Email deliverability**: verified Resend domain (SPF/DKIM/DMARC) + the email outbox/retry (audit H13) | Invitations/approvals silently dying in spam breaks the whole workflow | M |
+| MVP-6 | **Ops readiness**: error monitoring (Sentry), `/health` endpoint, automated DB backups, uptime alerting | Can't run money-handling multi-tenant software blind | M |
+
+### 7.3 Tier 2 — Makes it valuable & marketable (during beta)
+
+| # | Item | Value | Effort |
+|---|---|---|---|
+| MVP-7 | **Activation checklist** (set up org → invite first contractor → configure approvals), beyond the existing tours | Drives week-1 retention | M |
+| MVP-8 | **Server-side product analytics** (Mixpanel available): signup, invite_sent, first_timesheet_submitted, first_approval, first_invoice_paid | Can't optimize conversion you can't see | M |
+| MVP-9 | **Accounting export** (AP/finance CSV; QuickBooks/Xero-friendly) extending the analytics CSV pattern | Concrete "why we chose you" reason | M |
+| MVP-10 | **Leave balances/allowances** on OOO (entitlement, accrual, remaining) | Turns OOO from logging into management | M |
+| MVP-11 | **Invoice tax/VAT lines + sequential locked numbering** | Makes generated invoices usable financial docs | M |
+| MVP-12 | **2FA (TOTP)**, optional then enforced for admin/owner | Trust + procurement checkbox; guards bank details | M |
+
+### 7.4 Tier 3 — Growth & retention (post-launch)
+Marketing-site truth-up (real testimonials, accurate pricing page, demo/screenshots, "Book a demo"); free-trial mechanics wired to the unused `TRIALING` status; in-app help/feedback; multi-org membership + co-admin invites; saved filters/search/pagination on large list pages (also mitigates the analytics scale concern).
+
+### 7.5 Deliberately OUT of MVP (scope discipline)
+- **Paying contractors / global payroll** (Deel-style money movement) — huge regulatory lift; MVP value is workflow + records + export, "mark as paid" stays manual. Position honestly around that.
+- **Live accounting API sync** — CSV export first.
+- **Native mobile apps** — the PWA suffices.
+- **Multi-level approval chains/delegation** — single-level covers SMB; revisit on paying-customer pull.
+
+### 7.6 One-paragraph take
+The hard middle of a contractor-management SaaS is already built (timesheets, invoicing, OOO, overtime, evaluations, notifications, a strong SEO engine). What's missing is the **edges of the funnel**: getting people *in* (invitations, reset, verification, onboarding), getting *money out* (Stripe + trial), and being *trustworthy enough to buy* (legal, deliverability, monitoring, 2FA). Those edges are smaller in code than what exists but are ~100% of the gap between "prototype" and "thing an org pays for." Order: fix M0/M1 security (one cross-org leak at launch is fatal) → ship Tier 1 funnel → free beta to prove the loop → turn on Stripe.
+
+---
+
 ## Areas with lighter review
 `client/src/components/ui/*` (shadcn boilerplate), `server/vite.ts`/`static.ts` (Replit template), the full text of `server/seo/*Data.ts` content files, migration snapshots in `migrations/meta/`, and pixel-level UI behavior (no app was run during this audit — static analysis only).
