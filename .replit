@@ -42,7 +42,7 @@ waitForPort = 5000
 outputType = "webview"
 
 [agent]
-integrations = ["javascript_object_storage:2.0.0"]
+integrations = ["javascript_object_storage:2.0.0", "github:1.0.0"]
 expertMode = true
 
 [userenv]
