@@ -207,7 +207,8 @@ function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
-  if (!currentUser.organizationId) return true;
+  // Fail-closed: a caller without an org cannot access any org-scoped resource.
+  if (!currentUser.organizationId) return false;
   return currentUser.organizationId === targetUser.organizationId;
 }
 
@@ -1097,14 +1098,29 @@ export async function registerRoutes(
   app.post("/api/ooo-requests", authMiddleware, async (req, res) => {
     try {
       const currentUser = req.authenticatedUser!;
-      
+
       // Users can only create requests for themselves
       if (req.body.userId !== currentUser.id) {
         return res.status(403).json({ error: "Cannot create requests for other users" });
       }
-      
-      const request = await storage.createOOORequest({ ...req.body, organizationId: currentUser.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+
+      const { startDate, endDate, reason, type, managerId } = req.body;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      // Whitelist fields; force status to "pending" regardless of what the client sends
+      const request = await storage.createOOORequest({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        startDate,
+        endDate,
+        reason,
+        type,
+        managerId,
+        status: "pending",
+      });
+      const submitter = await storage.getUser(currentUser.id);
 
       try {
         await storage.createActivityLog({
@@ -1129,27 +1145,54 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/ooo-requests/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/ooo-requests/:id", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const existingRequest = await storage.getOOORequest(req.params.id);
     if (!existingRequest) {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    if (req.body.reviewedBy) {
-      req.body.reviewedBy = currentUser.id;
+    // Org boundary
+    if (currentUser.organizationId !== existingRequest.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
-    if (currentUser.id === existingRequest.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected") &&
-        currentUser.role !== "admin") {
-      return res.status(403).json({ error: "You cannot approve or reject your own request" });
+    const isSelf = currentUser.id === existingRequest.userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected";
+
+    if (isApprovalAction) {
+      if (isSelf) {
+        return res.status(403).json({ error: "You cannot approve or reject your own request" });
+      }
+      if (!isAdmin) {
+        const directReports = await storage.getUsersBySupervisor(currentUser.id);
+        if (!directReports.some((u) => u.id === existingRequest.userId)) {
+          return res.status(403).json({ error: "Forbidden - not a supervisor of this user" });
+        }
+      }
+    } else {
+      // Non-approval edits (e.g. withdrawing a request) — owner only
+      if (!isSelf && !isAdmin) {
+        return res.status(403).json({ error: "You can only edit your own OOO request" });
+      }
     }
 
-    const request = await storage.updateOOORequest(req.params.id, {
-      ...req.body,
-      reviewedAt: new Date(),
-    });
+    // Whitelist fields; derive server-controlled reviewer identity
+    const { status, reviewNote, startDate, endDate, reason, type } = req.body;
+    const updatePayload: Record<string, any> = {};
+    if (status) updatePayload.status = status;
+    if (reviewNote !== undefined) updatePayload.reviewNote = reviewNote;
+    if (startDate) updatePayload.startDate = startDate;
+    if (endDate) updatePayload.endDate = endDate;
+    if (reason !== undefined) updatePayload.reason = reason;
+    if (type) updatePayload.type = type;
+    if (isApprovalAction) {
+      updatePayload.reviewedBy = currentUser.id;
+      updatePayload.reviewedAt = new Date();
+    }
+
+    const request = await storage.updateOOORequest(req.params.id, updatePayload);
 
     if (!request) {
       return res.status(500).json({ error: "Failed to update request" });
@@ -1157,22 +1200,19 @@ export async function registerRoutes(
 
     try {
       await storage.createActivityLog({
-        userId: req.body.reviewedBy,
+        userId: currentUser.id,
         organizationId: currentUser.organizationId,
-        action: `OOO request ${req.body.status}`,
-        details: `Leave request was ${req.body.status}`,
+        action: `OOO request ${status || "updated"}`,
+        details: `Leave request was ${status || "updated"}`,
         entityType: "ooo_request",
         entityId: request.id,
       });
 
-      if (req.body.reviewedBy && req.body.status) {
-        const reviewer = await storage.getUser(req.body.reviewedBy);
-        if (reviewer) {
-          if (req.body.status === "approved") {
-            await notifyOOOApproved(request, reviewer);
-          } else if (req.body.status === "rejected") {
-            await notifyOOORejected(request, reviewer, req.body.reviewNote);
-          }
+      if (isApprovalAction) {
+        if (status === "approved") {
+          await notifyOOOApproved(request, currentUser as any);
+        } else if (status === "rejected") {
+          await notifyOOORejected(request, currentUser as any, reviewNote);
         }
       }
     } catch (e) {
@@ -1180,7 +1220,7 @@ export async function registerRoutes(
     }
 
     res.json(request);
-  });
+  }));
 
   // Timesheet routes
   app.get("/api/timesheets", authMiddleware, async (req, res) => {
@@ -1267,25 +1307,57 @@ export async function registerRoutes(
     res.json({ count: timesheets.length });
   });
 
-  app.get("/api/timesheets/:id/entries", authMiddleware, async (req, res) => {
+  app.get("/api/timesheets/:id/entries", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const timesheet = await storage.getTimesheet(req.params.id);
+    if (!timesheet) {
+      return res.status(404).json({ error: "Timesheet not found" });
+    }
+    const isSelf = currentUser.id === timesheet.userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isSamOrg = currentUser.organizationId && currentUser.organizationId === timesheet.organizationId;
+    if (!isSamOrg) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    if (!isSelf && !isAdmin) {
+      const directReports = await storage.getUsersBySupervisor(currentUser.id);
+      if (!directReports.some((u) => u.id === timesheet.userId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
     const entries = await storage.getDailyEntriesByTimesheet(req.params.id);
     res.json(entries);
-  });
+  }));
 
   app.post("/api/timesheets/save", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+
+    // Supervisors may not edit another user's timesheet — only approve/reject.
+    // Admins/owners can edit on behalf of users in their org.
+    const isSelf = currentUser.id === userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ error: "You can only save your own timesheet" });
+    }
+    if (isAdmin && !isSelf) {
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+      }
+    }
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
-    
+
     // Prevent editing approved timesheets
     if (timesheet && timesheet.status === "approved") {
       return res.status(403).json({ error: "Cannot edit an approved timesheet" });
     }
-    
+
     // Prevent editing submitted timesheets (they're locked until invoice is reviewed)
     if (timesheet && timesheet.status === "submitted") {
       return res.status(403).json({ error: "Cannot edit a submitted timesheet. It will be unlocked if the invoice is rejected." });
@@ -1353,12 +1425,26 @@ export async function registerRoutes(
   }));
 
   app.post("/api/timesheets/submit", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+
+    // Only the owning IC (or an admin acting on their behalf in the same org) may submit.
+    const isSelf = currentUser.id === userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({ error: "You can only submit your own timesheet" });
+    }
+    if (isAdmin && !isSelf) {
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+      }
+    }
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
     const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
@@ -1447,24 +1533,46 @@ export async function registerRoutes(
   app.patch("/api/timesheets/:id", authMiddleware, asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const existingTimesheet = await storage.getTimesheet(req.params.id);
-    
+
     if (!existingTimesheet) {
       return res.status(404).json({ error: "Timesheet not found" });
     }
 
-    // Derive reviewedBy from the authenticated user — never trust the client-supplied value
-    const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected";
+    // Org boundary: only users in the same org may touch this timesheet
+    if (currentUser.organizationId !== existingTimesheet.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const isSelf = currentUser.id === existingTimesheet.userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected" || req.body.status === "sent_back";
+
     if (isApprovalAction) {
-      if (currentUser.id === existingTimesheet.userId) {
+      // Supervisors and admins may approve/reject, but not on their own timesheet.
+      if (isSelf) {
         return res.status(403).json({ error: "You cannot approve or reject your own timesheet" });
+      }
+      if (!isAdmin) {
+        const directReports = await storage.getUsersBySupervisor(currentUser.id);
+        if (!directReports.some((u) => u.id === existingTimesheet.userId)) {
+          return res.status(403).json({ error: "Forbidden - not a supervisor of this user" });
+        }
+      }
+    } else {
+      // Non-approval edits (status changes like "draft", field corrections) — owner only
+      if (!isSelf && !isAdmin) {
+        return res.status(403).json({ error: "You can only edit your own timesheet" });
       }
     }
 
-    // Strip client-supplied reviewedBy; use the server-verified identity instead
-    const { reviewedBy: _ignored, ...bodyWithoutReviewedBy } = req.body;
-    const updatePayload: Record<string, any> = { ...bodyWithoutReviewedBy, reviewedAt: new Date() };
+    // Whitelist the fields callers are allowed to set; derive server-controlled fields.
+    const { status, reviewNote } = req.body;
+    const updatePayload: Record<string, any> = {};
+    if (status) updatePayload.status = status;
+    if (reviewNote !== undefined) updatePayload.reviewNote = reviewNote;
     if (isApprovalAction) {
       updatePayload.reviewedBy = currentUser.id;
+      updatePayload.reviewedAt = new Date();
     }
 
     const timesheet = await storage.updateTimesheet(req.params.id, updatePayload);
@@ -1476,10 +1584,10 @@ export async function registerRoutes(
     if (isApprovalAction) {
       const reviewer = await storage.getUser(currentUser.id);
       if (reviewer) {
-        if (req.body.status === "approved") {
+        if (status === "approved") {
           await notifyTimesheetApproved(timesheet, existingTimesheet.userId, reviewer);
-        } else if (req.body.status === "rejected") {
-          await notifyTimesheetRejected(timesheet, existingTimesheet.userId, reviewer, req.body.reviewNote);
+        } else if (status === "rejected") {
+          await notifyTimesheetRejected(timesheet, existingTimesheet.userId, reviewer, reviewNote);
         }
       }
     }
@@ -1657,32 +1765,62 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/overtime-requests/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/overtime-requests/:id", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const existingRequest = await storage.getOvertimeRequest(req.params.id);
-    
+
     if (!existingRequest) {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    if (req.body.reviewedBy && req.body.reviewedBy === existingRequest.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected")) {
-      return res.status(403).json({ error: "You cannot approve or reject your own overtime request" });
+    // Org boundary
+    if (currentUser.organizationId !== existingRequest.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
+    const isSelf = currentUser.id === existingRequest.userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected";
+
+    if (isApprovalAction) {
+      // Self-approval must be rejected based on server-resolved identity, not client-supplied reviewedBy
+      if (isSelf) {
+        return res.status(403).json({ error: "You cannot approve or reject your own overtime request" });
+      }
+      if (!isAdmin) {
+        const directReports = await storage.getUsersBySupervisor(currentUser.id);
+        if (!directReports.some((u) => u.id === existingRequest.userId)) {
+          return res.status(403).json({ error: "Forbidden - not a supervisor of this user" });
+        }
+      }
+    } else {
+      if (!isSelf && !isAdmin) {
+        return res.status(403).json({ error: "You can only edit your own overtime request" });
+      }
+    }
+
+    const { status, reviewNote, approvedHours } = req.body;
+
     // Validate approvedHours if provided
-    if (req.body.status === "approved" && req.body.approvedHours !== undefined) {
-      const approvedHours = Number(req.body.approvedHours);
-      if (isNaN(approvedHours) || approvedHours < 1 || approvedHours > existingRequest.requestedHours) {
-        return res.status(400).json({ 
-          error: `Approved hours must be between 1 and ${existingRequest.requestedHours}` 
+    if (status === "approved" && approvedHours !== undefined) {
+      const parsed = Number(approvedHours);
+      if (isNaN(parsed) || parsed < 1 || parsed > existingRequest.requestedHours) {
+        return res.status(400).json({
+          error: `Approved hours must be between 1 and ${existingRequest.requestedHours}`,
         });
       }
     }
 
-    const request = await storage.updateOvertimeRequest(req.params.id, {
-      ...req.body,
-      reviewedAt: new Date(),
-    });
+    const updatePayload: Record<string, any> = {};
+    if (status) updatePayload.status = status;
+    if (reviewNote !== undefined) updatePayload.reviewNote = reviewNote;
+    if (approvedHours !== undefined) updatePayload.approvedHours = approvedHours;
+    if (isApprovalAction) {
+      updatePayload.reviewedBy = currentUser.id;
+      updatePayload.reviewedAt = new Date();
+    }
+
+    const request = await storage.updateOvertimeRequest(req.params.id, updatePayload);
 
     if (!request) {
       return res.status(500).json({ error: "Failed to update overtime request" });
@@ -1690,7 +1828,7 @@ export async function registerRoutes(
 
     // If overtime is rejected, reset the daily entry hours to 8 (max normal hours)
     // and recalculate the timesheet total from all entries for accuracy
-    if (req.body.status === "rejected") {
+    if (status === "rejected") {
       try {
         const dailyEntry = await storage.getDailyEntryByTimesheetAndDate(
           existingRequest.timesheetId,
@@ -1698,15 +1836,11 @@ export async function registerRoutes(
         );
         if (dailyEntry && dailyEntry.hours > 8) {
           await storage.updateDailyEntry(dailyEntry.id, { hours: 8 });
-          // Recalculate the timesheet's total hours from all entries for accuracy
           const allEntries = await storage.getDailyEntriesByTimesheet(existingRequest.timesheetId);
           const newTotal = allEntries.reduce((sum, entry) => {
-            // Use 8 for the just-updated entry, actual hours for others
             return sum + (entry.id === dailyEntry.id ? 8 : entry.hours);
           }, 0);
-          await storage.updateTimesheet(existingRequest.timesheetId, {
-            totalHours: newTotal
-          });
+          await storage.updateTimesheet(existingRequest.timesheetId, { totalHours: newTotal });
         }
       } catch (e) {
         console.error("Failed to reset daily entry hours after overtime rejection:", e);
@@ -1715,22 +1849,19 @@ export async function registerRoutes(
 
     try {
       await storage.createActivityLog({
-        userId: req.body.reviewedBy,
-        organizationId: req.authenticatedUser!.organizationId,
-        action: `Overtime request ${req.body.status}`,
-        details: `Overtime request was ${req.body.status}`,
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        action: `Overtime request ${status || "updated"}`,
+        details: `Overtime request was ${status || "updated"}`,
         entityType: "overtime_request",
         entityId: request.id,
       });
 
-      if (req.body.reviewedBy && req.body.status) {
-        const reviewer = await storage.getUser(req.body.reviewedBy);
-        if (reviewer) {
-          if (req.body.status === "approved") {
-            await notifyOvertimeApproved(request, reviewer);
-          } else if (req.body.status === "rejected") {
-            await notifyOvertimeRejected(request, reviewer, req.body.reviewNote);
-          }
+      if (isApprovalAction) {
+        if (status === "approved") {
+          await notifyOvertimeApproved(request, currentUser as any);
+        } else if (status === "rejected") {
+          await notifyOvertimeRejected(request, currentUser as any, reviewNote);
         }
       }
     } catch (e) {
@@ -1738,7 +1869,7 @@ export async function registerRoutes(
     }
 
     res.json(request);
-  });
+  }));
 
   // Get approved OOO dates for a user within a month
   app.get("/api/ooo-requests/approved-dates", authMiddleware, async (req, res) => {
@@ -2196,23 +2327,46 @@ export async function registerRoutes(
   });
 
   // Invoice Line Items routes - protected
-  app.get("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
+  app.get("/api/invoices/:invoiceId/line-items", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const invoice = await storage.getInvoice(req.params.invoiceId);
+    if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+    if (currentUser.organizationId !== invoice.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const isSelf = currentUser.id === invoice.userId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      const directReports = await storage.getUsersBySupervisor(currentUser.id);
+      if (!directReports.some((u) => u.id === invoice.userId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
     const lineItems = await storage.getInvoiceLineItems(req.params.invoiceId);
     res.json(lineItems);
-  });
+  }));
 
-  app.post("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
-    try {
-      const lineItem = await storage.createInvoiceLineItem({
-        ...req.body,
-        invoiceId: req.params.invoiceId,
-        organizationId: req.authenticatedUser!.organizationId,
-      });
-      res.status(201).json(lineItem);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create line item" });
+  app.post("/api/invoices/:invoiceId/line-items", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const invoice = await storage.getInvoice(req.params.invoiceId);
+    if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+    if (currentUser.organizationId !== invoice.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
     }
-  });
+    if (currentUser.id !== invoice.userId && currentUser.role !== "admin" && currentUser.role !== "owner") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const { description, quantity, unitPrice, amount } = req.body;
+    const lineItem = await storage.createInvoiceLineItem({
+      invoiceId: req.params.invoiceId,
+      organizationId: currentUser.organizationId,
+      description,
+      quantity,
+      unitPrice,
+      amount,
+    });
+    res.status(201).json(lineItem);
+  }));
 
   app.get("/api/ic-payment-details/:userId", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
@@ -2267,10 +2421,26 @@ export async function registerRoutes(
   });
 
   // IC Responsibilities routes - protected
-  app.get("/api/ic-responsibilities/:icId", authMiddleware, async (req, res) => {
-    const responsibilities = await storage.getIcResponsibilities(req.params.icId);
+  app.get("/api/ic-responsibilities/:icId", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.icId;
+    const isSelf = currentUser.id === targetUserId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      const directReports = await storage.getUsersBySupervisor(currentUser.id);
+      if (!directReports.some((u) => u.id === targetUserId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+    if (!isSelf) {
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+    const responsibilities = await storage.getIcResponsibilities(targetUserId);
     res.json(responsibilities);
-  });
+  }));
 
   app.post("/api/ic-responsibilities", authMiddleware, async (req, res) => {
     try {
@@ -2788,10 +2958,24 @@ export async function registerRoutes(
     res.json(sections);
   });
 
-  app.get("/api/users/:id/last-evaluation", authMiddleware, async (req, res) => {
-    const evaluation = await storage.getLastCompletedEvaluation(req.params.id);
+  app.get("/api/users/:id/last-evaluation", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const targetUserId = req.params.id;
+    const isSelf = currentUser.id === targetUserId;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    if (!isSelf && !isAdmin) {
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const directReports = await storage.getUsersBySupervisor(currentUser.id);
+      if (!directReports.some((u) => u.id === targetUserId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+    const evaluation = await storage.getLastCompletedEvaluation(targetUserId);
     res.json(evaluation || null);
-  });
+  }));
 
   app.post("/api/evaluations", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
