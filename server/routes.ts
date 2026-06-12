@@ -16,7 +16,7 @@ import { createSession, invalidateSession, getUserIdFromToken } from "./sessionM
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 
-import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
 import { randomUUID } from "crypto";
 
@@ -26,8 +26,6 @@ function isWeekend(dateString: string): boolean {
   const day = date.getUTCDay();
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
-
-const objectStorageService = new ObjectStorageService();
 
 // Allowed ISO 4217 currency codes for invoices/users — kept in sync with
 // `client/src/lib/currency.ts` SUPPORTED_CURRENCIES.
