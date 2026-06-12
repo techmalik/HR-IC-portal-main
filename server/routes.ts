@@ -1363,10 +1363,10 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Cannot edit a submitted timesheet. It will be unlocked if the invoice is rejected." });
     }
     
+    const orgId = req.authenticatedUser!.organizationId;
     const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
-    
+
     if (timesheet) {
-      await storage.deleteDailyEntriesByTimesheet(timesheet.id);
       const updated = await storage.updateTimesheet(timesheet.id, {
         totalHours,
         status: "draft",
@@ -1382,24 +1382,25 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "draft",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: orgId,
       });
     }
 
+    // Atomically replace entries so a crash mid-write can't leave the timesheet empty.
+    const entryPayloads = entries.map((e: any) => ({
+      timesheetId: timesheet!.id,
+      date: e.date,
+      hours: e.hours,
+      activityLog: e.activityLog,
+      organizationId: orgId,
+    }));
+    await storage.replaceTimesheetEntries(timesheet.id, entryPayloads);
+
+    // Overtime requests are best-effort and can be retried; handled outside the transaction.
+    const STANDARD_HOURS = 8;
     for (const entry of entries) {
-      await storage.createDailyEntry({
-        timesheetId: timesheet.id,
-        date: entry.date,
-        hours: entry.hours,
-        activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
-      });
-      
-      // Auto-create overtime request for entries > 8 hours OR weekend work
-      const STANDARD_HOURS = 8;
       const isWeekendEntry = isWeekend(entry.date);
       const isOvertime = entry.hours > STANDARD_HOURS;
-      
       if ((isOvertime || isWeekendEntry) && entry.hours > 0) {
         const existingOT = await storage.getOvertimeRequestByTimesheetAndDate(timesheet.id, entry.date);
         if (!existingOT) {
@@ -1410,13 +1411,10 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: orgId,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
-          // Update existing request if weekend status changed
-          await storage.updateOvertimeRequest(existingOT.id, {
-            isWeekendWork: isWeekendEntry,
-          });
+          await storage.updateOvertimeRequest(existingOT.id, { isWeekendWork: isWeekendEntry });
         }
       }
     }
@@ -1447,10 +1445,10 @@ export async function registerRoutes(
 
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
+    const orgId = req.authenticatedUser!.organizationId;
     const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
-    
+
     if (timesheet) {
-      await storage.deleteDailyEntriesByTimesheet(timesheet.id);
       const updated = await storage.updateTimesheet(timesheet.id, {
         totalHours,
         status: "submitted",
@@ -1467,31 +1465,30 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "submitted",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: orgId,
       });
-      const updated = await storage.updateTimesheet(created.id, {
-        submittedAt: new Date(),
-      });
+      const updated = await storage.updateTimesheet(created.id, { submittedAt: new Date() });
       if (!updated) {
         return res.status(500).json({ error: "Failed to update timesheet" });
       }
       timesheet = updated;
     }
 
+    // Atomically replace entries so a crash mid-write can't leave the timesheet empty.
+    const entryPayloads = entries.map((e: any) => ({
+      timesheetId: timesheet!.id,
+      date: e.date,
+      hours: e.hours,
+      activityLog: e.activityLog,
+      organizationId: orgId,
+    }));
+    await storage.replaceTimesheetEntries(timesheet.id, entryPayloads);
+
+    // Overtime requests are best-effort; handled outside the transaction.
+    const STANDARD_HOURS = 8;
     for (const entry of entries) {
-      await storage.createDailyEntry({
-        timesheetId: timesheet.id,
-        date: entry.date,
-        hours: entry.hours,
-        activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
-      });
-      
-      // Auto-create overtime request for entries > 8 hours OR weekend work
-      const STANDARD_HOURS = 8;
       const isWeekendEntry = isWeekend(entry.date);
       const isOvertime = entry.hours > STANDARD_HOURS;
-      
       if ((isOvertime || isWeekendEntry) && entry.hours > 0) {
         const existingOT = await storage.getOvertimeRequestByTimesheetAndDate(timesheet.id, entry.date);
         if (!existingOT) {
@@ -1502,20 +1499,17 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: orgId,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
-          // Update existing request if weekend status changed
-          await storage.updateOvertimeRequest(existingOT.id, {
-            isWeekendWork: isWeekendEntry,
-          });
+          await storage.updateOvertimeRequest(existingOT.id, { isWeekendWork: isWeekendEntry });
         }
       }
     }
 
     await storage.createActivityLog({
       userId,
-      organizationId: req.authenticatedUser!.organizationId,
+      organizationId: orgId,
       action: "Timesheet submitted",
       details: `Submitted timesheet for ${month}/${year} with ${totalHours} hours`,
       entityType: "timesheet",
@@ -2032,10 +2026,10 @@ export async function registerRoutes(
       }
 
       await storage.createActivityLog({
-        userId: req.body.userId,
-        organizationId: req.authenticatedUser!.organizationId,
+        userId,
+        organizationId: currentUser.organizationId,
         action: "Invoice submitted for review",
-        details: `Submitted invoice ${req.body.fileName} for approval`,
+        details: `Submitted invoice ${fileName || invoice.fileName} for approval`,
         entityType: "invoice",
         entityId: invoice.id,
       });

@@ -106,6 +106,7 @@ export interface IStorage {
   createDailyEntry(entry: InsertDailyEntry): Promise<DailyEntry>;
   updateDailyEntry(id: string, updates: Partial<DailyEntry>): Promise<DailyEntry | undefined>;
   deleteDailyEntriesByTimesheet(timesheetId: string): Promise<void>;
+  replaceTimesheetEntries(timesheetId: string, entries: InsertDailyEntry[]): Promise<void>;
 
   getOvertimeRequest(id: string): Promise<OvertimeRequest | undefined>;
   getOvertimeRequestsByUser(userId: string): Promise<OvertimeRequest[]>;
@@ -270,7 +271,13 @@ export class DatabaseStorage implements IStorage {
 
   async getSupervisors(organizationId?: string): Promise<User[]> {
     if (!organizationId) return [];
-    return db.select().from(users).where(eq(users.organizationId, organizationId));
+    const allUsers = await db.select().from(users).where(eq(users.organizationId, organizationId));
+    // Admins and owners can always supervise; ICs are eligible only if they already
+    // have at least one direct report (otherwise they wouldn't appear in a supervisor picker).
+    const supervisorIds = new Set(allUsers.filter(u => u.supervisorId).map(u => u.supervisorId));
+    return allUsers.filter(
+      u => u.role === UserRole.ADMIN || u.role === UserRole.OWNER || supervisorIds.has(u.id),
+    );
   }
 
   async getOOORequest(id: string): Promise<OOORequest | undefined> {
@@ -372,6 +379,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDailyEntriesByTimesheet(timesheetId: string): Promise<void> {
     await db.delete(dailyEntries).where(eq(dailyEntries.timesheetId, timesheetId));
+  }
+
+  async replaceTimesheetEntries(timesheetId: string, entries: InsertDailyEntry[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(dailyEntries).where(eq(dailyEntries.timesheetId, timesheetId));
+      if (entries.length > 0) {
+        await tx.insert(dailyEntries).values(entries);
+      }
+    });
   }
 
   async getOvertimeRequest(id: string): Promise<OvertimeRequest | undefined> {

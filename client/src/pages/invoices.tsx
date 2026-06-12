@@ -430,6 +430,7 @@ export default function InvoicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       trackFirst("first_invoice_submitted", { method: "upload" });
       toast({
@@ -538,6 +539,7 @@ export default function InvoicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       trackFirst("first_invoice_submitted", { method: "generate" });
       toast({
@@ -562,6 +564,7 @@ export default function InvoicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
       toast({
         title: "Invoice deleted",
         description: "The invoice has been deleted successfully.",
