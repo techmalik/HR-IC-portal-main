@@ -16,7 +16,7 @@ Audit date: 2026-06-12. Analysis only — no code was modified. All claims cite 
 **Top 3 opportunities:**
 1. The bulk-review endpoints (routes.ts:3524-3602) and expense review (routes.ts:2614-2669) already implement the correct authorization/transaction pattern — fixing the legacy endpoints is mostly copying an in-repo pattern, not inventing one.
 2. Zod schemas already exist in `shared/schema.ts` (drizzle-zod) but are unused for request validation — wiring them in kills the pervasive `...req.body` mass-assignment class in one stroke.
-3. Billing/seat infrastructure exists end-to-end except payment collection — connecting Stripe (already a dependency, package.json:87) makes the product monetizable.
+3. Billing/seat infrastructure exists end-to-end except payment collection — connecting Stripe (already a dependency, package.json:87) makes the product monetizable. *(Per owner Decision #1 below, this is deferred: plans will be marked "coming soon" for now.)*
 
 ---
 
@@ -157,13 +157,13 @@ Three server test files, all good quality (assert behavior, not just execution):
 | **Expenses** | Submit w/ receipt, manager review, link to invoice | **Best module** — correct authz, status transitions, transactions. Use as the template |
 | **Evaluations** | 7-level framework, IC self-assessment → manager review → finalize; peer feedback invitations | Ambitious; supervisor listing bug (M6), cross-org reads (H8), 1,476-line component needs decomposition |
 | **Contracts** | Admin uploads, expiry/notice-period alerts via daily scheduler | Works; scheduler N+1; alert idempotent via `noticeAlertSentAt` (good) |
-| **Billing** | Displays plan/seats; "change plan" writes DB only | **Not monetizable** (M8). Decide: wire Stripe Checkout or hide the upgrade UI |
+| **Billing** | Displays plan/seats; "change plan" writes DB only | **Not monetizable** (M8). Decision #1: mark paid plans "coming soon" and block server-side |
 | **User management** | CRUD, CSV bulk import, batch edit, suspend, admin password reset | Functional; role escalation (C6), email-uniqueness check loads all users into memory (routes.ts:557-558) |
 | **Notifications** | In-app + email + WebSocket push, per-category prefs, grouped bell w/ deep links | Strongest subsystem; email reliability (H13), cross-org admin reads (H6) |
 | **Profile / payment details** | Self-edit, avatar, IBAN/SWIFT storage | Works; payment details stored plaintext — consider encryption-at-rest column level **[judgment]** |
 | **Analytics** | Spend/hours/overtime/OOO/SLA/headcount + CSV export, admin-only | Correctly gated; in-memory aggregation won't scale (§3.6) |
 | **Landing/SEO/blog** | SSR landing, blog CMS, programmatic competitor/industry pages, FAQ, sitemaps, platform-admin gate via env allowlist | Solid SEO engineering; JSON-file persistence loses data (H12) |
-| **Competitive analysis page** | Internal strategy doc + PDF export, visible to all logged-in users | **Remove from client bundle** (C9) |
+| **Competitive analysis page** | Internal strategy doc + PDF export, visible to all logged-in users | **Remove from client bundle**, gate to platform admins (C9, Decision #3) |
 | **PWA/offline** | Service worker, install hint, offline queue for timesheets/OOO | Good foundation; extend queue (M10) |
 
 ---
@@ -185,8 +185,8 @@ Three server test files, all good quality (assert behavior, not just execution):
 ### Theme 4 — Reliability of side effects (email, files, multi-step writes)
 **Target state:** multi-step writes in `db.transaction`; email through a DB-backed outbox with retry; blog/SEO/subscriber data in Postgres; the presigned upload path actually works (or is consciously replaced by authenticated multipart upload).
 
-### Theme 5 — Product completeness decisions (needs owner input)
-Billing/Stripe, competitive-analysis page audience, password reset, and Replit-vs-elsewhere hosting are product decisions — see Open Questions.
+### Theme 5 — Product completeness decisions
+Billing/Stripe, competitive-analysis page audience, password reset, and Replit-vs-elsewhere hosting were product decisions — now resolved, see §6 Decisions.
 
 ### Explicitly NOT recommended now (trade-offs)
 - **No microservices/queue infrastructure** — in-process schedulers are fine at this scale once their N+1s are fixed.
@@ -214,13 +214,13 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 |---|---|---|---|---|---|---|
 | 0.1 | **CI pipeline**: GitHub Actions running `npm ci`, `tsc`, `npm test` on push/PR | `.github/workflows/ci.yml` | Red X on type or test failure | S | None | — |
 | 0.2 | **Authz regression harness**: supertest (or node:test + fetch against a test server) with seeded two-org fixture (org A user, org A admin, org A supervisor, org B user); table-driven cases asserting 403s for every §3.3 endpoint. Write them now — they fail — and flip to green as M1 lands | `server/__tests__/authz.test.ts`, test seed helper | Each C1–C8/H1–H8 endpoint has at least one failing-then-passing case | L | Low | 0.1 |
-| 0.3 | **DB snapshot/backup routine documented** + verify `npm run db:push` against a scratch DB | README/docs | Restore tested once | S | None | — |
+| 0.3 | **DB snapshot/backup routine documented** + verify `npm run db:push` against a scratch DB (documentation-only priority per Decision #2 — no production data exists) | README/docs | Restore tested once | S | None | — |
 
 ### Milestone 1 — Critical security & correctness
 
 | # | Task | Files | Acceptance criteria | Effort | Risk | Deps |
 |---|---|---|---|---|---|---|
-| 1.1 | **Fix approval authz on legacy endpoints** (C1–C3, H1, H3): port the bulk-review guard (org boundary → team membership or admin → status transition) into `PATCH timesheets/:id`, `PATCH ooo-requests/:id`, `PATCH overtime-requests/:id`, `PATCH invoices/:id`, `POST timesheets/:id/unlock`. Replace `...req.body` with explicit `{status, reviewNote}` allowlist; always set `reviewedBy = currentUser.id` | routes.ts:1113, 1428, 1641, 1952, 1472 | 0.2 cases green; client flows still work | M | Medium (could 403 legitimate flows — mirror bulk logic exactly) | 0.2 |
+| 1.1 | **Fix approval authz on legacy endpoints** (C1–C3, H1, H3): port the bulk-review guard (org boundary → team membership or admin → status transition) into `PATCH timesheets/:id`, `PATCH ooo-requests/:id`, `PATCH overtime-requests/:id`, `PATCH invoices/:id`, `POST timesheets/:id/unlock`. Replace `...req.body` with explicit `{status, reviewNote}` allowlist; always set `reviewedBy = currentUser.id`. Per Decision #5, reviewers may ONLY transition status (approve / send back) — never modify entries, hours, or totals | routes.ts:1113, 1428, 1641, 1952, 1472 | 0.2 cases green; client flows still work | M | Medium (could 403 legitimate flows — mirror bulk logic exactly) | 0.2 |
 | 1.2 | **Fix IDOR reads/writes** (C4, C5): timesheets save/submit force `userId = currentUser.id` — strictly owner-only, NO supervisor branch (Decision #5); add owner/team/admin+org guards to timesheet list/entries, line-items, ic-responsibilities, last-evaluation, invoices/next-number | routes.ts:1170, 1251, 1256, 1336, 1889, 2180-2196, 2251-2279, 2772 | 0.2 cases green | M | Medium | 0.2 |
 | 1.3 | **Fix role-escalation ternary** (C6): non-owners can only create `ic` (or reject the request); add test | routes.ts:586 | Admin creating `owner` → 403 | S | Low | 0.2 |
 | 1.4 | **Require current password for self-change** (C7): mandatory unless `mustChangePassword` is set or caller is an admin resetting another user | routes.ts:743-754 | Self-change w/o currentPassword → 401 | S | Low | 0.2 |
@@ -230,6 +230,7 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 | 1.8 | **Fix login rate limiting** (H9): `app.set('trust proxy', 1)` + key on `req.ip`+username, or adopt `express-rate-limit`; cap map size | routes.ts:116-140, index.ts | One attacker can't lock out other users; limit survives proxy | S | Low | — |
 | 1.9 | **Error handler**: remove `throw err` after responding; log instead | index.ts:95-101 | No rethrow; 500s logged once | S | Low | — |
 | 1.10 | **Org-scope admin notification/preference access** (H6) and evaluation queries (H8) | routes.ts:3195-3327, 2710-2716 | Cross-org admin read → 403 | S | Low | 0.2 |
+| 1.11 | **Billing "coming soon"** (M8, Decision #1): mark paid plans "Coming soon" in billing UI, disable upgrade buttons, and reject paid-plan changes in `POST /api/billing/change-plan` server-side | routes.ts:3409-3452, billing.tsx | Paid-plan change → 400; UI shows coming-soon | S | Low | — |
 
 ### Milestone 2 — High-leverage structural work
 
@@ -242,13 +243,13 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 | 2.5 | **Move blog/SEO/subscribers to Postgres** (H12): 4 tables + one-time import of `data/*.json`; delete fs persistence; gitignore `data/` | server/seo/*Storage.ts, emailCapture.ts, schema.ts | Restart loses nothing; JSON files gone from runtime path | M | Low | — |
 | 2.6 | **Fix scheduler & list N+1s**: batch user lookup (`getUsersByIds`), reminder idempotency via direct `(userId, type, entityId)` query or unique index, JOIN-based enrichment for the 6 list endpoints | index.ts:127-223, routes lists, storage.ts | Reminder run does O(orgs + due users) queries, not O(users × notifications) | M | Low | 2.2 |
 | 2.7 | **Security headers + proxy config**: helmet, `trust proxy`, drop JSON limit to 1 MB once base64 uploads are gone | index.ts | Headers present; large-body abuse capped | S | Low | 1.7 |
-| 2.8 | **Dependency prune**: remove stripe (until 3.x decision), passport*, express-session, connect-pg-simple, memorystore, multer (if unused after 1.7), qs, preact; `npm audit` clean | package.json | Build green; bundle smaller | S | Low | 1.7 |
+| 2.8 | **Dependency prune**: remove stripe (per Decision #1, not wiring now), passport*, express-session, connect-pg-simple, memorystore, multer (if unused after 1.7), qs, preact; `npm audit` clean | package.json | Build green; bundle smaller | S | Low | 1.7 |
 
 ### Milestone 3 — Quality & polish
 
 | # | Task | Effort | Notes |
 |---|---|---|---|
-| 3.1 | Billing: mark paid plans "Coming soon", disable upgrade buttons, reject paid-plan changes server-side in `change-plan` (per Decision #1 — do NOT wire Stripe now) | S | Decided; promote to M1-adjacent since it closes the free-upgrade hole |
+| 3.1 | ~~Billing decision~~ — resolved as task 1.11 (Decision #1) | — | Moved to M1 |
 | 3.2 | Decompose invoices.tsx / evaluations.tsx / users.tsx into feature components; extract shared `InvoiceCard`, `STATUS_COLORS`, currency formatting into `lib/` | L | Pure refactor; do after 2.x API stabilization |
 | 3.3 | Standardize React Query keys + post-mutation invalidation map (fixes M9 stale lists) | M | |
 | 3.4 | Extend offline queue to invoices/expenses (M10); surface swallowed client fetch errors as toasts (invoices.tsx:261-266, auth-context.tsx:167) | M | |
@@ -265,6 +266,7 @@ Billing/Stripe, competitive-analysis page audience, password reset, and Replit-v
 - 1.6 pull competitor battlecard from the bundle
 - 1.8 trust proxy + rate-limit fix
 - 1.9 remove `throw err` (index.ts:100)
+- 1.11 billing coming-soon server-side block
 - 3.8 delete `main.py`/`pyproject.toml`, gitignore `data/`
 - Add `authMiddleware` to `/api/uploads/request-url` (part of 1.7, separable)
 
@@ -278,7 +280,7 @@ export function sameOrg(user: User, entity: {organizationId: string|null}): bool
 export async function canReviewFor(user: User, ownerId: string): Promise<boolean>
   // admin/owner of same org → true; else owner ∈ getUsersBySupervisor(user.id)
 ```
-Steps: (1) write guards + unit tests; (2) write the 0.2 supertest table (expect failures); (3) endpoint by endpoint: load entity → 404 → `sameOrg` 403 → role/team check 403 → status-transition check 400 → explicit field allowlist → update. Gotchas: timesheet save/submit are also used by supervisors? — grep client first (`timesheets.tsx` sends `user.id`, so locking to self is safe); OOO PATCH is used by the *requester* to cancel — keep an owner-can-cancel-pending branch; don't break the invoice↔timesheet coupling side effects, they're correct.
+Steps: (1) write guards + unit tests; (2) write the 0.2 supertest table (expect failures); (3) endpoint by endpoint: load entity → 404 → `sameOrg` 403 → role/team check 403 → status-transition check 400 → explicit field allowlist → update. Gotchas: timesheet save/submit are owner-only by decision — the client sends `user.id` (timesheets.tsx), so locking to self is safe; OOO PATCH is used by the *requester* to cancel — keep an owner-can-cancel-pending branch; don't break the invoice↔timesheet coupling side effects, they're correct.
 
 **2.1 Zod validation middleware**
 Approach: `const validate = <T>(schema: ZodSchema<T>) => (req,res,next) => { const r = schema.safeParse(req.body); if(!r.success) return res.status(400).json({error: fromZodError(r.error).message}); req.validatedBody = r.data; next(); }` (`zod-validation-error` is already a dependency). Derive per-route schemas from `shared/schema.ts` inserts with `.pick()`/`.omit()` — *always omit* `userId`, `organizationId`, `status`, `reviewedBy`, then have handlers inject those server-side. Gotcha: client sends some numbers as strings (month/year query params and some bodies) — use `z.coerce.number()` where needed; roll out route-by-route behind the 0.2 tests, not big-bang.
@@ -292,7 +294,7 @@ Approach: one domain at a time: create `server/routes/timesheets.ts` exporting `
 
 The original open questions were answered by the project owner. Implementers must follow these:
 
-1. **Billing → "coming soon."** Do NOT wire Stripe now. Task 3.1 resolves to its S-effort variant: mark paid plans as "Coming soon" in the billing UI, disable the upgrade buttons, and make `POST /api/billing/change-plan` (routes.ts:3409) reject changes to paid plans (e.g. 400 "Plan upgrades are coming soon") so the free upgrade hole is closed server-side. Keep the seat-limit enforcement as is. Remove the unused `stripe` dependency (task 2.8).
+1. **Billing → "coming soon."** Do NOT wire Stripe now. Task 1.11: mark paid plans as "Coming soon" in the billing UI, disable the upgrade buttons, and make `POST /api/billing/change-plan` (routes.ts:3409) reject changes to paid plans (e.g. 400 "Plan upgrades are coming soon") so the free upgrade hole is closed server-side. Keep the seat-limit enforcement as is. Remove the unused `stripe` dependency (task 2.8).
 2. **No production environment exists yet — everything is development.** Consequences: tenancy fail-closed (task 1.5) can land without a data backfill/migration plan; the seeded org-less admin should simply be assigned an organization (or listed in `PLATFORM_ADMIN_EMAILS`) as part of the change; breaking-change caution flags on M1 tasks are relaxed — correctness over compatibility. M0.3 (backup routine) drops to documentation-only priority.
 3. **Competitive-analysis page → platform-admin only.** Implement task 1.6 as: remove `competitorData.ts` from the client bundle, serve the data from an API behind `requirePlatformAdmin` (routes.ts:192), and gate the `/competitive-analysis` route to platform admins. Do not delete the feature.
 4. **Hosting undecided (Replit or elsewhere); changes are being made via Claude/Codex agents.** Keep the code hosting-portable: task 2.5 (JSON → Postgres) stays HIGH priority since ephemeral disk can't be relied on either way; for task 1.7 prefer the authenticated multipart upload path over Replit-sidecar presigning so the upload flow survives a host move; avoid adding new Replit-specific dependencies.
