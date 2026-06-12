@@ -2099,40 +2099,69 @@ export async function registerRoutes(
   });
 
   // Invoice approval/rejection route (for supervisors)
-  app.patch("/api/invoices/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/invoices/:id", authMiddleware, asyncHandler(async (req, res) => {
     const invoice = await storage.getInvoice(req.params.id);
     if (!invoice) {
       return res.status(404).json({ error: "Invoice not found" });
     }
 
     const user = req.authenticatedUser!;
+
+    // Org boundary
+    if (user.organizationId !== invoice.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const { status, reviewNote } = req.body;
+    const isSelf = user.id === invoice.userId;
+    const isAdmin = user.role === "admin" || user.role === "owner";
+    const isApprovalAction = status === "approved" || status === "rejected" || status === "revision_requested";
 
     // Prevent self-approval
-    if (user.id === invoice.userId && (status === "approved" || status === "rejected")) {
+    if (isSelf && isApprovalAction) {
       return res.status(403).json({ error: "You cannot approve or reject your own invoice" });
     }
 
-    // Check if user has supervisor privileges
-    const isSupervisor = await hasSupervisorPrivileges(user.id);
-    if (!isSupervisor && status) {
-      return res.status(403).json({ error: "Insufficient permissions to review invoices" });
+    if (isApprovalAction) {
+      // Must be admin or direct supervisor
+      if (!isAdmin) {
+        const directReports = await storage.getUsersBySupervisor(user.id);
+        if (!directReports.some((u) => u.id === invoice.userId)) {
+          return res.status(403).json({ error: "Insufficient permissions to review this invoice" });
+        }
+      }
+    } else if (status) {
+      // Non-approval status changes (e.g. submitting): IC owns it
+      if (!isSelf && !isAdmin) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
     }
 
     // Prevent re-reviewing approved invoices
-    if (invoice.status === "approved" && status) {
+    if (invoice.status === "approved" && isApprovalAction) {
       return res.status(400).json({ error: "This invoice has already been approved and cannot be changed" });
     }
     // Prevent reviewing paid invoices via this route
-    if (invoice.status === "paid" && status) {
+    if (invoice.status === "paid" && isApprovalAction) {
       return res.status(400).json({ error: "This invoice has been paid and cannot be changed" });
     }
 
-    const updates: any = {
-      ...req.body,
-      reviewedBy: user.id,
-      reviewedAt: new Date(),
-    };
+    // Whitelist updateable fields
+    const { fileUrl, invoiceNumber, amount, currency, invoiceDate, dueDate, description } = req.body;
+    const updates: Record<string, any> = {};
+    if (status) updates.status = status;
+    if (reviewNote !== undefined) updates.reviewNote = reviewNote;
+    if (fileUrl !== undefined) updates.fileUrl = fileUrl;
+    if (invoiceNumber !== undefined) updates.invoiceNumber = invoiceNumber;
+    if (amount !== undefined) updates.amount = amount;
+    if (currency !== undefined) updates.currency = currency;
+    if (invoiceDate !== undefined) updates.invoiceDate = invoiceDate;
+    if (dueDate !== undefined) updates.dueDate = dueDate;
+    if (description !== undefined) updates.description = description;
+    if (isApprovalAction) {
+      updates.reviewedBy = user.id;
+      updates.reviewedAt = new Date();
+    }
 
     const updatedInvoice = await storage.updateInvoice(req.params.id, updates);
     if (!updatedInvoice) {
@@ -2220,7 +2249,7 @@ export async function registerRoutes(
       ...updatedInvoice,
       fileUrl: normalizeFileUrl(updatedInvoice.fileUrl),
     });
-  });
+  }));
 
   // Mark invoice as paid (admin/owner only)
   app.patch("/api/invoices/:id/mark-paid", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
