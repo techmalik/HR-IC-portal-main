@@ -4425,16 +4425,15 @@ export async function registerRoutes(
 
   app.get("/api/admin/blog-subscribers", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const { getSubscribers } = await import("./seo/emailCapture");
-    res.json(getSubscribers());
+    res.json(await getSubscribers());
   }));
 
   app.get("/api/admin/blog", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getBlogArticles());
+    res.json(await getBlogArticles());
   }));
 
   app.get("/api/admin/blog-analytics", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    const articles = getBlogArticles();
-    const viewStats = getAllViewStats();
+    const [articles, viewStats] = await Promise.all([getBlogArticles(), getAllViewStats()]);
     const analytics = articles.map((a) => {
       const stats = viewStats[a.slug] ?? { views: 0, referrers: {} };
       return {
@@ -4454,7 +4453,7 @@ export async function registerRoutes(
     if (validationError) return res.status(400).json({ error: validationError });
     const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
     try {
-      const article = createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
+      const article = await createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
       res.status(201).json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -4483,7 +4482,7 @@ export async function registerRoutes(
       return res.status(400).json({ error: "metaDescription must be 160 characters or fewer" });
     }
     try {
-      const article = updateArticle(req.params.slug, updates);
+      const article = await updateArticle(req.params.slug, updates);
       res.json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -4492,14 +4491,14 @@ export async function registerRoutes(
 
   app.delete("/api/admin/blog/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try {
-      deleteArticle(req.params.slug);
+      await deleteArticle(req.params.slug);
       res.json({ success: true });
     } catch (err) {
       handleBlogError(err, res as any);
     }
   }));
 
-  app.post("/api/blog/subscribe", (req, res) => {
+  app.post("/api/blog/subscribe", asyncHandler(async (req, res) => {
     const email = (req.body?.email ?? "").toString().trim();
     const rawReturnTo = (req.body?.returnTo ?? "/blog").toString().trim();
     const returnTo = /^\/blog(\/[a-z0-9-]*)?$/.test(rawReturnTo) ? rawReturnTo : "/blog";
@@ -4507,8 +4506,8 @@ export async function registerRoutes(
     if (!email || !isValidEmail(email)) {
       const opts = { error: "Please enter a valid email address." };
       const html = returnTo.startsWith("/blog/")
-        ? getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
-        : getBlogIndexHtml(opts);
+        ? await getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
+        : await getBlogIndexHtml(opts);
       if (!html) {
         res.redirect(`${returnTo}?error=invalid`);
         return;
@@ -4519,35 +4518,35 @@ export async function registerRoutes(
       return;
     }
 
-    addSubscriber(email, returnTo);
+    await addSubscriber(email, returnTo);
     res.redirect(`${returnTo}?subscribed=1`);
-  });
+  }));
 
-  app.get("/blog", (req, res) => {
+  app.get("/blog", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
-    res.send(getBlogIndexHtml({ subscribed }));
-  });
+    res.send(await getBlogIndexHtml({ subscribed }));
+  }));
 
-  app.get("/blog/:slug", (req, res) => {
+  app.get("/blog/:slug", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
-    const html = getBlogArticleHtml(req.params.slug, { subscribed });
+    const html = await getBlogArticleHtml(req.params.slug, { subscribed });
     if (!html) {
       res.status(404).send("<h1>Article not found</h1>");
       return;
     }
     if (!subscribed) {
-      recordView(req.params.slug, req.headers.referer);
+      await recordView(req.params.slug, req.headers.referer);
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: industry pages ──
-  app.get("/contractor-management-for-:industry", (req, res) => {
-    const html = getIndustryHtml(req.params.industry);
+  app.get("/contractor-management-for-:industry", asyncHandler(async (req, res) => {
+    const html = await getIndustryHtml(req.params.industry);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -4555,24 +4554,24 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
-  app.get("/industries", (_req, res) => {
+  app.get("/industries", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getIndustriesIndexHtml());
-  });
+    res.send(await getIndustriesIndexHtml());
+  }));
 
   // ── Programmatic SEO: competitor comparison pages ──
-  app.get("/compare", (_req, res) => {
+  app.get("/compare", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getCompetitorsIndexHtml());
-  });
+    res.send(await getCompetitorsIndexHtml());
+  }));
 
-  app.get(/^\/([a-z0-9-]+-alternative)$/, (req, res) => {
+  app.get(/^\/([a-z0-9-]+-alternative)$/, asyncHandler(async (req, res) => {
     const slug = req.params[0];
-    const html = getCompetitorHtml(slug);
+    const html = await getCompetitorHtml(slug);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -4580,7 +4579,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: admin CRUD ──
   const ALLOWED_STATUSES = new Set(["draft", "published"]);
@@ -4629,37 +4628,37 @@ export async function registerRoutes(
   }
 
   app.get("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getIndustries());
+    res.json(await getIndustries());
   }));
   app.post("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getCompetitors());
+    res.json(await getCompetitors());
   }));
   app.post("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/faq", (_req, res) => {
@@ -4688,9 +4687,13 @@ export async function registerRoutes(
 
   const BASE_URL = "https://teamflow.app";
 
-  app.get("/sitemap.xml", (_req, res) => {
+  app.get("/sitemap.xml", asyncHandler(async (_req, res) => {
     const today = new Date().toISOString().slice(0, 10);
-    const articles = getBlogArticles();
+    const [articles, industries, competitors] = await Promise.all([
+      getBlogArticles(),
+      getPublishedIndustries(),
+      getPublishedCompetitors(),
+    ]);
     const mostRecentArticleDate = articles.reduce(
       (max, a) => (a.updatedDate > max ? a.updatedDate : max),
       articles[0]?.updatedDate ?? today
@@ -4701,13 +4704,13 @@ export async function registerRoutes(
       changefreq: "monthly" as const,
       priority: "0.7",
     }));
-    const industryUrls = getPublishedIndustries().map((i) => ({
+    const industryUrls = industries.map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = competitors.map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -4727,16 +4730,17 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-programmatic.xml", (_req, res) => {
-    const industryUrls = getPublishedIndustries().map((i) => ({
+  app.get("/sitemap-programmatic.xml", asyncHandler(async (_req, res) => {
+    const [industries, competitors] = await Promise.all([getPublishedIndustries(), getPublishedCompetitors()]);
+    const industryUrls = industries.map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = competitors.map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -4752,10 +4756,10 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-blog.xml", (_req, res) => {
-    const articles = getBlogArticles();
+  app.get("/sitemap-blog.xml", asyncHandler(async (_req, res) => {
+    const articles = await getBlogArticles();
     const articleUrls = articles.map((a) => ({
       loc: `${BASE_URL}/blog/${a.slug}`,
       lastmod: a.updatedDate,
@@ -4769,7 +4773,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
   return httpServer;
 }

@@ -1,123 +1,142 @@
-import fs from "fs";
-import path from "path";
+import { db } from "../db";
+import { programmaticIndustries, programmaticCompetitors } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { defaultIndustries, defaultCompetitors, type IndustryPage, type CompetitorPage } from "./programmaticData";
-
-const INDUSTRIES_FILE = path.resolve(process.cwd(), "data/programmatic-industries.json");
-const COMPETITORS_FILE = path.resolve(process.cwd(), "data/programmatic-competitors.json");
 
 export class ProgrammaticNotFoundError extends Error {
   readonly status = 404;
-  constructor(slug: string) { super(`Page "${slug}" not found`); }
+  constructor(slug: string) { super(`Page "${slug}" not found`); this.name = "ProgrammaticNotFoundError"; }
 }
 export class ProgrammaticConflictError extends Error {
   readonly status = 409;
-  constructor(slug: string) { super(`A page with slug "${slug}" already exists`); }
+  constructor(slug: string) { super(`A page with slug "${slug}" already exists`); this.name = "ProgrammaticConflictError"; }
 }
 
-function ensureFile<T>(file: string, defaults: T[]): void {
-  if (!fs.existsSync(file)) {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(defaults, null, 2), "utf8");
-  }
-}
-function readFile<T>(file: string, defaults: T[]): T[] {
+let industriesSeeded = false;
+let competitorsSeeded = false;
+
+async function ensureIndustriesSeeded(): Promise<void> {
+  if (industriesSeeded) return;
+  industriesSeeded = true;
   try {
-    ensureFile(file, defaults);
-    return JSON.parse(fs.readFileSync(file, "utf8")) as T[];
+    const existing = await db.select({ slug: programmaticIndustries.slug }).from(programmaticIndustries).limit(1);
+    if (existing.length === 0 && defaultIndustries.length > 0) {
+      await db.insert(programmaticIndustries).values(
+        defaultIndustries.map((i) => ({ slug: i.slug, data: i as unknown as Record<string, unknown> })),
+      ).onConflictDoNothing();
+    }
   } catch (err) {
-    console.error(`[programmaticStorage] Failed to read ${file}, using defaults:`, err);
-    return defaults;
+    console.error("[programmaticStorage] Industry seed failed:", err);
   }
 }
-function writeFile<T>(file: string, data: T[]): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+
+async function ensureCompetitorsSeeded(): Promise<void> {
+  if (competitorsSeeded) return;
+  competitorsSeeded = true;
+  try {
+    const existing = await db.select({ slug: programmaticCompetitors.slug }).from(programmaticCompetitors).limit(1);
+    if (existing.length === 0 && defaultCompetitors.length > 0) {
+      await db.insert(programmaticCompetitors).values(
+        defaultCompetitors.map((c) => ({ slug: c.slug, data: c as unknown as Record<string, unknown> })),
+      ).onConflictDoNothing();
+    }
+  } catch (err) {
+    console.error("[programmaticStorage] Competitor seed failed:", err);
+  }
 }
 
 // ── Industries ──
-export function getIndustries(): IndustryPage[] {
-  // Default any record missing a status field to "published" for backward
-  // compatibility with the original seed data.
-  return readFile(INDUSTRIES_FILE, defaultIndustries).map((i) => ({
-    status: "published" as const,
-    ...i,
-  }));
+export async function getIndustries(): Promise<IndustryPage[]> {
+  await ensureIndustriesSeeded();
+  const rows = await db.select().from(programmaticIndustries);
+  return rows.map((r) => ({ status: "published" as const, ...(r.data as unknown as IndustryPage) }));
 }
-export function getPublishedIndustries(): IndustryPage[] {
-  return getIndustries().filter((i) => (i.status ?? "published") === "published");
+export async function getPublishedIndustries(): Promise<IndustryPage[]> {
+  const all = await getIndustries();
+  return all.filter((i) => (i.status ?? "published") === "published");
 }
-export function getIndustryBySlug(slug: string): IndustryPage | undefined {
-  return getIndustries().find((i) => i.slug === slug);
+export async function getIndustryBySlug(slug: string): Promise<IndustryPage | undefined> {
+  await ensureIndustriesSeeded();
+  const result = await db.select().from(programmaticIndustries).where(eq(programmaticIndustries.slug, slug));
+  if (!result[0]) return undefined;
+  return { status: "published" as const, ...(result[0].data as unknown as IndustryPage) };
 }
-export function getPublishedIndustryBySlug(slug: string): IndustryPage | undefined {
-  const i = getIndustryBySlug(slug);
+export async function getPublishedIndustryBySlug(slug: string): Promise<IndustryPage | undefined> {
+  const i = await getIndustryBySlug(slug);
   return i && (i.status ?? "published") === "published" ? i : undefined;
 }
-export function createIndustry(page: IndustryPage): IndustryPage {
-  const items = getIndustries();
-  if (items.some((i) => i.slug === page.slug)) throw new ProgrammaticConflictError(page.slug);
-  items.unshift(page);
-  writeFile(INDUSTRIES_FILE, items);
+export async function createIndustry(page: IndustryPage): Promise<IndustryPage> {
+  const existing = await db.select({ slug: programmaticIndustries.slug }).from(programmaticIndustries).where(eq(programmaticIndustries.slug, page.slug));
+  if (existing.length > 0) throw new ProgrammaticConflictError(page.slug);
+  await db.insert(programmaticIndustries).values({ slug: page.slug, data: page as unknown as Record<string, unknown> });
   return page;
 }
-export function updateIndustry(slug: string, updates: Partial<IndustryPage>): IndustryPage {
-  const items = getIndustries();
-  const idx = items.findIndex((i) => i.slug === slug);
-  if (idx === -1) throw new ProgrammaticNotFoundError(slug);
-  if (updates.slug && updates.slug !== slug && items.some((i) => i.slug === updates.slug)) {
-    throw new ProgrammaticConflictError(updates.slug);
+export async function updateIndustry(slug: string, updates: Partial<IndustryPage>): Promise<IndustryPage> {
+  const result = await db.select().from(programmaticIndustries).where(eq(programmaticIndustries.slug, slug));
+  if (!result[0]) throw new ProgrammaticNotFoundError(slug);
+  if (updates.slug && updates.slug !== slug) {
+    const conflict = await db.select({ slug: programmaticIndustries.slug }).from(programmaticIndustries).where(eq(programmaticIndustries.slug, updates.slug));
+    if (conflict.length > 0) throw new ProgrammaticConflictError(updates.slug);
   }
-  items[idx] = { ...items[idx], ...updates };
-  writeFile(INDUSTRIES_FILE, items);
-  return items[idx];
+  const merged = { ...(result[0].data as unknown as IndustryPage), ...updates };
+  const targetSlug = updates.slug ?? slug;
+  if (updates.slug && updates.slug !== slug) {
+    await db.delete(programmaticIndustries).where(eq(programmaticIndustries.slug, slug));
+    await db.insert(programmaticIndustries).values({ slug: targetSlug, data: merged as unknown as Record<string, unknown> });
+  } else {
+    await db.update(programmaticIndustries).set({ data: merged as unknown as Record<string, unknown> }).where(eq(programmaticIndustries.slug, slug));
+  }
+  return merged;
 }
-export function deleteIndustry(slug: string): void {
-  const items = getIndustries();
-  const idx = items.findIndex((i) => i.slug === slug);
-  if (idx === -1) throw new ProgrammaticNotFoundError(slug);
-  items.splice(idx, 1);
-  writeFile(INDUSTRIES_FILE, items);
+export async function deleteIndustry(slug: string): Promise<void> {
+  const result = await db.delete(programmaticIndustries).where(eq(programmaticIndustries.slug, slug)).returning();
+  if (result.length === 0) throw new ProgrammaticNotFoundError(slug);
 }
 
 // ── Competitors ──
-export function getCompetitors(): CompetitorPage[] {
-  return readFile(COMPETITORS_FILE, defaultCompetitors).map((c) => ({
-    status: "published" as const,
-    ...c,
-  }));
+export async function getCompetitors(): Promise<CompetitorPage[]> {
+  await ensureCompetitorsSeeded();
+  const rows = await db.select().from(programmaticCompetitors);
+  return rows.map((r) => ({ status: "published" as const, ...(r.data as unknown as CompetitorPage) }));
 }
-export function getPublishedCompetitors(): CompetitorPage[] {
-  return getCompetitors().filter((c) => (c.status ?? "published") === "published");
+export async function getPublishedCompetitors(): Promise<CompetitorPage[]> {
+  const all = await getCompetitors();
+  return all.filter((c) => (c.status ?? "published") === "published");
 }
-export function getCompetitorBySlug(slug: string): CompetitorPage | undefined {
-  return getCompetitors().find((c) => c.slug === slug);
+export async function getCompetitorBySlug(slug: string): Promise<CompetitorPage | undefined> {
+  await ensureCompetitorsSeeded();
+  const result = await db.select().from(programmaticCompetitors).where(eq(programmaticCompetitors.slug, slug));
+  if (!result[0]) return undefined;
+  return { status: "published" as const, ...(result[0].data as unknown as CompetitorPage) };
 }
-export function getPublishedCompetitorBySlug(slug: string): CompetitorPage | undefined {
-  const c = getCompetitorBySlug(slug);
+export async function getPublishedCompetitorBySlug(slug: string): Promise<CompetitorPage | undefined> {
+  const c = await getCompetitorBySlug(slug);
   return c && (c.status ?? "published") === "published" ? c : undefined;
 }
-export function createCompetitor(page: CompetitorPage): CompetitorPage {
-  const items = getCompetitors();
-  if (items.some((c) => c.slug === page.slug)) throw new ProgrammaticConflictError(page.slug);
-  items.unshift(page);
-  writeFile(COMPETITORS_FILE, items);
+export async function createCompetitor(page: CompetitorPage): Promise<CompetitorPage> {
+  const existing = await db.select({ slug: programmaticCompetitors.slug }).from(programmaticCompetitors).where(eq(programmaticCompetitors.slug, page.slug));
+  if (existing.length > 0) throw new ProgrammaticConflictError(page.slug);
+  await db.insert(programmaticCompetitors).values({ slug: page.slug, data: page as unknown as Record<string, unknown> });
   return page;
 }
-export function updateCompetitor(slug: string, updates: Partial<CompetitorPage>): CompetitorPage {
-  const items = getCompetitors();
-  const idx = items.findIndex((c) => c.slug === slug);
-  if (idx === -1) throw new ProgrammaticNotFoundError(slug);
-  if (updates.slug && updates.slug !== slug && items.some((c) => c.slug === updates.slug)) {
-    throw new ProgrammaticConflictError(updates.slug);
+export async function updateCompetitor(slug: string, updates: Partial<CompetitorPage>): Promise<CompetitorPage> {
+  const result = await db.select().from(programmaticCompetitors).where(eq(programmaticCompetitors.slug, slug));
+  if (!result[0]) throw new ProgrammaticNotFoundError(slug);
+  if (updates.slug && updates.slug !== slug) {
+    const conflict = await db.select({ slug: programmaticCompetitors.slug }).from(programmaticCompetitors).where(eq(programmaticCompetitors.slug, updates.slug));
+    if (conflict.length > 0) throw new ProgrammaticConflictError(updates.slug);
   }
-  items[idx] = { ...items[idx], ...updates };
-  writeFile(COMPETITORS_FILE, items);
-  return items[idx];
+  const merged = { ...(result[0].data as unknown as CompetitorPage), ...updates };
+  const targetSlug = updates.slug ?? slug;
+  if (updates.slug && updates.slug !== slug) {
+    await db.delete(programmaticCompetitors).where(eq(programmaticCompetitors.slug, slug));
+    await db.insert(programmaticCompetitors).values({ slug: targetSlug, data: merged as unknown as Record<string, unknown> });
+  } else {
+    await db.update(programmaticCompetitors).set({ data: merged as unknown as Record<string, unknown> }).where(eq(programmaticCompetitors.slug, slug));
+  }
+  return merged;
 }
-export function deleteCompetitor(slug: string): void {
-  const items = getCompetitors();
-  const idx = items.findIndex((c) => c.slug === slug);
-  if (idx === -1) throw new ProgrammaticNotFoundError(slug);
-  items.splice(idx, 1);
-  writeFile(COMPETITORS_FILE, items);
+export async function deleteCompetitor(slug: string): Promise<void> {
+  const result = await db.delete(programmaticCompetitors).where(eq(programmaticCompetitors.slug, slug)).returning();
+  if (result.length === 0) throw new ProgrammaticNotFoundError(slug);
 }

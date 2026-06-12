@@ -907,3 +907,41 @@ export const sessions = pgTable("sessions", {
 export const insertSessionSchema = createInsertSchema(sessions);
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// SEO / Blog / Marketing tables (previously stored as ephemeral JSON files)
+// ---------------------------------------------------------------------------
+export const blogArticles = pgTable("blog_articles", {
+  slug: varchar("slug").primaryKey(),
+  data: jsonb("data").notNull(),
+}, (table) => [
+  index("blog_articles_slug_idx").on(table.slug),
+]);
+
+export const blogViews = pgTable("blog_views", {
+  slug: varchar("slug").primaryKey(),
+  views: integer("views").notNull().default(0),
+  referrers: jsonb("referrers").notNull().default(sql`'{}'::jsonb`),
+});
+
+export const emailSubscribers = pgTable("email_subscribers", {
+  email: varchar("email").primaryKey(),
+  subscribedAt: text("subscribed_at").notNull(),
+  source: text("source").notNull().default("website"),
+}, (table) => [
+  index("email_subscribers_subscribed_at_idx").on(table.subscribedAt),
+]);
+
+export const programmaticIndustries = pgTable("programmatic_industries", {
+  slug: varchar("slug").primaryKey(),
+  data: jsonb("data").notNull(),
+}, (table) => [
+  index("programmatic_industries_slug_idx").on(table.slug),
+]);
+
+export const programmaticCompetitors = pgTable("programmatic_competitors", {
+  slug: varchar("slug").primaryKey(),
+  data: jsonb("data").notNull(),
+}, (table) => [
+  index("programmatic_competitors_slug_idx").on(table.slug),
+]);

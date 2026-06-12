@@ -1,14 +1,14 @@
-import fs from "fs";
-import path from "path";
+import { db } from "../db";
+import { blogArticles } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { blogArticles as hardcodedArticles, type BlogArticle } from "./blogData";
 export type { BlogArticle };
-
-const DATA_FILE = path.resolve(process.cwd(), "data/blog-articles.json");
 
 export class BlogNotFoundError extends Error {
   readonly status = 404;
   constructor(slug: string) {
     super(`Article "${slug}" not found`);
+    this.name = "BlogNotFoundError";
   }
 }
 
@@ -16,67 +16,56 @@ export class BlogConflictError extends Error {
   readonly status = 409;
   constructor(slug: string) {
     super(`An article with slug "${slug}" already exists`);
+    this.name = "BlogConflictError";
   }
 }
 
-function ensureDataFile(): void {
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(hardcodedArticles, null, 2), "utf8");
-    console.log("[blogStorage] Initialized data/blog-articles.json from hardcoded data");
-  }
-}
-
-export function getArticles(): BlogArticle[] {
+// Seed the DB from hardcoded defaults if the table is empty.
+// Called lazily on first read so startup isn't blocked.
+let seeded = false;
+async function ensureSeeded(): Promise<void> {
+  if (seeded) return;
+  seeded = true;
   try {
-    ensureDataFile();
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(raw) as BlogArticle[];
+    const existing = await db.select({ slug: blogArticles.slug }).from(blogArticles).limit(1);
+    if (existing.length === 0 && hardcodedArticles.length > 0) {
+      await db.insert(blogArticles).values(
+        hardcodedArticles.map((a) => ({ slug: a.slug, data: a as unknown as Record<string, unknown> })),
+      ).onConflictDoNothing();
+    }
   } catch (err) {
-    console.error("[blogStorage] Failed to read blog-articles.json, using hardcoded data:", err);
-    return hardcodedArticles;
+    console.error("[blogStorage] Seed failed:", err);
   }
 }
 
-export function saveArticles(articles: BlogArticle[]): void {
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(articles, null, 2), "utf8");
+export async function getArticles(): Promise<BlogArticle[]> {
+  await ensureSeeded();
+  const rows = await db.select().from(blogArticles);
+  return rows.map((r) => r.data as unknown as BlogArticle);
 }
 
-export function getArticleBySlug(slug: string): BlogArticle | undefined {
-  return getArticles().find((a) => a.slug === slug);
+export async function getArticleBySlug(slug: string): Promise<BlogArticle | undefined> {
+  await ensureSeeded();
+  const result = await db.select().from(blogArticles).where(eq(blogArticles.slug, slug));
+  return result[0] ? (result[0].data as unknown as BlogArticle) : undefined;
 }
 
-export function createArticle(article: BlogArticle): BlogArticle {
-  const articles = getArticles();
-  if (articles.some((a) => a.slug === article.slug)) {
-    throw new BlogConflictError(article.slug);
-  }
-  articles.unshift(article);
-  saveArticles(articles);
+export async function createArticle(article: BlogArticle): Promise<BlogArticle> {
+  const existing = await db.select({ slug: blogArticles.slug }).from(blogArticles).where(eq(blogArticles.slug, article.slug));
+  if (existing.length > 0) throw new BlogConflictError(article.slug);
+  await db.insert(blogArticles).values({ slug: article.slug, data: article as unknown as Record<string, unknown> });
   return article;
 }
 
-export function updateArticle(slug: string, updates: Partial<BlogArticle>): BlogArticle {
-  const articles = getArticles();
-  const idx = articles.findIndex((a) => a.slug === slug);
-  if (idx === -1) {
-    throw new BlogNotFoundError(slug);
-  }
-  if (updates.slug && updates.slug !== slug && articles.some((a) => a.slug === updates.slug)) {
-    throw new BlogConflictError(updates.slug);
-  }
-  articles[idx] = { ...articles[idx], ...updates };
-  saveArticles(articles);
-  return articles[idx];
+export async function updateArticle(slug: string, updates: Partial<BlogArticle>): Promise<BlogArticle> {
+  const result = await db.select().from(blogArticles).where(eq(blogArticles.slug, slug));
+  if (result.length === 0) throw new BlogNotFoundError(slug);
+  const merged = { ...(result[0].data as unknown as BlogArticle), ...updates };
+  await db.update(blogArticles).set({ data: merged as unknown as Record<string, unknown> }).where(eq(blogArticles.slug, slug));
+  return merged;
 }
 
-export function deleteArticle(slug: string): void {
-  const articles = getArticles();
-  const idx = articles.findIndex((a) => a.slug === slug);
-  if (idx === -1) {
-    throw new BlogNotFoundError(slug);
-  }
-  articles.splice(idx, 1);
-  saveArticles(articles);
+export async function deleteArticle(slug: string): Promise<void> {
+  const result = await db.delete(blogArticles).where(eq(blogArticles.slug, slug)).returning();
+  if (result.length === 0) throw new BlogNotFoundError(slug);
 }

@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
-
-const DATA_FILE = path.resolve(process.cwd(), "data/email-subscribers.json");
+import { db } from "../db";
+import { emailSubscribers } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface EmailSubscriber {
   email: string;
@@ -9,36 +8,23 @@ export interface EmailSubscriber {
   source: string;
 }
 
-function ensureDataFile(): void {
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2), "utf8");
-  }
+export async function getSubscribers(): Promise<EmailSubscriber[]> {
+  return db.select().from(emailSubscribers);
 }
 
-export function getSubscribers(): EmailSubscriber[] {
-  try {
-    ensureDataFile();
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(raw) as EmailSubscriber[];
-  } catch {
-    return [];
-  }
-}
-
-function saveSubscribers(subscribers: EmailSubscriber[]): void {
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(subscribers, null, 2), "utf8");
-}
-
-export function addSubscriber(email: string, source: string): { ok: boolean; alreadyExists: boolean } {
-  const subscribers = getSubscribers();
+export async function addSubscriber(email: string, source: string): Promise<{ ok: boolean; alreadyExists: boolean }> {
   const normalized = email.trim().toLowerCase();
-  if (subscribers.some((s) => s.email === normalized)) {
+  const existing = await db.select({ email: emailSubscribers.email })
+    .from(emailSubscribers)
+    .where(eq(emailSubscribers.email, normalized));
+  if (existing.length > 0) {
     return { ok: true, alreadyExists: true };
   }
-  subscribers.push({ email: normalized, subscribedAt: new Date().toISOString(), source });
-  saveSubscribers(subscribers);
+  await db.insert(emailSubscribers).values({
+    email: normalized,
+    subscribedAt: new Date().toISOString(),
+    source,
+  });
   return { ok: true, alreadyExists: false };
 }
 

@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
-
-const VIEWS_FILE = path.resolve(process.cwd(), "data/blog-views.json");
+import { db } from "../db";
+import { blogViews } from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 
 export interface ArticleViewStats {
   views: number;
@@ -10,23 +9,6 @@ export interface ArticleViewStats {
 
 export interface BlogViewsStore {
   [slug: string]: ArticleViewStats;
-}
-
-function readStore(): BlogViewsStore {
-  try {
-    if (!fs.existsSync(VIEWS_FILE)) {
-      return {};
-    }
-    const raw = fs.readFileSync(VIEWS_FILE, "utf8");
-    return JSON.parse(raw) as BlogViewsStore;
-  } catch {
-    return {};
-  }
-}
-
-function writeStore(store: BlogViewsStore): void {
-  fs.mkdirSync(path.dirname(VIEWS_FILE), { recursive: true });
-  fs.writeFileSync(VIEWS_FILE, JSON.stringify(store, null, 2), "utf8");
 }
 
 export function classifyReferrer(refererHeader: string | undefined): string {
@@ -48,26 +30,50 @@ export function classifyReferrer(refererHeader: string | undefined): string {
   }
 }
 
-export function recordView(slug: string, refererHeader: string | undefined): void {
+export async function recordView(slug: string, refererHeader: string | undefined): Promise<void> {
   try {
-    const store = readStore();
-    if (!store[slug]) {
-      store[slug] = { views: 0, referrers: {} };
-    }
-    store[slug].views += 1;
     const source = classifyReferrer(refererHeader);
-    store[slug].referrers[source] = (store[slug].referrers[source] ?? 0) + 1;
-    writeStore(store);
+    // Upsert: increment view count and merge referrer into the jsonb map.
+    await db.insert(blogViews)
+      .values({
+        slug,
+        views: 1,
+        referrers: { [source]: 1 } as unknown as Record<string, unknown>,
+      })
+      .onConflictDoUpdate({
+        target: blogViews.slug,
+        set: {
+          views: sql`${blogViews.views} + 1`,
+          referrers: sql`jsonb_set(
+            COALESCE(${blogViews.referrers}, '{}'::jsonb),
+            array[${source}],
+            to_jsonb(COALESCE((${blogViews.referrers}->>CAST(${source} AS text))::int, 0) + 1),
+            true
+          )`,
+        },
+      });
   } catch (err) {
     console.error("[blogViews] Failed to record view:", err);
   }
 }
 
-export function getAllViewStats(): BlogViewsStore {
-  return readStore();
+export async function getAllViewStats(): Promise<BlogViewsStore> {
+  const rows = await db.select().from(blogViews);
+  const store: BlogViewsStore = {};
+  for (const r of rows) {
+    store[r.slug] = {
+      views: r.views,
+      referrers: (r.referrers as unknown as Record<string, number>) ?? {},
+    };
+  }
+  return store;
 }
 
-export function getViewStats(slug: string): ArticleViewStats {
-  const store = readStore();
-  return store[slug] ?? { views: 0, referrers: {} };
+export async function getViewStats(slug: string): Promise<ArticleViewStats> {
+  const result = await db.select().from(blogViews).where(eq(blogViews.slug, slug));
+  if (!result[0]) return { views: 0, referrers: {} };
+  return {
+    views: result[0].views,
+    referrers: (result[0].referrers as unknown as Record<string, number>) ?? {},
+  };
 }
