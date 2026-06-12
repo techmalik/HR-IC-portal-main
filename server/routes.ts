@@ -982,7 +982,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
     }
 
-    const tempPassword = "temp" + Math.random().toString(36).slice(2, 8);
+    const tempPassword = "temp" + Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8);
     await storage.updateUser(req.params.id, { password: tempPassword, mustChangePassword: true });
 
     try {
@@ -998,7 +998,9 @@ export async function registerRoutes(
       console.error("Failed to create activity log:", e);
     }
 
-    res.json({ message: "Password reset successfully" });
+    // Return the temp password so the admin can communicate it out of band.
+    // The user is forced to change it on next login (mustChangePassword: true).
+    res.json({ message: "Password reset successfully", tempPassword });
   });
 
   // OOO Request routes - protected
