@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { registerRoutes } from "./routes";
@@ -13,6 +14,15 @@ import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPerio
 const app = express();
 // Trust the first proxy (Replit's load balancer) so req.ip reflects the real client IP
 app.set("trust proxy", 1);
+
+// Security headers. CSP is disabled in development because Vite HMR injects
+// inline scripts that would be blocked by a strict policy.
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === "production",
+    crossOriginEmbedderPolicy: process.env.NODE_ENV === "production",
+  }),
+);
 const httpServer = createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });

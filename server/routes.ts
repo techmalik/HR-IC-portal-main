@@ -12,7 +12,7 @@ import {
   invoices as invoicesTable,
   activityLogs as activityLogsTable,
 } from "@shared/schema";
-import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
+import { createSession, invalidateSession, getUserIdFromToken, rotateSessionIfNeeded } from "./sessionManager";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 
@@ -169,6 +169,23 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
     }
   }
   req.authenticatedUser = user;
+
+  // Rotate the session token when nearing expiry so active users stay logged in
+  // and stolen tokens have a shorter validity window.
+  const oldToken = req.cookies?.session_token;
+  if (oldToken) {
+    const newToken = await rotateSessionIfNeeded(oldToken).catch(() => null);
+    if (newToken) {
+      res.cookie("session_token", newToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+    }
+  }
+
   next();
 }
 
