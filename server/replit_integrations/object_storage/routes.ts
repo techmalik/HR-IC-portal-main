@@ -56,7 +56,9 @@ async function isAuthorizedForObject(
     );
   }
 
-  return isAdmin;
+  // File not linked to any known record — deny rather than allow by role alone.
+  // This prevents cross-tenant reads of orphaned uploads.
+  return false;
 }
 
 export function registerObjectStorageRoutes(

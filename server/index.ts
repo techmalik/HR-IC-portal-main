@@ -63,7 +63,8 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Note: /uploads static serving removed — files are served via authenticated
+// /objects/* route through Replit Object Storage.
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
