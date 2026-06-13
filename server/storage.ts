@@ -57,6 +57,9 @@ import {
   organizations,
   subscriptions,
   passwordResetTokens,
+  emailOutbox,
+  type EmailOutboxEntry,
+  type InsertEmailOutbox,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
@@ -215,6 +218,11 @@ export interface IStorage {
   createPasswordResetToken(userId: string): Promise<string>;
   getUserIdForResetToken(token: string): Promise<string | null>;
   deletePasswordResetToken(token: string): Promise<void>;
+
+  // Email outbox
+  createEmailOutboxEntry(entry: InsertEmailOutbox): Promise<EmailOutboxEntry>;
+  getPendingEmailOutboxEntries(maxAttempts: number): Promise<EmailOutboxEntry[]>;
+  updateEmailOutboxEntry(id: string, updates: Partial<EmailOutboxEntry>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -908,6 +916,27 @@ export class DatabaseStorage implements IStorage {
 
   async deletePasswordResetToken(token: string): Promise<void> {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+  }
+
+  async createEmailOutboxEntry(entry: InsertEmailOutbox): Promise<EmailOutboxEntry> {
+    const [row] = await db.insert(emailOutbox).values(entry).returning();
+    return row;
+  }
+
+  async getPendingEmailOutboxEntries(maxAttempts: number): Promise<EmailOutboxEntry[]> {
+    const { lt } = await import("drizzle-orm");
+    return db.select().from(emailOutbox).where(
+      and(
+        or(
+          eq(emailOutbox.status, "pending"),
+          and(eq(emailOutbox.status, "failed"), lt(emailOutbox.attempts, maxAttempts)),
+        )
+      )
+    );
+  }
+
+  async updateEmailOutboxEntry(id: string, updates: Partial<EmailOutboxEntry>): Promise<void> {
+    await db.update(emailOutbox).set(updates).where(eq(emailOutbox.id, id));
   }
 }
 

@@ -11,6 +11,7 @@ import { registerWebSocketClient, unregisterWebSocketClient } from "./notificati
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
 import { storage } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
+import { sendRawEmail } from "./emailService";
 
 const app = express();
 // Trust the first proxy (Replit's load balancer) so req.ip reflects the real client IP
@@ -252,6 +253,29 @@ app.use((req, res, next) => {
       };
       setTimeout(checkTimesheetReminders, 60 * 1000);
       setInterval(checkTimesheetReminders, 12 * 60 * 60 * 1000);
+
+      // ── Email outbox worker (H13) ─────────────────────────────────────────
+      // Processes pending outbox entries every 2 minutes, retrying failed sends
+      // up to 5 times before marking them permanently failed.
+      const MAX_EMAIL_ATTEMPTS = 5;
+      const processEmailOutbox = async () => {
+        try {
+          const pending = await storage.getPendingEmailOutboxEntries(MAX_EMAIL_ATTEMPTS);
+          for (const entry of pending) {
+            const ok = await sendRawEmail(entry.toEmail, entry.subject, entry.htmlBody, entry.textBody);
+            await storage.updateEmailOutboxEntry(entry.id, {
+              attempts: entry.attempts + 1,
+              lastAttemptedAt: new Date(),
+              status: ok ? "sent" : entry.attempts + 1 >= MAX_EMAIL_ATTEMPTS ? "failed" : "pending",
+              sentAt: ok ? new Date() : undefined,
+            });
+          }
+        } catch (e) {
+          console.error("Email outbox worker error:", e);
+        }
+      };
+      setTimeout(processEmailOutbox, 5 * 1000);
+      setInterval(processEmailOutbox, 2 * 60 * 1000);
     },
   );
 })();

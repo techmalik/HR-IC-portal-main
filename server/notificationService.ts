@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import type { InsertNotification, User, NotificationType, Contract } from "@shared/schema";
-import { sendNotificationEmail } from "./emailService";
+import { enqueueNotificationEmail } from "./emailService";
 
 export interface NotificationPayload {
   type: string;
@@ -126,20 +126,16 @@ export async function createNotification(
     await sendToWebSocket(userId, notification);
   }
 
-  try {
-    const actorName = await getActorName(payload.actorId);
-    await sendNotificationEmail(userId, {
-      type: payload.type,
-      title: payload.title,
-      message: payload.message,
-      entityType: payload.entityType,
-      entityId: payload.entityId,
-      actorName,
-      additionalDetails: payload.additionalEmailDetails,
-    });
-  } catch (error) {
-    console.error("Notification email send failed:", error);
-  }
+  const actorName = await getActorName(payload.actorId);
+  await enqueueNotificationEmail(userId, {
+    type: payload.type,
+    title: payload.title,
+    message: payload.message,
+    entityType: payload.entityType,
+    entityId: payload.entityId,
+    actorName,
+    additionalDetails: payload.additionalEmailDetails,
+  });
 }
 
 export async function notifyOOOSubmitted(

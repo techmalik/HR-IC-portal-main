@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import type { NotificationPreferences } from "@shared/schema";
 
@@ -287,6 +288,64 @@ export async function sendNotificationEmail(
 
 export function isEmailServiceConfigured(): boolean {
   return !!resend;
+}
+
+/**
+ * Queue a notification email for a user via the outbox table.
+ * Checks user preferences before enqueuing. Safe to call fire-and-forget.
+ */
+export async function enqueueNotificationEmail(
+  userId: string,
+  payload: EmailPayload,
+): Promise<void> {
+  if (!resend) return;
+  try {
+    const shouldSend = await shouldSendEmail(userId, payload.type);
+    if (!shouldSend) return;
+    const user = await storage.getUser(userId);
+    if (!user?.email) return;
+    await storage.createEmailOutboxEntry({
+      id: randomUUID(),
+      toEmail: user.email,
+      subject: `[${APP_NAME}] ${payload.title}`,
+      htmlBody: generateEmailHtml(payload),
+      textBody: generatePlainText(payload),
+      status: "pending",
+      attempts: 0,
+    });
+  } catch (error) {
+    console.error("[EMAIL] Failed to enqueue notification email:", error);
+  }
+}
+
+/**
+ * Send a raw email by ID from the outbox (called by the outbox worker).
+ * Returns true on success, false on failure.
+ */
+export async function sendRawEmail(
+  toEmail: string,
+  subject: string,
+  htmlBody: string,
+  textBody: string | null,
+): Promise<boolean> {
+  if (!resend) return false;
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      text: textBody ?? undefined,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Send failed:", result.error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[EMAIL] Send error:", error);
+    return false;
+  }
 }
 
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string): Promise<boolean> {

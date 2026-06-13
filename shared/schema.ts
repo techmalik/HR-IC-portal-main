@@ -955,3 +955,26 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Email outbox — reliable delivery with retry (H13)
+// ---------------------------------------------------------------------------
+export const emailOutbox = pgTable("email_outbox", {
+  id: varchar("id").primaryKey(),
+  toEmail: varchar("to_email").notNull(),
+  subject: varchar("subject").notNull(),
+  htmlBody: text("html_body").notNull(),
+  textBody: text("text_body"),
+  status: varchar("status").notNull().default("pending"), // pending | sent | failed
+  attempts: integer("attempts").notNull().default(0),
+  lastAttemptedAt: timestamp("last_attempted_at"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("email_outbox_status_idx").on(table.status),
+  index("email_outbox_created_at_idx").on(table.createdAt),
+]);
+
+export const insertEmailOutboxSchema = createInsertSchema(emailOutbox).omit({ createdAt: true });
+export type InsertEmailOutbox = z.infer<typeof insertEmailOutboxSchema>;
+export type EmailOutboxEntry = typeof emailOutbox.$inferSelect;
