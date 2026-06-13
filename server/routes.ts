@@ -13,7 +13,8 @@ import {
   activityLogs as activityLogsTable,
 } from "@shared/schema";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
-import { ExpenseCategory } from "@shared/schema";
+import { ExpenseCategory, createOOORequestBodySchema, createExpenseBodySchema, createEvaluationBodySchema } from "@shared/schema";
+import { validateBody } from "./middleware/validate";
 
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
@@ -797,19 +798,10 @@ export async function registerRoutes(
     res.json({ count: requests.length });
   });
 
-  app.post("/api/ooo-requests", authMiddleware, async (req, res) => {
+  app.post("/api/ooo-requests", authMiddleware, validateBody(createOOORequestBodySchema), async (req, res) => {
     try {
       const currentUser = req.authenticatedUser!;
-
-      // Users can only create requests for themselves
-      if (req.body.userId !== currentUser.id) {
-        return res.status(403).json({ error: "Cannot create requests for other users" });
-      }
-
       const { startDate, endDate, reason, oooType, managerId } = req.body;
-      if (!startDate || !endDate) {
-        return res.status(400).json({ error: "startDate and endDate are required" });
-      }
 
       // Whitelist fields; force status to "pending" regardless of what the client sends
       const request = await storage.createOOORequest({
@@ -2350,7 +2342,7 @@ export async function registerRoutes(
   }));
 
   // Create expense (IC submits). Admin can also submit on behalf if userId given.
-  app.post("/api/expenses", authMiddleware, asyncHandler(async (req, res) => {
+  app.post("/api/expenses", authMiddleware, validateBody(createExpenseBodySchema), asyncHandler(async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     const {
@@ -2643,7 +2635,7 @@ export async function registerRoutes(
     res.json(evaluation || null);
   }));
 
-  app.post("/api/evaluations", authMiddleware, async (req, res) => {
+  app.post("/api/evaluations", authMiddleware, validateBody(createEvaluationBodySchema), async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     

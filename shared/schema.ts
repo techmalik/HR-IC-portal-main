@@ -282,6 +282,17 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
   invoiceId: true,
 });
 
+// Route-level schema: client-supplied expense creation fields only
+export const createExpenseBodySchema = insertExpenseSchema.omit({
+  userId: true,
+  organizationId: true,
+  status: true,
+}).extend({
+  amount: z.coerce.number().positive(),
+  date: z.string().min(1),
+  description: z.string().min(1),
+});
+
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
@@ -324,6 +335,16 @@ export const insertOOORequestSchema = createInsertSchema(oooRequests).omit({
   reviewedAt: true,
   reviewNote: true,
   createdAt: true,
+});
+
+// Route-level schema: client-supplied fields only (userId/org/status injected server-side)
+export const createOOORequestBodySchema = insertOOORequestSchema.omit({
+  userId: true,
+  organizationId: true,
+  status: true,
+}).extend({
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
 });
 
 export type InsertOOORequest = z.infer<typeof insertOOORequestSchema>;
@@ -672,6 +693,16 @@ export const insertEvaluationSchema = createInsertSchema(evaluations).omit({
   icSubmittedAt: true,
   managerSubmittedAt: true,
   completedAt: true,
+});
+
+// Route-level schema: admin-supplied evaluation creation fields only
+export const createEvaluationBodySchema = insertEvaluationSchema.omit({
+  organizationId: true,
+  status: true,
+}).extend({
+  icId: z.string().min(1),
+  managerId: z.string().min(1),
+  period: z.string().min(1),
 });
 
 export type InsertEvaluation = z.infer<typeof insertEvaluationSchema>;
