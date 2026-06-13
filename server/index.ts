@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { randomUUID } from "crypto";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -87,14 +88,24 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Attach a short request ID to every request and reflect it in the response
+// header so that client-side error reports can be correlated with server logs.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const id = randomUUID().slice(0, 8);
+  (req as Request & { requestId: string }).requestId = id;
+  res.setHeader("X-Request-Id", id);
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
+  const reqId = (req as Request & { requestId?: string }).requestId ?? "";
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms [${reqId}]`;
       log(logLine);
     }
   });
@@ -105,13 +116,14 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    const reqId = (req as Request & { requestId?: string }).requestId ?? "";
 
-    res.status(status).json({ message });
+    res.status(status).json({ message, requestId: reqId });
     if (status >= 500) {
-      console.error("Unhandled error:", err);
+      console.error(`Unhandled error [${reqId}]:`, err);
     }
   });
 
