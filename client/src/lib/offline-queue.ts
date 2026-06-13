@@ -3,7 +3,7 @@
 // "timesheet" or "ooo") is keyed by its own id so we don't mix things up.
 type QueuedDraft = {
   id: string;
-  kind: "timesheet" | "ooo";
+  kind: "timesheet" | "ooo" | "expense" | "invoice";
   payload: unknown;
   url: string;
   method: "POST" | "PATCH";

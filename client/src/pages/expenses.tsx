@@ -42,6 +42,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { enqueueDraft } from "@/lib/offline-queue";
 import { formatMoney, normalizeCurrency } from "@/lib/currency";
 import { trackFirst } from "@/lib/analytics";
 import type { Expense, User } from "@shared/schema";
@@ -181,7 +182,7 @@ export default function ExpensesPage() {
       }
       if (!description.trim()) throw new Error("Description is required.");
 
-      const res = await apiRequest("POST", "/api/expenses", {
+      const expensePayload = {
         amount: amountCents,
         currency: userCurrency,
         category,
@@ -189,10 +190,32 @@ export default function ExpensesPage() {
         expenseDate,
         receiptUrl,
         receiptFileName,
-      });
-      return res.json();
+      };
+      try {
+        const res = await apiRequest("POST", "/api/expenses", expensePayload);
+        return res.json();
+      } catch (err) {
+        // Queue offline only when there's no receipt (receipts can be several MB
+        // and would blow past localStorage limits).
+        if (typeof navigator !== "undefined" && navigator.onLine === false && !receiptUrl) {
+          enqueueDraft({
+            id: `expense-${Date.now()}`,
+            kind: "expense",
+            url: "/api/expenses",
+            method: "POST",
+            payload: expensePayload,
+          });
+          toast({
+            title: "Saved offline",
+            description: "Expense queued — it will sync when you're back online.",
+          });
+          return null;
+        }
+        throw err;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data === null) { setIsCreateOpen(false); resetForm(); return; } // offline-queued
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/pending-count"] });
       trackFirst("first_expense_submitted");
