@@ -12,21 +12,30 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import type { Notification } from "@shared/schema";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function safeHighlight(entityId: string | null | undefined): string {
+  if (!entityId || !UUID_RE.test(entityId)) return "";
+  return `?highlight=${encodeURIComponent(entityId)}`;
+}
+
 function getDeepLink(n: Notification): string | null {
   const { entityType, entityId, type } = n;
-  if ((entityType === "ooo" || entityType === "ooo_request") && entityId) return `/ooo-requests?highlight=${entityId}`;
-  if ((entityType === "timesheet" || entityType === "timesheet_entry")) {
-    // Timesheet reminders use a synthetic period-key entityId (e.g.
-    // "ts-reminder:2026-05") which doesn't correspond to a real record;
-    // route those to the page without a highlight.
-    if (entityId && !entityId.startsWith("ts-reminder:")) return `/timesheets?highlight=${entityId}`;
+  if ((entityType === "ooo" || entityType === "ooo_request") && entityId)
+    return `/ooo-requests${safeHighlight(entityId)}`;
+  if (entityType === "timesheet" || entityType === "timesheet_entry") {
+    // ts-reminder:YYYY-MM is a synthetic key — route to page without highlight.
+    if (entityId && !entityId.startsWith("ts-reminder:"))
+      return `/timesheets${safeHighlight(entityId)}`;
     return "/timesheets";
   }
-  if (entityType === "invoice" && entityId) return `/invoices?highlight=${entityId}`;
-  if ((entityType === "overtime" || entityType === "overtime_request") && entityId) return `/overtime-approvals?highlight=${entityId}`;
-  if (entityType === "evaluation" && entityId) return `/evaluations?highlight=${entityId}`;
-  if (entityType === "expense" && entityId) return `/expenses?highlight=${entityId}`;
-  if (entityType === "user" && entityId) return `/team/${entityId}`;
+  if (entityType === "invoice" && entityId) return `/invoices${safeHighlight(entityId)}`;
+  if ((entityType === "overtime" || entityType === "overtime_request") && entityId)
+    return `/overtime-approvals${safeHighlight(entityId)}`;
+  if (entityType === "evaluation" && entityId) return `/evaluations${safeHighlight(entityId)}`;
+  if (entityType === "expense" && entityId) return `/expenses${safeHighlight(entityId)}`;
+  if (entityType === "user" && entityId && UUID_RE.test(entityId))
+    return `/team/${encodeURIComponent(entityId)}`;
   if (type.startsWith("ooo_")) return "/ooo-requests";
   if (type.startsWith("timesheet_")) return "/timesheets";
   if (type.startsWith("invoice_")) return "/invoices";
