@@ -151,13 +151,20 @@ app.use((req, res, next) => {
         try {
           const all = await storage.getAllContractsForScheduler();
           const now = Date.now();
-          for (const c of all) {
+          // Filter to contracts actually in the notice window before fetching users.
+          const due = all.filter((c) => {
+            if (c.noticeAlertSentAt) return false;
             const end = new Date(c.endDate).getTime();
             const noticeMs = (c.noticePeriodDays || 30) * 24 * 60 * 60 * 1000;
-            const inWindow = end >= now && end - now <= noticeMs;
-            if (!inWindow) continue;
-            if (c.noticeAlertSentAt) continue;
-            const contractor = await storage.getUser(c.userId);
+            return end >= now && end - now <= noticeMs;
+          });
+          if (due.length === 0) return;
+          // Batch-load all needed users in one query instead of N getUser() calls.
+          const userIds = Array.from(new Set(due.map((c) => c.userId)));
+          const userList = await storage.getUsersByIds(userIds);
+          const userMap = new Map(userList.map((u) => [u.id, u]));
+          for (const c of due) {
+            const contractor = userMap.get(c.userId);
             if (!contractor) continue;
             await notifyContractExpiring(c, contractor);
             await storage.updateContract(c.id, { noticeAlertSentAt: new Date() });
@@ -198,28 +205,25 @@ app.use((req, res, next) => {
           }
           const periodKey = timesheetReminderPeriodKey(targetMonth, targetYear);
 
-          const allUsers = await storage.getAllUsersForScheduler();
+          // Batch-load all data upfront — O(3 queries) instead of O(N*2 queries).
+          const [allUsers, timesheetsForPeriod, alreadyNotified] = await Promise.all([
+            storage.getAllUsersForScheduler(),
+            storage.getTimesheetsByMonth(targetMonth, targetYear),
+            storage.getTimesheetRemindersSentForPeriod(periodKey),
+          ]);
+
+          const timesheetByUser = new Map(timesheetsForPeriod.map((ts) => [ts.userId, ts]));
+
           for (const u of allUsers) {
             if (!u.isActive || u.role !== "ic") continue;
 
             const inFlightKey = `${u.id}:${periodKey}`;
             if (reminderInFlight.has(inFlightKey)) continue;
+            if (alreadyNotified.has(u.id)) continue;
 
-            const ts = await storage.getTimesheetByUserAndMonth(u.id, targetMonth, targetYear);
+            const ts = timesheetByUser.get(u.id);
             // Only nudge when the timesheet is missing or still a draft.
-            // Skip submitted/approved/rejected — rejected has its own notification.
             if (ts && ts.status !== "draft") continue;
-
-            // Idempotency: look up any prior reminder for this exact period
-            // via the period key stored in entityId. This survives restarts
-            // (unlike a process-local set) and is period-specific.
-            const existing = await storage.getNotificationsByUser(u.id);
-            const already = existing.some(n =>
-              n.type === "timesheet_reminder"
-              && n.entityType === "timesheet"
-              && n.entityId === periodKey
-            );
-            if (already) continue;
 
             reminderInFlight.add(inFlightKey);
             try {

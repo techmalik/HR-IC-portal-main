@@ -288,3 +288,48 @@ export async function sendNotificationEmail(
 export function isEmailServiceConfigured(): boolean {
   return !!resend;
 }
+
+export async function sendPasswordResetEmail(toEmail: string, resetToken: string): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Email service not configured — skipping password reset email");
+    return false;
+  }
+  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : process.env.APP_URL ?? "http://localhost:5000";
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;background:#f4f4f5;padding:32px 0;margin:0;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <h2 style="margin:0 0 8px;color:#111827;">Reset your password</h2>
+    <p style="color:#374151;margin:0 0 24px;">We received a request to reset the password for your TeamFlow account. Click the button below to choose a new password. This link expires in 1 hour.</p>
+    <a href="${resetUrl}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Reset password</a>
+    <p style="color:#6b7280;font-size:13px;margin:24px 0 0;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+  </div>
+</body>
+</html>`;
+
+  const text = `Reset your TeamFlow password\n\nVisit this link (expires in 1 hour):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: toEmail,
+      subject: `[${APP_NAME}] Reset your password`,
+      html,
+      text,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Failed to send password reset email:", result.error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[EMAIL] Error sending password reset email:", err);
+    return false;
+  }
+}

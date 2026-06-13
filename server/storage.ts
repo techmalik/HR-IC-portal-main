@@ -56,12 +56,14 @@ import {
   notificationPreferences,
   organizations,
   subscriptions,
+  passwordResetTokens,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, or, inArray, isNull } from "drizzle-orm";
+import { eq, and, desc, or, inArray, isNull, gt } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 
 const SALT_ROUNDS = 12;
 
@@ -80,6 +82,7 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getAllUsers(organizationId?: string): Promise<User[]>;
+  getUsersByIds(ids: string[]): Promise<User[]>;
   getUsersByRole(role: string, organizationId?: string): Promise<User[]>;
   getUsersBySupervisor(supervisorId: string): Promise<User[]>;
   getManagers(organizationId?: string): Promise<User[]>;
@@ -95,6 +98,7 @@ export interface IStorage {
 
   getTimesheet(id: string): Promise<Timesheet | undefined>;
   getTimesheetByUserAndMonth(userId: string, month: number, year: number): Promise<Timesheet | undefined>;
+  getTimesheetsByMonth(month: number, year: number): Promise<Timesheet[]>;
   getTimesheetsByUser(userId: string): Promise<Timesheet[]>;
   getSubmittedTimesheets(organizationId?: string): Promise<Timesheet[]>;
   getAllTimesheets(organizationId?: string): Promise<Timesheet[]>;
@@ -163,6 +167,7 @@ export interface IStorage {
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
   getNotification(id: string): Promise<Notification | undefined>;
+  getTimesheetRemindersSentForPeriod(periodKey: string): Promise<Set<string>>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
   getUnreadNotificationsByUser(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
@@ -205,6 +210,10 @@ export interface IStorage {
   updateExpense(id: string, updates: Partial<Expense>): Promise<Expense | undefined>;
   deleteExpense(id: string): Promise<boolean>;
   linkExpensesToInvoice(expenseIds: string[], invoiceId: string, userId: string): Promise<Expense[]>;
+
+  createPasswordResetToken(userId: string): Promise<string>;
+  getUserIdForResetToken(token: string): Promise<string | null>;
+  deletePasswordResetToken(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,6 +254,11 @@ export class DatabaseStorage implements IStorage {
   // Platform-level scheduler use only — returns users across all orgs.
   async getAllUsersForScheduler(): Promise<User[]> {
     return db.select().from(users);
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    return db.select().from(users).where(inArray(users.id, ids));
   }
 
   async getUsersByRole(role: string, organizationId?: string): Promise<User[]> {
@@ -327,6 +341,12 @@ export class DatabaseStorage implements IStorage {
       )
     );
     return result[0];
+  }
+
+  async getTimesheetsByMonth(month: number, year: number): Promise<Timesheet[]> {
+    return db.select().from(timesheets).where(
+      and(eq(timesheets.month, month), eq(timesheets.year, year))
+    );
   }
 
   async getTimesheetsByUser(userId: string): Promise<Timesheet[]> {
@@ -639,6 +659,17 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getTimesheetRemindersSentForPeriod(periodKey: string): Promise<Set<string>> {
+    const rows = await db.select({ userId: notifications.userId }).from(notifications).where(
+      and(
+        eq(notifications.type, "timesheet_reminder"),
+        eq(notifications.entityType, "timesheet"),
+        eq(notifications.entityId, periodKey),
+      )
+    );
+    return new Set(rows.map((r) => r.userId));
+  }
+
   async getNotificationsByUser(userId: string): Promise<Notification[]> {
     return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
   }
@@ -837,6 +868,25 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return result;
+  }
+
+  async createPasswordResetToken(userId: string): Promise<string> {
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+    await db.insert(passwordResetTokens).values({ token, userId, expiresAt });
+    return token;
+  }
+
+  async getUserIdForResetToken(token: string): Promise<string | null> {
+    const rows = await db.select().from(passwordResetTokens).where(
+      and(eq(passwordResetTokens.token, token), gt(passwordResetTokens.expiresAt, new Date()))
+    );
+    return rows[0]?.userId ?? null;
+  }
+
+  async deletePasswordResetToken(token: string): Promise<void> {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
   }
 }
 

@@ -945,3 +945,13 @@ export const programmaticCompetitors = pgTable("programmatic_competitors", {
 }, (table) => [
   index("programmatic_competitors_slug_idx").on(table.slug),
 ]);
+
+
+// ---------------------------------------------------------------------------
+// Password reset tokens (single-use, 1-hour TTL)
+// ---------------------------------------------------------------------------
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  token: varchar("token").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});

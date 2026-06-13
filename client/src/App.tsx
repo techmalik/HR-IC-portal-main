@@ -39,6 +39,8 @@ import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import MigrateFilesPage from "@/pages/migrate-files";
 import SignupPage from "@/pages/signup";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import LandingPage from "@/pages/landing";
 import BillingPage from "@/pages/billing";
 import AdminBlogPage from "@/pages/admin-blog";
@@ -510,6 +512,8 @@ function PublicRoutes() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
       <Route component={LandingPage} />
     </Switch>
@@ -529,7 +533,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
+    const publicPaths = ["/login", "/signup", "/forgot-password", "/reset-password", "/", "/competitive-analysis"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
       window.location.replace(`/login?redirect=${encodeURIComponent(location)}`);

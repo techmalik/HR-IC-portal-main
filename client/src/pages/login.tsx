@@ -145,7 +145,9 @@ export default function LoginPage() {
                 </a>
               </p>
               <p className="text-sm text-muted-foreground">
-                Forgot password? Contact your administrator
+                <a href="/forgot-password" className="text-primary hover:underline">
+                  Forgot your password?
+                </a>
               </p>
             </div>
           </CardContent>

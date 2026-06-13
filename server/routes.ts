@@ -13,6 +13,7 @@ import {
   activityLogs as activityLogsTable,
 } from "@shared/schema";
 import { createSession, invalidateSession, getUserIdFromToken, rotateSessionIfNeeded } from "./sessionManager";
+import { sendPasswordResetEmail } from "./emailService";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 
@@ -361,8 +362,8 @@ export async function registerRoutes(
       return res.status(400).json({ error: "All fields are required: firstName, lastName, email, password, organizationName" });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (password.length < 12) {
+      return res.status(400).json({ error: "Password must be at least 12 characters" });
     }
 
     const existingByEmail = await storage.getUserByEmail(email);
@@ -448,6 +449,42 @@ export async function registerRoutes(
     }
     res.clearCookie("session_token", { path: "/" });
     res.json({ success: true });
+  });
+
+  // Self-service password reset — always responds 200 to prevent email enumeration.
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== "string") {
+        return res.json({ message: "If that email is registered, a reset link has been sent." });
+      }
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      if (user && user.isActive) {
+        const resetToken = await storage.createPasswordResetToken(user.id);
+        await sendPasswordResetEmail(user.email!, resetToken);
+      }
+    } catch (e) {
+      console.error("[Auth] forgot-password error:", e);
+    }
+    // Always return the same message to prevent email enumeration.
+    res.json({ message: "If that email is registered, a reset link has been sent." });
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "Reset token is required" });
+    }
+    if (!newPassword || newPassword.length < 12) {
+      return res.status(400).json({ error: "Password must be at least 12 characters" });
+    }
+    const userId = await storage.getUserIdForResetToken(token);
+    if (!userId) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+    await storage.updateUser(userId, { password: newPassword, mustChangePassword: false });
+    await storage.deletePasswordResetToken(token);
+    res.json({ message: "Password reset successfully. You can now log in." });
   });
 
   app.get("/api/auth/me", async (req, res) => {
@@ -770,8 +807,8 @@ export async function registerRoutes(
     }
     
     const { newPassword, currentPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (!newPassword || newPassword.length < 12) {
+      return res.status(400).json({ error: "Password must be at least 12 characters" });
     }
 
     // Self-change requires current password verification; admins changing another user's
@@ -993,7 +1030,8 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
     }
 
-    const tempPassword = "temp" + Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8);
+    // 16 hex chars = 64 bits of entropy, always >= 16 chars so it passes the 12-char policy
+    const tempPassword = randomUUID().replace(/-/g, "").slice(0, 16);
     await storage.updateUser(req.params.id, { password: tempPassword, mustChangePassword: true });
 
     try {
