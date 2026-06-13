@@ -7,24 +7,30 @@ const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 // Rotate when less than half the lifetime remains so active users stay logged in.
 const SESSION_ROTATION_THRESHOLD_MS = SESSION_DURATION_MS / 2;
 
+// SHA-256 the raw token before touching the DB. The cookie holds the raw bytes;
+// the DB only ever sees the hash. A DB breach doesn't yield usable cookies.
+function hashToken(raw: string): string {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
 export async function createSession(userId: string, username: string): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
-  
+
   await db.insert(sessions).values({
-    token,
+    token: hashToken(token),
     userId,
     username,
     createdAt: now,
     expiresAt,
   });
-  
+
   return token;
 }
 
 export async function validateSession(token: string): Promise<{ userId: string; username: string } | null> {
-  const result = await db.select().from(sessions).where(eq(sessions.token, token));
+  const result = await db.select().from(sessions).where(eq(sessions.token, hashToken(token)));
   const session = result[0];
 
   if (!session) {
@@ -32,7 +38,7 @@ export async function validateSession(token: string): Promise<{ userId: string; 
   }
 
   if (new Date() > session.expiresAt) {
-    await db.delete(sessions).where(eq(sessions.token, token));
+    await db.delete(sessions).where(eq(sessions.token, hashToken(token)));
     return null;
   }
 
@@ -44,7 +50,7 @@ export async function validateSession(token: string): Promise<{ userId: string; 
 export async function rotateSessionIfNeeded(
   oldToken: string,
 ): Promise<string | null> {
-  const result = await db.select().from(sessions).where(eq(sessions.token, oldToken));
+  const result = await db.select().from(sessions).where(eq(sessions.token, hashToken(oldToken)));
   const session = result[0];
   if (!session) return null;
 
@@ -56,19 +62,19 @@ export async function rotateSessionIfNeeded(
   const newExpiry = new Date(now.getTime() + SESSION_DURATION_MS);
 
   await db.insert(sessions).values({
-    token: newToken,
+    token: hashToken(newToken),
     userId: session.userId,
     username: session.username,
     createdAt: now,
     expiresAt: newExpiry,
   });
-  await db.delete(sessions).where(eq(sessions.token, oldToken));
+  await db.delete(sessions).where(eq(sessions.token, hashToken(oldToken)));
 
   return newToken;
 }
 
 export async function invalidateSession(token: string): Promise<boolean> {
-  const result = await db.delete(sessions).where(eq(sessions.token, token)).returning();
+  const result = await db.delete(sessions).where(eq(sessions.token, hashToken(token))).returning();
   return result.length > 0;
 }
 

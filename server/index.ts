@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import helmet from "helmet";
+import { logger } from "./logger";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { registerRoutes } from "./routes";
@@ -106,8 +107,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms [${reqId}]`;
-      log(logLine);
+      logger.info(`${req.method} ${path}`, { status: res.statusCode, ms: duration, reqId });
     }
   });
 
@@ -124,7 +124,7 @@ app.use((req, res, next) => {
 
     res.status(status).json({ message, requestId: reqId });
     if (status >= 500) {
-      console.error(`Unhandled error [${reqId}]:`, err);
+      logger.error("Unhandled error", { reqId, status, message: err?.message, stack: err?.stack });
     }
   });
 
@@ -156,7 +156,7 @@ app.use((req, res, next) => {
         try {
           await cleanupExpiredSessions();
         } catch (e) {
-          console.error("Session cleanup error:", e);
+          logger.error("Session cleanup error", { error: String(e) });
         }
       }, 60 * 60 * 1000);
 
@@ -183,7 +183,7 @@ app.use((req, res, next) => {
             await storage.updateContract(c.id, { noticeAlertSentAt: new Date() });
           }
         } catch (e) {
-          console.error("Contract renewal check error:", e);
+          logger.error("Contract renewal check error", { error: String(e) });
         }
       };
       setTimeout(checkExpiringContracts, 30 * 1000);
@@ -242,13 +242,13 @@ app.use((req, res, next) => {
             try {
               await notifyTimesheetReminder(u.id, targetMonth, targetYear);
             } catch (sendErr) {
-              console.error("Timesheet reminder send error:", sendErr);
+              logger.error("Timesheet reminder send error", { error: String(sendErr) });
             } finally {
               reminderInFlight.delete(inFlightKey);
             }
           }
         } catch (e) {
-          console.error("Timesheet reminder check error:", e);
+          logger.error("Timesheet reminder check error", { error: String(e) });
         }
       };
       setTimeout(checkTimesheetReminders, 60 * 1000);
@@ -271,7 +271,7 @@ app.use((req, res, next) => {
             });
           }
         } catch (e) {
-          console.error("Email outbox worker error:", e);
+          logger.error("Email outbox worker error", { error: String(e) });
         }
       };
       setTimeout(processEmailOutbox, 5 * 1000);
