@@ -1792,8 +1792,16 @@ export async function registerRoutes(
         return res.json(existingRequest);
       }
       
-      const request = await storage.createOvertimeRequest({ ...req.body, organizationId: req.authenticatedUser!.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+      const { userId, timesheetId, date, requestedHours, isWeekendWork } = req.body;
+      const request = await storage.createOvertimeRequest({
+        userId,
+        timesheetId,
+        date,
+        requestedHours,
+        isWeekendWork: isWeekendWork ?? false,
+        organizationId: req.authenticatedUser!.organizationId,
+      });
+      const submitter = await storage.getUser(userId);
 
       try {
         await storage.createActivityLog({
@@ -2505,12 +2513,22 @@ export async function registerRoutes(
       if (currentUser.id !== targetUserId) {
         return res.status(403).json({ error: "Can only manage your own payment details" });
       }
+      const {
+        bankName, accountHolderFirstName, accountHolderLastName,
+        accountNumber, routingNumber, swiftCode, ibanNumber, accountType, address,
+      } = req.body;
+      const paymentPayload = {
+        userId: targetUserId,
+        organizationId: currentUser.organizationId,
+        bankName, accountHolderFirstName, accountHolderLastName,
+        accountNumber, routingNumber, swiftCode, ibanNumber, accountType, address,
+      };
       const existing = await storage.getIcPaymentDetails(targetUserId);
       if (existing) {
-        const updated = await storage.updateIcPaymentDetails(targetUserId, { ...req.body, organizationId: currentUser.organizationId });
+        const updated = await storage.updateIcPaymentDetails(targetUserId, paymentPayload);
         return res.json(updated);
       }
-      const details = await storage.createIcPaymentDetails({ ...req.body, organizationId: currentUser.organizationId });
+      const details = await storage.createIcPaymentDetails(paymentPayload);
       res.status(201).json(details);
     } catch (error) {
       res.status(500).json({ error: "Failed to save payment details" });
@@ -3208,18 +3226,28 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden" });
     }
     
-    const updates = { ...req.body };
-    
-    if (req.body.status === "ic_submitted") {
+    const {
+      status,
+      overallSelfRating, overallManagerRating, overallScore,
+      outcomes, expectationsForNextReview, managerSummary,
+      newExperienceLevel, experienceLevelAtEval,
+    } = req.body;
+    const updates: Record<string, unknown> = {
+      status, overallSelfRating, overallManagerRating, overallScore,
+      outcomes, expectationsForNextReview, managerSummary,
+      newExperienceLevel, experienceLevelAtEval,
+    };
+    // Remove undefined keys so storage doesn't overwrite with null.
+    for (const k of Object.keys(updates)) { if (updates[k] === undefined) delete updates[k]; }
+
+    if (status === "ic_submitted") {
       updates.icSubmittedAt = new Date();
-    } else if (req.body.status === "manager_submitted" || req.body.status === "completed") {
+    } else if (status === "manager_submitted" || status === "completed") {
       updates.managerSubmittedAt = new Date();
-      if (req.body.status === "completed") {
-        updates.completedAt = new Date();
-      }
+      if (status === "completed") updates.completedAt = new Date();
     }
 
-    const evaluation = await storage.updateEvaluation(req.params.id, updates);
+    const evaluation = await storage.updateEvaluation(req.params.id, updates as Partial<import("@shared/schema").Evaluation>);
     
     if (!evaluation) {
       return res.status(404).json({ error: "Evaluation not found" });
@@ -3454,11 +3482,14 @@ export async function registerRoutes(
       const users = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
       const invitedUser = users.find(u => u.email === req.body.email);
       
+      const { evaluationId, invitedById, email } = req.body;
       const invitation = await storage.createFeedbackInvitation({
-        ...req.body,
+        evaluationId,
+        invitedById,
         invitedUserId: invitedUser?.id || "unknown",
         organizationId: req.authenticatedUser!.organizationId,
       });
+      void email; // resolved above for invitedUser lookup — not stored
 
       try {
         await storage.createActivityLog({
@@ -3500,9 +3531,12 @@ export async function registerRoutes(
   });
 
   app.patch("/api/feedback-invitations/:id", authMiddleware, async (req, res) => {
+    const { status, feedback, rating } = req.body;
     const invitation = await storage.updateFeedbackInvitation(req.params.id, {
-      ...req.body,
-      completedAt: req.body.status === "completed" ? new Date() : undefined,
+      status,
+      feedback,
+      rating,
+      completedAt: status === "completed" ? new Date() : undefined,
     });
     
     if (!invitation) {
