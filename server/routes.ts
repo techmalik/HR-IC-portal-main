@@ -1716,15 +1716,12 @@ export async function registerRoutes(
         organizationId: currentUser.organizationId,
       };
 
-      const invoice = await storage.createInvoice(invoiceData);
+      const { invoice, timesheetSubmitted } = await storage.createInvoiceAndSubmitTimesheet(
+        invoiceData,
+        timesheet?.id ?? null,
+      );
 
-      // When invoice is submitted, auto-submit timesheet if in draft status
-      if (timesheet && timesheet.status === "draft") {
-        await storage.updateTimesheet(timesheet.id, {
-          status: "submitted",
-          submittedAt: new Date(),
-        });
-
+      if (timesheetSubmitted && timesheet) {
         await storage.createActivityLog({
           userId,
           organizationId: req.authenticatedUser!.organizationId,

@@ -128,6 +128,7 @@ export interface IStorage {
   getAllInvoices(organizationId?: string): Promise<Invoice[]>;
   getPendingInvoices(organizationId?: string): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  createInvoiceAndSubmitTimesheet(invoice: InsertInvoice, timesheetId: string | null): Promise<{ invoice: Invoice; timesheetSubmitted: boolean }>;
   updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<boolean>;
   getNextInvoiceNumber(userId: string): Promise<string>;
@@ -492,6 +493,26 @@ export class DatabaseStorage implements IStorage {
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
     const result = await db.insert(invoices).values(invoice).returning();
     return result[0];
+  }
+
+  async createInvoiceAndSubmitTimesheet(
+    invoice: InsertInvoice,
+    timesheetId: string | null,
+  ): Promise<{ invoice: Invoice; timesheetSubmitted: boolean }> {
+    return db.transaction(async (tx) => {
+      const [created] = await tx.insert(invoices).values(invoice).returning();
+      let timesheetSubmitted = false;
+      if (timesheetId) {
+        const [ts] = await tx.select().from(timesheets).where(eq(timesheets.id, timesheetId));
+        if (ts && ts.status === "draft") {
+          await tx.update(timesheets)
+            .set({ status: "submitted", submittedAt: new Date() })
+            .where(eq(timesheets.id, timesheetId));
+          timesheetSubmitted = true;
+        }
+      }
+      return { invoice: created, timesheetSubmitted };
+    });
   }
 
   async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined> {
