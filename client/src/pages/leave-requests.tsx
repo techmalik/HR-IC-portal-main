@@ -41,7 +41,12 @@ export default function LeaveRequestsPage() {
   const { toast } = useToast();
 
   const { data: pendingRequests, isLoading: pendingLoading, isFetching: pendingFetching, refetch: refetchPending } = useQuery<OOORequestWithUser[]>({
-    queryKey: [`/api/leave-requests/pending?managerId=${user?.id}`],
+    queryKey: ["/api/leave-requests/pending", { managerId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/leave-requests/pending?managerId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pending requests");
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 

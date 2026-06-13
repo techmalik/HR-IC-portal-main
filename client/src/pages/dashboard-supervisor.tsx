@@ -34,7 +34,13 @@ export default function DashboardSupervisor() {
   const [showTour, setShowTour] = useState(true);
 
   const { data: pendingRequests, isLoading: requestsLoading } = useQuery<OOORequestWithUser[]>({
-    queryKey: [`/api/leave-requests/pending?managerId=${user?.id}`],
+    queryKey: ["/api/leave-requests/pending", { managerId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/leave-requests/pending?managerId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pending requests");
+      return res.json();
+    },
+    enabled: !!user?.id,
   });
 
   const { data: teamTimesheets, isLoading: timesheetsLoading } = useQuery<TimesheetWithUser[]>({
@@ -54,17 +60,32 @@ export default function DashboardSupervisor() {
   });
 
   const { data: myOooRequests, isLoading: myOooLoading } = useQuery<OOORequest[]>({
-    queryKey: [`/api/ooo-requests?userId=${user?.id}`],
+    queryKey: ["/api/ooo-requests", { userId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/ooo-requests?userId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch OOO requests");
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 
   const { data: myTimesheets, isLoading: myTimesheetsLoading } = useQuery<Timesheet[]>({
-    queryKey: [`/api/timesheets?userId=${user?.id}`],
+    queryKey: ["/api/timesheets", { userId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/timesheets?userId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch timesheets");
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 
   const { data: myInvoices, isLoading: myInvoicesLoading } = useQuery<Invoice[]>({
-    queryKey: [`/api/invoices?userId=${user?.id}`],
+    queryKey: ["/api/invoices", { userId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/invoices?userId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch invoices");
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 

@@ -55,7 +55,12 @@ export default function TeamTimesheetsPage() {
   });
 
   const { data: entries, isLoading: entriesLoading } = useQuery<DailyEntry[]>({
-    queryKey: [`/api/timesheets/${viewingEntries?.id}/entries`],
+    queryKey: ["/api/timesheets", viewingEntries?.id, "entries"],
+    queryFn: async () => {
+      const res = await fetch(`/api/timesheets/${viewingEntries?.id}/entries`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch timesheet entries");
+      return res.json();
+    },
     enabled: !!viewingEntries?.id,
   });
 
