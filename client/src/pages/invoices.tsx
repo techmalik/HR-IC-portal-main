@@ -263,7 +263,9 @@ export default function InvoicesPage() {
       })
         .then((res) => res.json())
         .then((data) => setInvoiceNumber(data.invoiceNumber))
-        .catch(() => {});
+        .catch(() => {
+          toast({ title: "Could not load invoice number", description: "Enter one manually.", variant: "destructive" });
+        });
     }
   }, [isDialogOpen, activeTab, user?.id]);
 
@@ -527,8 +529,12 @@ export default function InvoicesPage() {
             invoiceId: invoice.id,
             expenseIds: expenseIdsToLink,
           });
-        } catch (err) {
-          console.error("Failed to link expenses to invoice:", err);
+        } catch {
+          toast({
+            title: "Expenses not linked",
+            description: "Invoice was created but some expenses could not be linked. Please link them manually.",
+            variant: "destructive",
+          });
         }
       }
 
