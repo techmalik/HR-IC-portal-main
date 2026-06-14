@@ -1,7 +1,31 @@
 import type { Express } from "express";
-import { authMiddleware, requireRole, asyncHandler } from "./shared";
+import { authMiddleware, requireRole, requirePlatformAdmin, asyncHandler } from "./shared";
+import {
+  competitors,
+  featureMatrix,
+  kanoAnalysis,
+  positioningStatement,
+  recommendations,
+  whiteSpace,
+} from "../data/competitorData";
 
 export function registerAnalyticsRoutes(app: Express): void {
+  app.get(
+    "/api/admin/competitive-data",
+    authMiddleware,
+    requirePlatformAdmin,
+    asyncHandler(async (_req, res) => {
+      return res.json({
+        competitors,
+        featureMatrix,
+        kanoAnalysis,
+        positioningStatement,
+        recommendations,
+        whiteSpace,
+      });
+    })
+  );
+
   app.get(
     "/api/analytics/:section",
     authMiddleware,

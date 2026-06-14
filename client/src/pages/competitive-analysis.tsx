@@ -1,22 +1,59 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Layers, Download, ArrowLeft, Bell } from "lucide-react";
-import {
-  competitors,
-  featureMatrix,
-  kanoAnalysis,
-  positioningStatement,
-  recommendations,
-  whiteSpace,
-} from "@/data/competitorData";
+
+interface Competitor {
+  name: string;
+  oneLiner: string;
+  pricingModel: string;
+  pricingTiers: string[];
+  fundingHeadcount: string;
+  recentLaunches: string[];
+  strengths: string[];
+  weaknesses: string[];
+  citations: { label: string; url: string }[];
+  positioning: { x: number; y: number };
+}
+
+interface FeatureRow {
+  feature: string;
+  weight: number;
+  scores: Record<string, number>;
+}
+
+interface KanoItem {
+  feature: string;
+  category: string;
+  notes: string;
+}
+
+interface CompetitiveData {
+  competitors: Competitor[];
+  featureMatrix: FeatureRow[];
+  kanoAnalysis: KanoItem[];
+  positioningStatement: {
+    forWhom: string;
+    whoNeed: string;
+    product: string;
+    category: string;
+    benefit: string;
+    unlike: string;
+    weAlone: string;
+  };
+  recommendations: Array<{
+    title: string;
+    body: string;
+    battlecard: string[];
+  }>;
+  whiteSpace: string[];
+}
 
 const REPORT_TITLE = "Mentalyc Competitive Analysis";
 const REPORT_SUBTITLE = "Contractor Management Market — May 2026";
 const REPORT_AUTHOR = "Mentalyc Strategy";
-
-const competitorNames = ["Mentalyc", "Deel", "Remote", "Rippling", "Worksuite", "Bonsai", "Plane", "Multiplier"];
 
 function PageShell({
   pageNumber,
@@ -53,7 +90,7 @@ function PageShell({
   );
 }
 
-function CoverPage() {
+function CoverPage({ data }: { data: CompetitiveData }) {
   return (
     <div className="h-full flex flex-col justify-between">
       <div>
@@ -83,7 +120,7 @@ function CoverPage() {
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Competitors</div>
-            <div className="font-medium">{competitors.length} reviewed</div>
+            <div className="font-medium">{data.competitors.length} reviewed</div>
           </div>
         </div>
       </div>
@@ -138,7 +175,7 @@ function ExecutiveSummaryPage() {
   );
 }
 
-function MethodologyPage() {
+function MethodologyPage({ data }: { data: CompetitiveData }) {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Methodology &amp; competitor set</h1>
@@ -156,7 +193,7 @@ function MethodologyPage() {
       </ul>
       <h2 className="text-lg font-semibold mb-3">Final competitor set</h2>
       <div className="grid grid-cols-2 gap-3 text-sm">
-        {competitors.map((c) => (
+        {data.competitors.map((c) => (
           <div key={c.name} className="border border-slate-200 rounded-lg p-3">
             <div className="font-semibold text-slate-900">{c.name}</div>
             <div className="text-xs text-slate-500 leading-snug mt-1">{c.oneLiner}</div>
@@ -171,12 +208,12 @@ function MethodologyPage() {
   );
 }
 
-function CompetitorPage({ index }: { index: number }) {
-  const c = competitors[index];
+function CompetitorPage({ index, data }: { index: number; data: CompetitiveData }) {
+  const c = data.competitors[index];
   return (
     <div className="text-sm">
       <div className="text-[10px] uppercase tracking-widest text-indigo-600 font-semibold mb-1">
-        Dossier {index + 1} of {competitors.length}
+        Dossier {index + 1} of {data.competitors.length}
       </div>
       <h1 className="text-3xl font-bold mb-2">{c.name}</h1>
       <p className="text-slate-600 mb-5 leading-relaxed">{c.oneLiner}</p>
@@ -246,7 +283,13 @@ function CompetitorPage({ index }: { index: number }) {
   );
 }
 
-function MatrixPage() {
+function MatrixPage({
+  data,
+  competitorNames,
+}: {
+  data: CompetitiveData;
+  competitorNames: string[];
+}) {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Feature comparison matrix</h1>
@@ -273,7 +316,7 @@ function MatrixPage() {
             </tr>
           </thead>
           <tbody>
-            {featureMatrix.map((row, i) => (
+            {data.featureMatrix.map((row, i) => (
               <tr key={row.feature} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                 <td className="px-2 py-1.5 text-slate-700">{row.feature}</td>
                 <td className="text-center px-1 py-1.5 text-slate-500">{row.weight}</td>
@@ -305,7 +348,7 @@ function MatrixPage() {
               <td className="px-2 py-2">Weighted total</td>
               <td className="text-center px-1 py-2">—</td>
               {competitorNames.map((n) => {
-                const total = featureMatrix.reduce(
+                const total = data.featureMatrix.reduce(
                   (sum, r) => sum + (r.scores[n] ?? 0) * r.weight,
                   0
                 );
@@ -330,7 +373,7 @@ function MatrixPage() {
   );
 }
 
-function PositioningMapPage() {
+function PositioningMapPage({ data }: { data: CompetitiveData }) {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">2×2 positioning map</h1>
@@ -361,7 +404,7 @@ function PositioningMapPage() {
           <div className="w-4 h-4 rounded-full bg-indigo-600 ring-4 ring-indigo-200" />
           <div className="text-xs font-bold text-indigo-700 mt-1 whitespace-nowrap">Mentalyc</div>
         </div>
-        {competitors.map((c) => (
+        {data.competitors.map((c) => (
           <div
             key={c.name}
             className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -381,7 +424,7 @@ function PositioningMapPage() {
   );
 }
 
-function KanoWhiteSpacePage() {
+function KanoWhiteSpacePage({ data }: { data: CompetitiveData }) {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">White space &amp; Kano analysis</h1>
@@ -390,7 +433,7 @@ function KanoWhiteSpacePage() {
       </p>
       <h2 className="text-base font-semibold mb-2">White space (unmet demand)</h2>
       <ul className="text-sm text-slate-700 space-y-2 mb-6 list-disc pl-5">
-        {whiteSpace.map((w) => (
+        {data.whiteSpace.map((w) => (
           <li key={w}>{w}</li>
         ))}
       </ul>
@@ -405,7 +448,7 @@ function KanoWhiteSpacePage() {
             </tr>
           </thead>
           <tbody>
-            {kanoAnalysis.map((row, i) => (
+            {data.kanoAnalysis.map((row, i) => (
               <tr key={row.feature} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                 <td className="px-3 py-2 font-medium text-slate-800">{row.feature}</td>
                 <td className="px-3 py-2 text-indigo-700">{row.category}</td>
@@ -419,7 +462,8 @@ function KanoWhiteSpacePage() {
   );
 }
 
-function PositioningPage() {
+function PositioningPage({ data }: { data: CompetitiveData }) {
+  const ps = data.positioningStatement;
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Positioning statement (April Dunford)</h1>
@@ -429,12 +473,12 @@ function PositioningPage() {
       </p>
       <div className="space-y-4 text-sm">
         {[
-          { k: "For", v: positioningStatement.forWhom },
-          { k: "Who need", v: positioningStatement.whoNeed },
-          { k: "Mentalyc is", v: positioningStatement.product + " " + positioningStatement.category },
-          { k: "That delivers", v: positioningStatement.benefit },
-          { k: "Unlike", v: positioningStatement.unlike },
-          { k: "We alone", v: positioningStatement.weAlone },
+          { k: "For", v: ps.forWhom },
+          { k: "Who need", v: ps.whoNeed },
+          { k: "Mentalyc is", v: ps.product + " " + ps.category },
+          { k: "That delivers", v: ps.benefit },
+          { k: "Unlike", v: ps.unlike },
+          { k: "We alone", v: ps.weAlone },
         ].map((row) => (
           <div key={row.k} className="grid grid-cols-[110px_1fr] gap-4 items-start">
             <div className="text-[10px] uppercase tracking-widest text-indigo-600 font-semibold pt-1">
@@ -457,7 +501,7 @@ function PositioningPage() {
   );
 }
 
-function RecommendationsPage() {
+function RecommendationsPage({ data }: { data: CompetitiveData }) {
   return (
     <div className="text-sm">
       <h1 className="text-3xl font-bold mb-2">Strategic recommendations</h1>
@@ -466,7 +510,7 @@ function RecommendationsPage() {
         sales.
       </p>
       <div className="space-y-5">
-        {recommendations.map((r, i) => (
+        {data.recommendations.map((r, i) => (
           <div key={r.title} className="border border-slate-200 rounded-xl p-4">
             <div className="flex items-start gap-3 mb-2">
               <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">
@@ -543,22 +587,6 @@ function MonitoringPage() {
     </div>
   );
 }
-
-const pages: Array<{ key: string; render: () => JSX.Element }> = [
-  { key: "cover", render: () => <CoverPage /> },
-  { key: "exec", render: () => <ExecutiveSummaryPage /> },
-  { key: "method", render: () => <MethodologyPage /> },
-  ...competitors.map((_, i) => ({
-    key: `competitor-${i}`,
-    render: () => <CompetitorPage index={i} />,
-  })),
-  { key: "matrix", render: () => <MatrixPage /> },
-  { key: "map", render: () => <PositioningMapPage /> },
-  { key: "kano", render: () => <KanoWhiteSpacePage /> },
-  { key: "positioning", render: () => <PositioningPage /> },
-  { key: "recommendations", render: () => <RecommendationsPage /> },
-  { key: "monitoring", render: () => <MonitoringPage /> },
-];
 
 // ============ PDF generation ============
 
@@ -652,7 +680,7 @@ function spacer(c: PdfCursor, h: number) {
   c.y += h;
 }
 
-function generatePdf() {
+function generatePdf(data: CompetitiveData, competitorNames: string[]) {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const c: PdfCursor = { doc, pageNum: 1, totalPages: 0, y: 50 };
 
@@ -748,19 +776,19 @@ function generatePdf() {
     ].forEach((b) => writeBullet(cursor, b));
     spacer(cursor, 6);
     writeSubheading(cursor, "Final competitor set");
-    competitors.forEach((c2) => {
+    data.competitors.forEach((c2) => {
       writeBullet(cursor, `${c2.name} — ${c2.oneLiner}`);
     });
     spacer(cursor, 6);
     writeText(cursor, "Excluded but tracked passively: Papaya Global, Oyster, Velocity Global, Letsdeel SMB-tier, Upwork Enterprise.", { size: 9, color: 130 });
 
     // Competitor dossiers
-    competitors.forEach((c2, idx) => {
+    data.competitors.forEach((c2, idx) => {
       newPage(cursor);
       cursor.doc.setFont("helvetica", "bold");
       cursor.doc.setFontSize(9);
       cursor.doc.setTextColor(99, 102, 241);
-      cursor.doc.text(`DOSSIER ${idx + 1} OF ${competitors.length}`, MARGIN, cursor.y + 10);
+      cursor.doc.text(`DOSSIER ${idx + 1} OF ${data.competitors.length}`, MARGIN, cursor.y + 10);
       cursor.y += 14;
       writeHeading(cursor, c2.name, 24);
       writeText(cursor, c2.oneLiner, { color: 80 });
@@ -810,7 +838,7 @@ function generatePdf() {
 
     cursor.doc.setFont("helvetica", "normal");
     cursor.doc.setFontSize(8);
-    featureMatrix.forEach((row, ridx) => {
+    data.featureMatrix.forEach((row, ridx) => {
       ensureSpace(cursor, 14);
       if (ridx % 2 === 1) {
         cursor.doc.setFillColor(249, 250, 251);
@@ -854,7 +882,7 @@ function generatePdf() {
     cursor.doc.text("—", cx + colWidths[1] / 2, cursor.y + 11, { align: "center" });
     cx += colWidths[1];
     competitorNames.forEach((n, ni) => {
-      const total = featureMatrix.reduce((s, r) => s + (r.scores[n] ?? 0) * r.weight, 0);
+      const total = data.featureMatrix.reduce((s, r) => s + (r.scores[n] ?? 0) * r.weight, 0);
       cursor.doc.setTextColor(n === "Mentalyc" ? 67 : 40, n === "Mentalyc" ? 56 : 40, n === "Mentalyc" ? 202 : 40);
       cursor.doc.text(String(total), cx + colWidths[2 + ni] / 2, cursor.y + 11, { align: "center" });
       cx += colWidths[2 + ni];
@@ -908,7 +936,7 @@ function generatePdf() {
       cursor.doc.text(label, px + 7, py + 3);
     }
     plot(0.18, 0.4, "Mentalyc", true);
-    competitors.forEach((cc) => plot(cc.positioning.x, cc.positioning.y, cc.name, false));
+    data.competitors.forEach((cc) => plot(cc.positioning.x, cc.positioning.y, cc.name, false));
     cursor.y = mapY + mapH + 14;
     writeText(cursor, "Mentalyc owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai sits closest but on the freelancer side. Plane is the most likely encroacher; their product velocity is the key signal to monitor.", { size: 9, color: 120 });
 
@@ -918,10 +946,10 @@ function generatePdf() {
     writeText(cursor, "Where buyer demand is unmet today, and which features generate satisfaction vs. expectation.", { color: 130 });
     spacer(cursor, 6);
     writeSubheading(cursor, "White space (unmet demand)");
-    whiteSpace.forEach((w) => writeBullet(cursor, w));
+    data.whiteSpace.forEach((w) => writeBullet(cursor, w));
     spacer(cursor, 6);
     writeSubheading(cursor, "Kano categorization");
-    kanoAnalysis.forEach((row) => {
+    data.kanoAnalysis.forEach((row) => {
       ensureSpace(cursor, 30);
       cursor.doc.setFont("helvetica", "bold");
       cursor.doc.setFontSize(10);
@@ -947,15 +975,16 @@ function generatePdf() {
     writeHeading(cursor, "Positioning (April Dunford)");
     writeText(cursor, "Five-input positioning. Source of truth for landing-page hero, sales deck slide 1, investor narrative.", { color: 130 });
     spacer(cursor, 8);
-    const ps = [
-      ["For", positioningStatement.forWhom],
-      ["Who need", positioningStatement.whoNeed],
-      ["Mentalyc is", positioningStatement.product + " " + positioningStatement.category],
-      ["That delivers", positioningStatement.benefit],
-      ["Unlike", positioningStatement.unlike],
-      ["We alone", positioningStatement.weAlone],
+    const ps = data.positioningStatement;
+    const psRows = [
+      ["For", ps.forWhom],
+      ["Who need", ps.whoNeed],
+      ["Mentalyc is", ps.product + " " + ps.category],
+      ["That delivers", ps.benefit],
+      ["Unlike", ps.unlike],
+      ["We alone", ps.weAlone],
     ];
-    ps.forEach(([k, v]) => {
+    psRows.forEach(([k, v]) => {
       ensureSpace(cursor, 30);
       cursor.doc.setFont("helvetica", "bold");
       cursor.doc.setFontSize(8);
@@ -1000,7 +1029,7 @@ function generatePdf() {
     writeHeading(cursor, "Strategic recommendations");
     writeText(cursor, "Three actions, ordered by leverage. Each ships with battlecard trap-setting questions for sales.", { color: 130 });
     spacer(cursor, 6);
-    recommendations.forEach((r, i) => {
+    data.recommendations.forEach((r, i) => {
       ensureSpace(cursor, 80);
       cursor.doc.setFillColor(99, 102, 241);
       cursor.doc.circle(MARGIN + 10, cursor.y + 10, 10, "F");
@@ -1117,14 +1146,55 @@ export default function CompetitiveAnalysisPage() {
   const [, setLocation] = useLocation();
   const [generating, setGenerating] = useState(false);
 
+  const { data, isLoading, isError } = useQuery<CompetitiveData>({
+    queryKey: ["/api/admin/competitive-data"],
+  });
+
+  const competitorNames = data
+    ? ["Mentalyc", ...data.competitors.map((c) => c.name)]
+    : [];
+
   const handleDownload = async () => {
+    if (!data) return;
     setGenerating(true);
     try {
-      generatePdf();
+      generatePdf(data, competitorNames);
     } finally {
       setTimeout(() => setGenerating(false), 400);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-slate-500 text-sm">Loading competitive analysis…</div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-slate-500 text-sm">Failed to load competitive analysis data.</div>
+      </div>
+    );
+  }
+
+  const pages: Array<{ key: string; render: () => JSX.Element }> = [
+    { key: "cover", render: () => <CoverPage data={data} /> },
+    { key: "exec", render: () => <ExecutiveSummaryPage /> },
+    { key: "method", render: () => <MethodologyPage data={data} /> },
+    ...data.competitors.map((_, i) => ({
+      key: `competitor-${i}`,
+      render: () => <CompetitorPage index={i} data={data} />,
+    })),
+    { key: "matrix", render: () => <MatrixPage data={data} competitorNames={competitorNames} /> },
+    { key: "map", render: () => <PositioningMapPage data={data} /> },
+    { key: "kano", render: () => <KanoWhiteSpacePage data={data} /> },
+    { key: "positioning", render: () => <PositioningPage data={data} /> },
+    { key: "recommendations", render: () => <RecommendationsPage data={data} /> },
+    { key: "monitoring", render: () => <MonitoringPage /> },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-100">
