@@ -9,4 +9,4 @@ vite.config.ts.*
 *.sql
 db_backup*.sql
 data/
-attached_assets/
+attached_assets/.claude/
