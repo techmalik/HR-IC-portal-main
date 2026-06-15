@@ -47,6 +47,7 @@ import AdminBlogPage from "@/pages/admin-blog";
 import AdminSeoPage from "@/pages/admin-seo";
 import ExpensesPage from "@/pages/expenses";
 import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
+import { TermsPage, PrivacyPage, CookiePolicyPage, DpaPage } from "@/pages/legal";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -515,14 +516,32 @@ function PublicRoutes() {
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/cookies" component={CookiePolicyPage} />
+      <Route path="/dpa" component={DpaPage} />
       <Route component={LandingPage} />
     </Switch>
   );
 }
 
+const LEGAL_ROUTES: Record<string, () => JSX.Element> = {
+  "/terms": TermsPage,
+  "/privacy": PrivacyPage,
+  "/cookies": CookiePolicyPage,
+  "/dpa": DpaPage,
+};
+
 function ProtectedRoutes() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
+
+  // Legal pages have their own standalone layout and are viewable regardless of
+  // auth state — render them before the loading/auth gates and app chrome.
+  const LegalComponent = LEGAL_ROUTES[location.split("?")[0]];
+  if (LegalComponent) {
+    return <LegalComponent />;
+  }
 
   if (isLoading) {
     return (
