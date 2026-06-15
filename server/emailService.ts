@@ -392,3 +392,48 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     return false;
   }
 }
+
+export async function sendUserInviteEmail(toEmail: string, firstName: string, resetToken: string): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Email service not configured — skipping invite email");
+    return false;
+  }
+  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : process.env.APP_URL ?? "http://localhost:5000";
+  const inviteUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;background:#f4f4f5;padding:32px 0;margin:0;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <h2 style="margin:0 0 8px;color:#111827;">You've been invited to ${APP_NAME}</h2>
+    <p style="color:#374151;margin:0 0 24px;">Hi ${firstName}, an account has been created for you on ${APP_NAME}. Click the button below to set your password and get started. This link expires in 24 hours.</p>
+    <a href="${inviteUrl}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Set your password</a>
+    <p style="color:#6b7280;font-size:13px;margin:24px 0 0;">If you weren't expecting this invitation, you can safely ignore this email.</p>
+  </div>
+</body>
+</html>`;
+
+  const text = `You've been invited to ${APP_NAME}\n\nHi ${firstName}, an account has been created for you. Set your password here (expires in 24 hours):\n${inviteUrl}\n\nIf you weren't expecting this, ignore this email.`;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: toEmail,
+      subject: `You've been invited to ${APP_NAME}`,
+      html,
+      text,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Failed to send invite email:", result.error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[EMAIL] Error sending invite email:", err);
+    return false;
+  }
+}

@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -71,12 +72,16 @@ const userFormSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().optional(),
+  sendInviteEmail: z.boolean().default(false),
   role: z.string().min(1, "Please select a role"),
   supervisorId: z.string().optional(),
   jobTitle: z.string().optional(),
   currency: z.string().optional(),
-});
+}).refine(
+  (data) => data.sendInviteEmail || (!!data.password && data.password.length >= 6),
+  { message: "Password must be at least 6 characters", path: ["password"] },
+);
 
 type UserFormData = z.infer<typeof userFormSchema>;
 
@@ -124,12 +129,14 @@ export default function UsersPage() {
       email: "",
       username: "",
       password: "",
+      sendInviteEmail: false,
       role: "ic",
       supervisorId: "",
       jobTitle: "",
       currency: "USD",
     },
   });
+  const sendInviteEmailWatched = form.watch("sendInviteEmail");
 
   const enterEditMode = () => {
     if (!users) return;
@@ -363,14 +370,23 @@ export default function UsersPage() {
         const error = await response.json();
         throw new Error(error.error || "Failed to create user");
       }
-      return response.json();
+      return response.json() as Promise<{ inviteEmailSent?: boolean; email?: string }>;
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "User created",
-        description: "New user has been added successfully.",
-      });
+      if (variables.sendInviteEmail) {
+        toast({
+          title: "User created",
+          description: result.inviteEmailSent
+            ? `Invitation sent to ${result.email}.`
+            : "User created. Invite email could not be sent — check email configuration.",
+        });
+      } else {
+        toast({
+          title: "User created",
+          description: "New user has been added successfully.",
+        });
+      }
       setIsDialogOpen(false);
       form.reset();
     },
@@ -778,7 +794,26 @@ export default function UsersPage() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="sendInviteEmail"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-send-invite"
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal cursor-pointer">
+                          Send invitation email — user sets their own password
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className={`grid gap-4 ${sendInviteEmailWatched ? "grid-cols-1" : "grid-cols-2"}`}>
                     <FormField
                       control={form.control}
                       name="username"
@@ -792,19 +827,21 @@ export default function UsersPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••" {...field} data-testid="input-password" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {!sendInviteEmailWatched && (
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••" {...field} data-testid="input-password" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
 
                   <FormField

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { storage, comparePassword } from "../storage";
 import { normalizeCurrencyInput } from "./helpers";
 import { notifyUserCreated } from "../notificationService";
+import { sendUserInviteEmail } from "../emailService";
 import {
   authMiddleware,
   requireRole,
@@ -109,12 +110,14 @@ export function registerUserRoutes(app: Express): void {
       const currentUser = req.authenticatedUser!;
 
       const {
-        username, password, email, firstName, lastName, jobTitle, phone,
+        username, email, firstName, lastName, jobTitle, phone,
         supervisorId, managerId, hourlyRate, monthlyCap, currency, startDate,
         role: requestedRole,
         isActive: requestedIsActive,
         organizationId: requestedOrgId,
+        sendInviteEmail: wantsInvite,
       } = req.body;
+      let { password } = req.body;
 
       const allowedRoles = ["ic", "admin"] as const;
       type AllowedRole = typeof allowedRoles[number];
@@ -127,6 +130,11 @@ export function registerUserRoutes(app: Express): void {
 
       if (requestedOrgId && requestedOrgId !== currentUser.organizationId) {
         return res.status(403).json({ error: "Cannot create a user in a different organization" });
+      }
+
+      if (wantsInvite) {
+        // Auto-generate a secure internal password; the user sets their own via the invite link.
+        password = randomUUID().replace(/-/g, "");
       }
 
       if (!username || !password || !email || !firstName || !lastName) {
@@ -158,8 +166,18 @@ export function registerUserRoutes(app: Express): void {
         console.error("Failed to create activity log or notification:", e);
       }
 
+      let inviteEmailSent = false;
+      if (wantsInvite) {
+        try {
+          const resetToken = await storage.createPasswordResetToken(user.id);
+          inviteEmailSent = await sendUserInviteEmail(user.email, user.firstName || "", resetToken);
+        } catch (e) {
+          console.error("Failed to send invite email:", e);
+        }
+      }
+
       const { password: _, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
+      res.status(201).json({ ...userWithoutPassword, inviteEmailSent });
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
