@@ -54,12 +54,12 @@ export default function DashboardAdmin() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[28px] font-normal text-neutral-900">Admin dashboard</h1>
+          <h1 className="font-serif text-[28px] font-normal text-foreground">Admin dashboard</h1>
           <p className="text-muted-foreground mt-1">
             Full visibility across all organizational data
           </p>
         </div>
-        <Button asChild size="sm" className="bg-[#111827] hover:bg-neutral-800 text-white" data-testid="button-add-user">
+        <Button asChild size="sm" data-testid="button-add-user">
           <Link href="/users/new">
             <UserPlus className="w-4 h-4 mr-2" />
             Add user
@@ -120,40 +120,40 @@ export default function DashboardAdmin() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total users</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Total users</div>
           {usersLoading ? (
             <Skeleton className="h-7 w-14" />
           ) : (
-            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-total-users">
+            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-total-users">
               {allUsers?.length || 0}
             </div>
           )}
-          <div className="text-xs text-neutral-500">{activeUsers?.length || 0} active</div>
+          <div className="text-xs text-muted-foreground">{activeUsers?.length || 0} active</div>
         </div>
 
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Independent contractors</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Independent contractors</div>
           {usersLoading ? (
             <Skeleton className="h-7 w-14" />
           ) : (
-            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-ic-count">
+            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-ic-count">
               {icCount}
             </div>
           )}
-          <div className="text-xs text-neutral-500">across the organization</div>
+          <div className="text-xs text-muted-foreground">across the organization</div>
         </div>
 
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Admins</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Admins</div>
           {usersLoading ? (
             <Skeleton className="h-7 w-14" />
           ) : (
-            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-admin-count">
+            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-admin-count">
               {adminCount}
             </div>
           )}
-          <div className="text-xs text-neutral-500">with full access</div>
+          <div className="text-xs text-muted-foreground">with full access</div>
         </div>
       </div>
 
@@ -203,7 +203,7 @@ export default function DashboardAdmin() {
                       className={
                         u.role === UserRole.ADMIN || u.role === UserRole.OWNER
                           ? "text-[11.5px] font-medium bg-[#111827] text-white px-[9px] py-[3px] rounded-full whitespace-nowrap"
-                          : "text-[11.5px] font-medium bg-[#F3F4F6] text-[#374151] px-[9px] py-[3px] rounded-full whitespace-nowrap"
+                          : "text-[11.5px] font-medium bg-muted text-muted-foreground px-[9px] py-[3px] rounded-full whitespace-nowrap"
                       }
                     >
                       {u.role === UserRole.ADMIN ? "Admin" : u.role === UserRole.OWNER ? "Owner" : "Contractor"}

@@ -409,14 +409,14 @@ export default function TimesheetsPage() {
         );
       case "saved":
         return (
-          <div className="flex items-center gap-1.5 text-[#059669]" data-testid="status-saved">
+          <div className="flex items-center gap-1.5 text-[#059669] dark:text-[#34D399]" data-testid="status-saved">
             <Check className="w-3.5 h-3.5" />
             <span className="text-xs">Saved</span>
           </div>
         );
       case "unsaved":
         return (
-          <div className="flex items-center gap-1.5 text-[#D97706]" data-testid="status-unsaved">
+          <div className="flex items-center gap-1.5 text-[#D97706] dark:text-[#FBBF24]" data-testid="status-unsaved">
             <Clock className="w-3.5 h-3.5" />
             <span className="text-xs">Draft</span>
           </div>
@@ -458,7 +458,7 @@ export default function TimesheetsPage() {
         <div className="flex items-center gap-3">
           {timesheet && <StatusBadge status={timesheet.status} />}
           {isApproved && (
-            <Badge variant="outline" className="text-[#059669] border-[#A7F3D0] bg-[#ECFDF5]">
+            <Badge variant="outline" className="text-[#059669] dark:text-[#34D399] border-[#A7F3D0] dark:border-[#059669]/30 bg-[#ECFDF5] dark:bg-[#059669]/15">
               <Lock className="w-3 h-3 mr-1" />
               Locked
             </Badge>
@@ -490,15 +490,15 @@ export default function TimesheetsPage() {
                 <>
                   <div className="flex gap-4 mb-4 text-xs flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-[#FEF2F2] border border-[#FECACA]" />
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF2F2] dark:bg-[#DC2626]/15 border border-[#FECACA] dark:border-[#DC2626]/30" />
                       <span className="text-muted-foreground">Full-day leave</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] border border-[#FDE68A]" />
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] dark:bg-[#D97706]/15 border border-[#FDE68A] dark:border-[#D97706]/30" />
                       <span className="text-muted-foreground">Half-day leave (4h max)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] border border-[#FDE68A]" />
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] dark:bg-[#D97706]/15 border border-[#FDE68A] dark:border-[#D97706]/30" />
                       <span className="text-muted-foreground">Overtime pending</span>
                     </div>
                   </div>
@@ -544,13 +544,13 @@ export default function TimesheetsPage() {
                             "aspect-square min-h-[44px] rounded-md border text-sm font-medium transition-colors relative",
                             "flex flex-col items-center justify-center gap-1 active:scale-95",
                             isToday && "bg-[#059669] border-[#059669] shadow-[0_2px_8px_rgba(5,150,105,0.3)]",
-                            !isToday && isWeekend && "bg-[#F9FAFB] border-transparent",
-                            !isToday && isFullDayOOO && "bg-[#FEF3C7] border-[#FDE68A] cursor-not-allowed",
-                            !isToday && isHalfDayOOO && "bg-[#FEF3C7] border-[#FDE68A]",
-                            !isToday && hasOvertimePending && "bg-[#FEF3C7] border-[#FDE68A]",
-                            !isToday && hasOvertimeApproved && "bg-[#F0FDF4] border-[#D1FAE5]",
-                            !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && !hasOvertimePending && "bg-[#F0FDF4] border-[#D1FAE5]",
-                            !isToday && isFutureWorkday && "bg-[#F9FAFB] border-dashed border-[1.5px] border-[#E5E7EB]",
+                            !isToday && isWeekend && "bg-[#F9FAFB] dark:bg-white/[0.03] border-transparent",
+                            !isToday && isFullDayOOO && "bg-[#FEF3C7] dark:bg-[#D97706]/15 border-[#FDE68A] dark:border-[#D97706]/30 cursor-not-allowed",
+                            !isToday && isHalfDayOOO && "bg-[#FEF3C7] dark:bg-[#D97706]/15 border-[#FDE68A] dark:border-[#D97706]/30",
+                            !isToday && hasOvertimePending && "bg-[#FEF3C7] dark:bg-[#D97706]/15 border-[#FDE68A] dark:border-[#D97706]/30",
+                            !isToday && hasOvertimeApproved && "bg-[#F0FDF4] dark:bg-[#059669]/15 border-[#D1FAE5] dark:border-[#059669]/30",
+                            !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && !hasOvertimePending && "bg-[#F0FDF4] dark:bg-[#059669]/15 border-[#D1FAE5] dark:border-[#059669]/30",
+                            !isToday && isFutureWorkday && "bg-[#F9FAFB] dark:bg-white/[0.02] border-dashed border-[1.5px] border-[#E5E7EB] dark:border-white/10",
                             (isEditable && !isFullDayOOO) && "hover-elevate cursor-pointer",
                             (!isEditable && hasEntry) && "hover-elevate cursor-pointer",
                             (!isEditable && !hasEntry) && "cursor-default opacity-75"
@@ -560,11 +560,11 @@ export default function TimesheetsPage() {
                           <span
                             className={cn(
                               isToday && "text-white font-bold",
-                              !isToday && isFullDayOOO && "line-through text-[#92400E]",
-                              !isToday && isHalfDayOOO && "text-[#92400E]",
-                              !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && "text-[#065F46]",
-                              !isToday && isFutureWorkday && "text-[#D1D5DB]",
-                              !isToday && isWeekend && !hasEntry && "text-[#E5E7EB]"
+                              !isToday && isFullDayOOO && "line-through text-[#92400E] dark:text-[#FBBF24]",
+                              !isToday && isHalfDayOOO && "text-[#92400E] dark:text-[#FBBF24]",
+                              !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && "text-[#065F46] dark:text-[#34D399]",
+                              !isToday && isFutureWorkday && "text-[#D1D5DB] dark:text-white/20",
+                              !isToday && isWeekend && !hasEntry && "text-[#E5E7EB] dark:text-white/15"
                             )}
                           >
                             {day}
@@ -573,21 +573,21 @@ export default function TimesheetsPage() {
                             <span className={cn(
                               "text-[11px] font-semibold",
                               isToday && "text-white/80",
-                              !isToday && hasOvertimePending && "text-[#92400E]",
-                              !isToday && hasOvertimeApproved && "text-[#34D399]",
-                              !isToday && !hasOvertimePending && !hasOvertimeApproved && "text-[#34D399]"
+                              !isToday && hasOvertimePending && "text-[#92400E] dark:text-[#FBBF24]",
+                              !isToday && hasOvertimeApproved && "text-[#065F46] dark:text-[#34D399]",
+                              !isToday && !hasOvertimePending && !hasOvertimeApproved && "text-[#065F46] dark:text-[#34D399]"
                             )}>
                               {entry.hours}h
                             </span>
                           )}
                           {isFullDayOOO && (
-                            <span className="text-[10px] text-[#92400E]">OOO</span>
+                            <span className="text-[10px] text-[#92400E] dark:text-[#FBBF24]">OOO</span>
                           )}
                           {isHalfDayOOO && !hasEntry && (
-                            <span className="text-[10px] text-[#92400E]">4h</span>
+                            <span className="text-[10px] text-[#92400E] dark:text-[#FBBF24]">4h</span>
                           )}
                           {hasOvertimePending && (
-                            <Clock className="absolute top-1 right-1 w-3 h-3 text-[#92400E]" />
+                            <Clock className="absolute top-1 right-1 w-3 h-3 text-[#92400E] dark:text-[#FBBF24]" />
                           )}
                         </button>
                       );
@@ -611,7 +611,7 @@ export default function TimesheetsPage() {
                   {totalHours}h
                 </span>
               </div>
-              <div className="h-1.5 bg-[#F0FDF4] rounded-full overflow-hidden">
+              <div className="h-1.5 bg-[#F0FDF4] dark:bg-[#059669]/15 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#059669] transition-all rounded-full"
                   style={{ width: `${Math.min((totalHours / 160) * 100, 100)}%` }}
@@ -644,8 +644,8 @@ export default function TimesheetsPage() {
           </Card>
 
           {isApproved && (
-            <div className="bg-[#ECFDF5] border-[1.5px] border-[#A7F3D0] rounded-xl px-[18px] py-4">
-              <div className="flex items-center gap-2 text-sm text-[#065F46]">
+            <div className="bg-[#ECFDF5] dark:bg-[#059669]/15 border-[1.5px] border-[#A7F3D0] dark:border-[#059669]/30 rounded-xl px-[18px] py-4">
+              <div className="flex items-center gap-2 text-sm text-[#065F46] dark:text-[#34D399]">
                 <Lock className="w-4 h-4" />
                 <p>
                   This timesheet has been approved and is now locked. No changes can be made.
@@ -655,8 +655,8 @@ export default function TimesheetsPage() {
           )}
 
           {isSubmitted && (
-            <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-4">
-              <div className="flex items-center gap-2 text-sm text-[#92400E]">
+            <div className="bg-[#FFFBEB] dark:bg-[#D97706]/15 border-[1.5px] border-[#FDE68A] dark:border-[#D97706]/30 rounded-xl px-[18px] py-4">
+              <div className="flex items-center gap-2 text-sm text-[#92400E] dark:text-[#FBBF24]">
                 <AlertCircle className="w-4 h-4" />
                 <p>
                   This timesheet is awaiting manager approval.
@@ -666,8 +666,8 @@ export default function TimesheetsPage() {
           )}
 
           {!isEditable && !isApproved && !isSubmitted && (
-            <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-4">
-              <p className="text-sm text-[#92400E]">
+            <div className="bg-[#FFFBEB] dark:bg-[#D97706]/15 border-[1.5px] border-[#FDE68A] dark:border-[#D97706]/30 rounded-xl px-[18px] py-4">
+              <p className="text-sm text-[#92400E] dark:text-[#FBBF24]">
                 This timesheet has been {timesheet?.status}. You cannot make changes.
               </p>
             </div>
@@ -688,9 +688,9 @@ export default function TimesheetsPage() {
 
         const halfDayBanner =
           selectedDay && getOOOForDate(selectedDay.date)?.oooType === "half_day" && !viewOnly ? (
-            <div className="flex items-center gap-2 p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md">
-              <Clock className="w-4 h-4 text-[#D97706]" />
-              <p className="text-sm text-[#D97706]">
+            <div className="flex items-center gap-2 p-3 bg-[#FFFBEB] dark:bg-[#D97706]/15 border border-[#FDE68A] dark:border-[#D97706]/30 rounded-md">
+              <Clock className="w-4 h-4 text-[#D97706] dark:text-[#FBBF24]" />
+              <p className="text-sm text-[#D97706] dark:text-[#FBBF24]">
                 Half-day leave: You can only log up to {HALF_DAY_HOURS} hours.
               </p>
             </div>
@@ -798,7 +798,7 @@ export default function TimesheetsPage() {
                 ))}
               </div>
               {selectedDay && selectedDay.hours > STANDARD_HOURS && (
-                <p className="text-xs text-[#D97706]">
+                <p className="text-xs text-[#D97706] dark:text-[#FBBF24]">
                   <AlertCircle className="w-3 h-3 inline mr-1" />
                   Hours over {STANDARD_HOURS} will require manager approval.
                 </p>
@@ -806,7 +806,7 @@ export default function TimesheetsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="activity-log-input">
-                Activity Log <span className="text-[#DC2626]">*</span>
+                Activity Log <span className="text-destructive">*</span>
               </label>
               {recentActivities.length > 0 && (
                 <div

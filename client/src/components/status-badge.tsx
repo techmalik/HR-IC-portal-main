@@ -17,6 +17,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       case "pending":
       case "pending_review":
       case "submitted":
+      case "ic_submitted":
+      case "manager_submitted":
         return "bg-[#FFFBEB] text-[#D97706] dark:bg-[#D97706]/15 dark:text-[#FBBF24] border-transparent";
       case "rejected":
       case "declined":
@@ -41,6 +43,12 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     }
     if (statusLower === "revision_requested") {
       return "Revision Requested";
+    }
+    if (statusLower === "ic_submitted") {
+      return "IC Submitted";
+    }
+    if (statusLower === "manager_submitted") {
+      return "Manager Reviewed";
     }
     return status;
   };

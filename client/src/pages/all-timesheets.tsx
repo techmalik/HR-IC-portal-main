@@ -171,7 +171,7 @@ export default function AllTimesheetsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] font-normal text-neutral-900">All timesheets</h1>
+        <h1 className="font-serif text-[28px] font-normal text-foreground">All timesheets</h1>
         <p className="text-muted-foreground mt-1">
           Every contractor's timesheet activity in one place
         </p>
@@ -179,46 +179,46 @@ export default function AllTimesheetsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total team members</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.totalICs}</div>
-          <div className="text-xs text-neutral-500">independent contractors</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Total team members</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.totalICs}</div>
+          <div className="text-xs text-muted-foreground">independent contractors</div>
         </div>
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Pending review</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.withPending}</div>
-          <div className="text-xs text-neutral-500">with submitted timesheets</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Pending review</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.withPending}</div>
+          <div className="text-xs text-muted-foreground">with submitted timesheets</div>
         </div>
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Active this month</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.withCurrentMonth}</div>
-          <div className="text-xs text-neutral-500">hours logged in {format(new Date(), "MMMM")}</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Active this month</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.withCurrentMonth}</div>
+          <div className="text-xs text-muted-foreground">hours logged in {format(new Date(), "MMMM")}</div>
         </div>
       </div>
 
       {/* Team Members List */}
-      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+      <Card className="rounded-xl">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Team members</CardTitle>
+              <CardTitle className="text-[13.5px] font-semibold text-foreground">Team members</CardTitle>
               <CardDescription>
                 Click on a team member to view their detailed timesheet history
               </CardDescription>
             </div>
             <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search team members..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 w-56 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]"
+                  className="pl-8 w-56 h-8 text-[12.5px] bg-muted/50"
                   data-testid="input-search-members"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[170px] h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-status-filter">
+                <SelectTrigger className="w-[170px] h-8 text-[12.5px] bg-muted/50" data-testid="select-status-filter">
                   <Filter className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -231,7 +231,7 @@ export default function AllTimesheetsPage() {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[150px] h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-sort-by">
+                <SelectTrigger className="w-[150px] h-8 text-[12.5px] bg-muted/50" data-testid="select-sort-by">
                   <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -256,7 +256,7 @@ export default function AllTimesheetsPage() {
               {filteredUsers.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-3.5 rounded-lg border border-[#F3F4F6] hover-elevate cursor-pointer"
+                  className="flex items-center justify-between p-3.5 rounded-lg border border-border hover-elevate cursor-pointer"
                   onClick={() => handleUserClick(member.id)}
                   data-testid={`card-member-${member.id}`}
                 >
@@ -267,10 +267,10 @@ export default function AllTimesheetsPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="text-[12.5px] font-medium text-[#111827]">
+                      <div className="text-[12.5px] font-medium text-foreground">
                         {member.firstName} {member.lastName}
                       </div>
-                      <div className="text-[11.5px] text-[#9CA3AF]">
+                      <div className="text-[11.5px] text-muted-foreground">
                         {member.jobTitle || member.email}
                       </div>
                     </div>
@@ -279,10 +279,10 @@ export default function AllTimesheetsPage() {
                   <div className="flex items-center gap-6">
                     {/* Current month hours */}
                     <div className="text-right hidden md:block">
-                      <div className="text-[12.5px] font-medium text-[#111827]">
+                      <div className="text-[12.5px] font-medium text-foreground">
                         {member.currentMonthHours}h
                       </div>
-                      <div className="text-[11px] text-[#9CA3AF]">
+                      <div className="text-[11px] text-muted-foreground">
                         This month
                       </div>
                     </div>
@@ -292,23 +292,23 @@ export default function AllTimesheetsPage() {
                       {member.latestTimesheet ? (
                         <div className="flex items-center gap-2">
                           <StatusBadge status={member.latestTimesheet.status} />
-                          <span className="text-[11.5px] text-[#9CA3AF]">
+                          <span className="text-[11.5px] text-muted-foreground">
                             {format(new Date(member.latestTimesheet.year, member.latestTimesheet.month - 1), "MMM yyyy")}
                           </span>
                         </div>
                       ) : (
-                        <Badge variant="outline" className="text-[#9CA3AF]">No timesheets</Badge>
+                        <Badge variant="outline" className="text-muted-foreground">No timesheets</Badge>
                       )}
                     </div>
 
                     {/* Pending indicator */}
                     {member.pendingTimesheets > 0 && (
-                      <span className="text-[11.5px] font-medium text-[#D97706] bg-[#FFFBEB] px-[9px] py-[3px] rounded-full whitespace-nowrap">
+                      <span className="text-[11.5px] font-medium text-[#D97706] dark:text-[#FBBF24] bg-[#FFFBEB] dark:bg-[#D97706]/15 px-[9px] py-[3px] rounded-full whitespace-nowrap">
                         {member.pendingTimesheets} pending
                       </span>
                     )}
 
-                    <ChevronRight className="h-4 w-4 text-[#D1D5DB]" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
               ))}

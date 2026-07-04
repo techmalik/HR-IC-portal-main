@@ -503,13 +503,13 @@ export default function UsersPage() {
     }
     if (supervisorIds.has(u.id)) {
       return (
-        <span className="text-[11.5px] font-medium bg-[#D1FAE5] text-[#065F46] px-[9px] py-[3px] rounded-full whitespace-nowrap">
+        <span className="text-[11.5px] font-medium bg-[#D1FAE5] dark:bg-[#059669]/15 text-[#065F46] dark:text-[#34D399] px-[9px] py-[3px] rounded-full whitespace-nowrap">
           Supervisor
         </span>
       );
     }
     return (
-      <span className="text-[11.5px] font-medium bg-[#F3F4F6] text-[#374151] px-[9px] py-[3px] rounded-full whitespace-nowrap">
+      <span className="text-[11.5px] font-medium bg-muted text-muted-foreground px-[9px] py-[3px] rounded-full whitespace-nowrap">
         Contractor
       </span>
     );
@@ -526,7 +526,7 @@ export default function UsersPage() {
       <TableRow
         key={u.id}
         data-testid={`user-row-${u.id}`}
-        className={hasFailed ? "bg-[#FEF2F2]" : ""}
+        className={hasFailed ? "bg-[#FEF2F2] dark:bg-[#DC2626]/15" : ""}
       >
         <TableCell>
           {isEditMode && editData ? (
@@ -592,8 +592,8 @@ export default function UsersPage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-[12.5px] font-medium text-[#111827]">{u.firstName} {u.lastName}</p>
-                <p className="text-[11.5px] text-[#9CA3AF]">{u.email}</p>
+                <p className="text-[12.5px] font-medium text-foreground">{u.firstName} {u.lastName}</p>
+                <p className="text-[11.5px] text-muted-foreground">{u.email}</p>
               </div>
             </div>
           )}
@@ -635,10 +635,10 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           ) : (
-            <span className="text-[12.5px] text-[#374151]">
+            <span className="text-[12.5px] text-foreground">
               {u.supervisorId
                 ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
-                : <span className="text-[#9CA3AF]">—</span>
+                : <span className="text-muted-foreground">—</span>
               }
             </span>
           )}
@@ -654,7 +654,7 @@ export default function UsersPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2.5 gap-1 text-[11.5px] font-normal text-[#6B7280] bg-[#F9FAFB] border-[#E5E7EB] hover:bg-neutral-100"
+                    className="h-7 px-2.5 gap-1 text-[11.5px] font-normal text-muted-foreground bg-muted/50 hover:bg-muted"
                     data-testid={`button-actions-${u.id}`}
                   >
                     Edit
@@ -687,7 +687,7 @@ export default function UsersPage() {
               {u.id !== currentUser?.id && (
                 <Button
                   size="sm"
-                  className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] bg-[#FEF2F2] border-0 hover:bg-red-100"
+                  className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] dark:text-[#F87171] bg-[#FEF2F2] dark:bg-[#DC2626]/15 border-0 hover:bg-red-100 dark:hover:bg-[#DC2626]/25"
                   onClick={() => setUserToDelete(u)}
                   data-testid={`button-delete-${u.id}`}
                 >
@@ -759,7 +759,7 @@ export default function UsersPage() {
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-[#111827] hover:bg-neutral-800 text-white" data-testid="button-add-user">
+              <Button size="sm" data-testid="button-add-user">
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add user
               </Button>
@@ -964,34 +964,34 @@ export default function UsersPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total users</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-total-users">{totalUsersCount}</div>
-          <div className="text-xs text-neutral-500">{activeUsers.length} active</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Total users</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-stat-total-users">{totalUsersCount}</div>
+          <div className="text-xs text-muted-foreground">{activeUsers.length} active</div>
         </div>
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Contractors</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-contractors">{contractorsCount}</div>
-          <div className="text-xs text-neutral-500">independent contributors</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Contractors</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-stat-contractors">{contractorsCount}</div>
+          <div className="text-xs text-muted-foreground">independent contributors</div>
         </div>
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Supervisors</div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-supervisors">{supervisorsCount}</div>
-          <div className="text-xs text-neutral-500">active</div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Supervisors</div>
+          <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-stat-supervisors">{supervisorsCount}</div>
+          <div className="text-xs text-muted-foreground">active</div>
         </div>
-        <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-[#92400E] tracking-[0.1em] uppercase mb-2">Suspended</div>
-          <div className="text-[26px] font-bold text-[#92400E] mb-0.5" data-testid="text-stat-suspended">{suspendedUsers.length}</div>
-          <div className="text-xs text-[#B45309]">cannot log in</div>
+        <div className="bg-[#FFFBEB] dark:bg-[#D97706]/15 border-[1.5px] border-[#FDE68A] dark:border-[#D97706]/30 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-[#92400E] dark:text-[#FBBF24] tracking-[0.1em] uppercase mb-2">Suspended</div>
+          <div className="text-[26px] font-bold text-[#92400E] dark:text-[#FBBF24] mb-0.5" data-testid="text-stat-suspended">{suspendedUsers.length}</div>
+          <div className="text-xs text-[#B45309] dark:text-[#FBBF24]/80">cannot log in</div>
         </div>
       </div>
 
-      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+      <Card className="rounded-xl">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div>
-                <CardTitle className="text-[13.5px] font-semibold text-neutral-900">All users</CardTitle>
+                <CardTitle className="text-[13.5px] font-semibold text-foreground">All users</CardTitle>
                 <CardDescription>{activeUsers.length} active user{activeUsers.length !== 1 ? "s" : ""}</CardDescription>
               </div>
               {isEditMode ? (
@@ -1036,18 +1036,18 @@ export default function UsersPage() {
             </div>
             <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-neutral-300" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search users..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 w-56 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]"
+                  className="pl-8 w-56 h-8 text-[12.5px] bg-muted/50"
                   data-testid="input-search"
                   disabled={isEditMode}
                 />
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter} disabled={isEditMode}>
-                <SelectTrigger className="w-36 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-role-filter">
+                <SelectTrigger className="w-36 h-8 text-[12.5px] bg-muted/50" data-testid="select-role-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1069,12 +1069,12 @@ export default function UsersPage() {
           ) : activeUsers.length > 0 || suspendedUsers.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Name</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Role</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Supervisor</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase text-right">Actions</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Role</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Supervisor</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1084,13 +1084,13 @@ export default function UsersPage() {
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <Avatar className="h-7 w-7">
-                          <AvatarFallback className="bg-[#F9FAFB] border-[1.5px] border-dashed border-neutral-200 text-[#9CA3AF] text-[9px] font-bold">
+                          <AvatarFallback className="bg-muted border-[1.5px] border-dashed border-border text-muted-foreground text-[9px] font-bold">
                             {u.firstName?.[0]}{u.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-[12.5px] font-medium text-[#9CA3AF]">{u.firstName} {u.lastName}</p>
-                          <p className="text-[11.5px] text-[#D1D5DB]">{u.email}</p>
+                          <p className="text-[12.5px] font-medium text-muted-foreground">{u.firstName} {u.lastName}</p>
+                          <p className="text-[11.5px] text-muted-foreground">{u.email}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -1098,7 +1098,7 @@ export default function UsersPage() {
                       {getRoleBadge(u)}
                     </TableCell>
                     <TableCell>
-                      <span className="text-[12.5px] text-[#9CA3AF]">
+                      <span className="text-[12.5px] text-muted-foreground">
                         {u.supervisorId
                           ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
                           : "—"
@@ -1112,7 +1112,7 @@ export default function UsersPage() {
                       <div className="flex gap-1.5 justify-end">
                         <Button
                           size="sm"
-                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#059669] bg-[#ECFDF5] border-0 hover:bg-emerald-100"
+                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#059669] dark:text-[#34D399] bg-[#ECFDF5] dark:bg-[#059669]/15 border-0 hover:bg-emerald-100 dark:hover:bg-[#059669]/25"
                           onClick={() => restoreMutation.mutate(u.id)}
                           data-testid={`button-restore-${u.id}`}
                         >
@@ -1120,7 +1120,7 @@ export default function UsersPage() {
                         </Button>
                         <Button
                           size="sm"
-                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] bg-[#FEF2F2] border-0 hover:bg-red-100"
+                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] dark:text-[#F87171] bg-[#FEF2F2] dark:bg-[#DC2626]/15 border-0 hover:bg-red-100 dark:hover:bg-[#DC2626]/25"
                           onClick={() => setUserToDelete(u)}
                           data-testid={`button-delete-suspended-${u.id}`}
                         >

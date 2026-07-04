@@ -23,16 +23,12 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, Calendar, RefreshCw } from "lucide-react";
 import type { OvertimeRequest } from "@shared/schema";
+import { APPROVE_BUTTON_CLASS as TINTED_BTN, REJECT_BUTTON_CLASS as DANGER_BTN } from "@/lib/utils";
 
 type EnrichedOvertimeRequest = OvertimeRequest & { activityLog?: string | null };
 import { useState } from "react";
 
 const NOTE_MAX = 500;
-
-const TINTED_BTN =
-  "bg-[#ECFDF5] dark:bg-[#059669]/15 text-[#059669] dark:text-[#34D399] border-[1.5px] border-[#A7F3D0] dark:border-[#059669]/30 hover:bg-[#D1FAE5] dark:hover:bg-[#059669]/25 font-semibold";
-const DANGER_BTN =
-  "bg-[#FEF2F2] dark:bg-[#DC2626]/15 text-[#DC2626] dark:text-[#F87171] border-[1.5px] border-[#FECACA] dark:border-[#DC2626]/30 hover:bg-[#FEE2E2] dark:hover:bg-[#DC2626]/25";
 
 function getRequestTypeLabel(request: OvertimeRequest): string {
   if (request.isWeekendWork) {

@@ -166,60 +166,60 @@ export default function BillingPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] font-normal text-neutral-900">Billing</h1>
+        <h1 className="font-serif text-[28px] font-normal text-foreground">Billing</h1>
         <p className="text-muted-foreground mt-1">
           Manage your subscription plan and seat usage
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
             <CreditCard className="w-3 h-3" /> Current plan
           </div>
-          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">{planInfo?.name || "Free"}</div>
+          <div className="text-[22px] font-bold text-foreground mb-1.5">{planInfo?.name || "Free"}</div>
           <div className="flex items-center gap-2">
             {getStatusBadge(billing?.subscription?.status || "active")}
             {planInfo?.price > 0 && (
-              <span className="text-xs text-neutral-500">${planInfo.price}/mo</span>
+              <span className="text-xs text-muted-foreground">${planInfo.price}/mo</span>
             )}
             {planInfo?.price === 0 && currentPlan !== "enterprise" && (
-              <span className="text-xs text-neutral-500">Free</span>
+              <span className="text-xs text-muted-foreground">Free</span>
             )}
             {currentPlan === "enterprise" && (
-              <span className="text-xs text-neutral-500">Custom pricing</span>
+              <span className="text-xs text-muted-foreground">Custom pricing</span>
             )}
           </div>
         </div>
 
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
             <Users className="w-3 h-3" /> Seat usage
           </div>
-          <div className="text-[26px] font-bold text-neutral-900 mb-1.5">{seatCount} / {maxSeats}</div>
+          <div className="text-[26px] font-bold text-foreground mb-1.5">{seatCount} / {maxSeats}</div>
           <Progress value={percentUsed} className="h-1.5 mb-1" />
-          <p className="text-xs text-neutral-500">{percentUsed}% of seats used</p>
+          <p className="text-xs text-muted-foreground">{percentUsed}% of seats used</p>
         </div>
 
-        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
             <Calendar className="w-3 h-3" /> Billing period
           </div>
-          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">Current</div>
-          <p className="text-xs text-neutral-500">
+          <div className="text-[22px] font-bold text-foreground mb-1.5">Current</div>
+          <p className="text-xs text-muted-foreground">
             Started {formatDate(billing?.subscription?.currentPeriodStart)}
           </p>
           {billing?.subscription?.currentPeriodEnd && (
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted-foreground">
               Renews {formatDate(billing.subscription.currentPeriodEnd)}
             </p>
           )}
         </div>
       </div>
 
-      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+      <Card className="rounded-xl">
         <CardHeader>
-          <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
+          <CardTitle className="text-[13.5px] font-semibold text-foreground">Choose your plan</CardTitle>
           <CardDescription>
             Select the plan that best fits your team's needs
           </CardDescription>
@@ -298,9 +298,9 @@ export default function BillingPage() {
       </Card>
 
       {billing?.organization && (
-        <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+        <Card className="rounded-xl">
           <CardHeader>
-            <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Organization details</CardTitle>
+            <CardTitle className="text-[13.5px] font-semibold text-foreground">Organization details</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -82,32 +82,32 @@ export default function ActivityLogsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] font-normal text-neutral-900">Activity logs</h1>
+        <h1 className="font-serif text-[28px] font-normal text-foreground">Activity logs</h1>
         <p className="text-muted-foreground mt-1">
           Complete audit trail of all system activity
         </p>
       </div>
 
-      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+      <Card className="rounded-xl">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="text-[13.5px] font-semibold text-neutral-900">System activity</CardTitle>
+              <CardTitle className="text-[13.5px] font-semibold text-foreground">System activity</CardTitle>
               <CardDescription>{logs?.length || 0} logged activities</CardDescription>
             </div>
             <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-neutral-300" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search logs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 w-56 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]"
+                  className="pl-8 w-56 h-8 text-[12.5px] bg-muted/50"
                   data-testid="input-search-logs"
                 />
               </div>
               <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-40 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-action-filter">
+                <SelectTrigger className="w-40 h-8 text-[12.5px] bg-muted/50" data-testid="select-action-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -134,12 +134,12 @@ export default function ActivityLogsPage() {
           ) : filteredLogs && filteredLogs.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="w-12"></TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Action</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Details</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">User</TableHead>
-                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Timestamp</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Action</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Details</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">User</TableHead>
+                  <TableHead className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,18 +148,18 @@ export default function ActivityLogsPage() {
                   return (
                     <TableRow key={log.id} data-testid={`log-row-${log.id}`}>
                       <TableCell>
-                        <div className="w-8 h-8 rounded-full bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#6B7280]">
+                        <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground">
                           {getActionIcon(log.entityType)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-[12.5px] font-medium text-[#111827]">{log.action}</p>
-                        <p className="text-[11.5px] text-[#9CA3AF] capitalize">
+                        <p className="text-[12.5px] font-medium text-foreground">{log.action}</p>
+                        <p className="text-[11.5px] text-muted-foreground capitalize">
                           {log.entityType?.replace("_", " ") || "System"}
                         </p>
                       </TableCell>
                       <TableCell className="max-w-xs">
-                        <p className="text-[12.5px] text-[#6B7280] truncate">
+                        <p className="text-[12.5px] text-muted-foreground truncate">
                           {log.details || "—"}
                         </p>
                       </TableCell>
@@ -170,10 +170,10 @@ export default function ActivityLogsPage() {
                               {userDisplay.initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-[12.5px] text-[#374151]">{userDisplay.name}</span>
+                          <span className="text-[12.5px] text-foreground">{userDisplay.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-[#6B7280] text-[12.5px]">
+                      <TableCell className="text-muted-foreground text-[12.5px]">
                         {format(new Date(log.createdAt!), "MMM d, yyyy h:mm a")}
                       </TableCell>
                     </TableRow>

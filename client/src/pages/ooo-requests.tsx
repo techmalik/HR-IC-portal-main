@@ -508,7 +508,7 @@ export default function OOORequestsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-[#F9FAFB] border-b border-border">
+                <tr className="bg-[#F9FAFB] dark:bg-white/[0.02] border-b border-border">
                   <th className="px-5 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Period</th>
                   <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Type</th>
                   <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Days</th>
@@ -522,7 +522,7 @@ export default function OOORequestsPage() {
                     key={request.id}
                     className={cn(
                       "border-b border-border last:border-b-0 align-top",
-                      index % 2 === 1 && "bg-[#FAFAFA]"
+                      index % 2 === 1 && "bg-[#FAFAFA] dark:bg-white/[0.02]"
                     )}
                     data-testid={`request-${request.id}`}
                   >

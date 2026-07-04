@@ -130,7 +130,7 @@ export default function TimesheetsOverviewPage() {
                 href={`/timesheets?month=${month}&year=${year}`}
                 className={cn(
                   "flex justify-between items-center px-5 py-3.5 border-b border-border last:border-b-0 hover-elevate",
-                  index % 2 === 1 && "bg-[#FAFAFA]"
+                  index % 2 === 1 && "bg-[#FAFAFA] dark:bg-white/[0.02]"
                 )}
                 data-testid={`card-month-${month}-${year}`}
               >

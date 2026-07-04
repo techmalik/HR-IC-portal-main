@@ -233,8 +233,8 @@ export default function LeaveRequestsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Leave Requests</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Leave Requests</h1>
+          <p className="text-[13px] text-muted-foreground">
             Review and manage time off requests
           </p>
         </div>
@@ -423,12 +423,12 @@ export default function LeaveRequestsPage() {
                   {actionType === "approve" ? "Note (optional)" : (
                     <>
                       Reason for rejection{" "}
-                      <span className="text-red-500" aria-hidden="true">*</span>
+                      <span className="text-destructive" aria-hidden="true">*</span>
                     </>
                   )}
                 </label>
                 {actionType === "reject" && (
-                  <p className="text-xs text-red-500">Required</p>
+                  <p className="text-xs text-destructive">Required</p>
                 )}
                 <Textarea
                   value={reviewNote}

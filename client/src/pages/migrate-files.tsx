@@ -215,7 +215,7 @@ export default function MigrateFilesPage() {
                       {uploadState.status === "idle" && (
                         <button
                           onClick={() => removeFile(idx)}
-                          className="text-gray-400 hover:text-red-500 ml-2"
+                          className="text-gray-400 hover:text-destructive ml-2"
                           data-testid={`button-remove-file-${idx}`}
                         >
                           <XCircle className="w-4 h-4" />

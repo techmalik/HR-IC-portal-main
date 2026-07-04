@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -73,13 +74,6 @@ const RATING_LABELS = [
   { value: 4, label: "Exceeds Expectations", color: "bg-emerald-500" },
   { value: 5, label: "Exceptional", color: "bg-green-600" },
 ];
-
-const STATUS_CONFIG = {
-  draft: { label: "Draft", variant: "secondary" as const, icon: FileText },
-  ic_submitted: { label: "IC Submitted", variant: "default" as const, icon: Send },
-  manager_submitted: { label: "Manager Reviewed", variant: "default" as const, icon: CheckCircle2 },
-  completed: { label: "Completed", variant: "default" as const, icon: CheckCircle2 },
-};
 
 const createEvaluationSchema = z.object({
   icId: z.string().min(1, "Please select an IC"),
@@ -221,17 +215,6 @@ export default function EvaluationsPage() {
   });
 
   const getUserById = (id: string) => allUsers?.find((u) => u.id === id);
-
-  const getStatusBadge = (status: string) => {
-    const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.draft;
-    const Icon = config.icon;
-    return (
-      <Badge variant={config.variant} className="gap-1">
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </Badge>
-    );
-  };
 
   const myEvaluations = evaluations?.filter((e) => e.icId === user?.id) || [];
   const managedEvaluations = evaluations?.filter((e) => e.managerId === user?.id) || [];
@@ -560,7 +543,6 @@ export default function EvaluationsPage() {
           evaluations={myEvaluations}
           onSelect={setSelectedEvaluation}
           getUserById={getUserById}
-          getStatusBadge={getStatusBadge}
         />
       ) : (
         <div className="space-y-3.5">
@@ -577,7 +559,6 @@ export default function EvaluationsPage() {
             }
             onSelect={setSelectedEvaluation}
             getUserById={getUserById}
-            getStatusBadge={getStatusBadge}
           />
         </div>
       )}
@@ -589,12 +570,10 @@ function EvaluationList({
   evaluations,
   onSelect,
   getUserById,
-  getStatusBadge,
 }: {
   evaluations: Evaluation[];
   onSelect: (e: Evaluation) => void;
   getUserById: (id: string) => UserType | undefined;
-  getStatusBadge: (status: string) => JSX.Element;
 }) {
   if (evaluations.length === 0) {
     return (
@@ -616,7 +595,7 @@ function EvaluationList({
             key={evaluation.id}
             className={cn(
               "px-5 py-3.5 hover-elevate cursor-pointer flex items-center justify-between gap-4 border-b border-border last:border-b-0",
-              index % 2 === 1 && "bg-[#FAFAFA]"
+              index % 2 === 1 && "bg-[#FAFAFA] dark:bg-white/[0.02]"
             )}
             onClick={() => onSelect(evaluation)}
             data-testid={`evaluation-${evaluation.id}`}
@@ -661,7 +640,7 @@ function EvaluationList({
                   )}
                 </>
               )}
-              {getStatusBadge(evaluation.status)}
+              <StatusBadge status={evaluation.status} />
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
           </div>
@@ -978,9 +957,7 @@ function EvaluationDetailView({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={STATUS_CONFIG[evaluation.status as keyof typeof STATUS_CONFIG]?.variant || "secondary"}>
-                {STATUS_CONFIG[evaluation.status as keyof typeof STATUS_CONFIG]?.label || evaluation.status}
-              </Badge>
+              <StatusBadge status={evaluation.status} />
               <Badge variant="outline">
                 {format(new Date(evaluation.periodStart), "MMM yyyy")} - {format(new Date(evaluation.periodEnd), "MMM yyyy")}
               </Badge>

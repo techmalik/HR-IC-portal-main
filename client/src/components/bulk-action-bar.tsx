@@ -207,7 +207,7 @@ export function BulkActionBar({
             <label className="text-sm font-medium">
               {pendingDecision === "approved" ? "Note (optional)" : "Reason"}
               {pendingDecision === "rejected" && rejectRequiresNote && (
-                <span className="text-red-500" aria-hidden="true">
+                <span className="text-destructive" aria-hidden="true">
                   {" "}
                   *
                 </span>

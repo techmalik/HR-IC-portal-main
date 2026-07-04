@@ -271,7 +271,7 @@ export default function ExpensesPage() {
       key={e.id}
       className={cn(
         "flex items-center justify-between gap-4 px-5 py-3.5 border-b border-border last:border-b-0",
-        index % 2 === 1 && "bg-[#FAFAFA]"
+        index % 2 === 1 && "bg-[#FAFAFA] dark:bg-white/[0.02]"
       )}
       data-testid={`my-expense-${e.id}`}
     >

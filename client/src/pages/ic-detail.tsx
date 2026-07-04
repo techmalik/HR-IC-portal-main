@@ -831,7 +831,7 @@ export default function ICDetailPage() {
                 data-testid="input-unlock-note"
               />
             </div>
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 rounded text-yellow-600 dark:text-yellow-400 text-sm">
+            <div className="flex items-start gap-2 p-3 bg-[#D97706]/10 dark:bg-[#D97706]/15 rounded text-[#D97706] dark:text-[#FBBF24] text-sm">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
                 The associated invoice will also require resubmission once the timesheet is revised.

@@ -2,13 +2,29 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { Users, ChevronRight } from "lucide-react";
 import type { User } from "@shared/schema";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "?";
+}
+
+// StatusBadge renders approval/workflow statuses (pending/approved/etc.), not
+// user roles — reuse its pill shape but with a role-appropriate label/color.
+function RoleBadge({ role }: { role: string }) {
+  if (role === "admin" || role === "owner") {
+    return (
+      <span className="text-[11.5px] font-medium bg-[#111827] text-white px-[9px] py-[3px] rounded-full whitespace-nowrap w-fit">
+        {role === "owner" ? "Owner" : "Admin"}
+      </span>
+    );
+  }
+  return (
+    <span className="text-[11.5px] font-medium bg-muted text-muted-foreground px-[9px] py-[3px] rounded-full whitespace-nowrap w-fit">
+      Contractor
+    </span>
+  );
 }
 
 export default function MyTeamPage() {
@@ -66,7 +82,7 @@ export default function MyTeamPage() {
                 </div>
               </div>
               <span className="text-[12.5px] text-neutral-500 dark:text-neutral-400 truncate">{member.email}</span>
-              <StatusBadge status={member.role} />
+              <RoleBadge role={member.role} />
               <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-neutral-600 justify-self-end" />
             </Link>
           ))
