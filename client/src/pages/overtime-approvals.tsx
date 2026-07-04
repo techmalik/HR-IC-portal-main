@@ -1,15 +1,7 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
@@ -17,13 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/bulk-action-bar";
+import { ReviewDialog, ReviewNoteField } from "@/components/review-dialog";
+import { useReviewAction } from "@/hooks/use-review-action";
 import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
-import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle, XCircle, Clock, Loader2, AlertCircle, Calendar, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Calendar, RefreshCw } from "lucide-react";
 import type { OvertimeRequest } from "@shared/schema";
 import { APPROVE_BUTTON_CLASS as TINTED_BTN, REJECT_BUTTON_CLASS as DANGER_BTN } from "@/lib/utils";
+import { getInitialsFromParts } from "@/lib/initials";
 
 type EnrichedOvertimeRequest = OvertimeRequest & { activityLog?: string | null };
 import { useState } from "react";
@@ -38,12 +32,8 @@ function getRequestTypeLabel(request: OvertimeRequest): string {
 }
 
 export default function OvertimeApprovalsPage() {
-  const [selectedRequest, setSelectedRequest] = useState<OvertimeRequest | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
   const [approvedHours, setApprovedHours] = useState<number>(0);
-  const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const { data: overtimeRequests, isLoading, isFetching, refetch } = useQuery<EnrichedOvertimeRequest[]>({
     queryKey: ["/api/overtime-requests"],
@@ -53,34 +43,24 @@ export default function OvertimeApprovalsPage() {
     queryKey: ["/api/users/basic"],
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status, approvedHours, isWeekendWork }: { id: string; status: string; approvedHours?: number; isWeekendWork?: boolean }) => {
-      return apiRequest("PATCH", `/api/overtime-requests/${id}`, {
-        status,
+  const review = useReviewAction<OvertimeRequest>({
+    mutationFn: ({ item, action, note }) =>
+      apiRequest("PATCH", `/api/overtime-requests/${item.id}`, {
+        status: action === "approve" ? "approved" : "rejected",
         reviewedBy: user?.id,
-        reviewNote: reviewNote || null,
-        approvedHours: status === "approved" ? approvedHours : null,
-      });
+        reviewNote: note || null,
+        approvedHours: action === "approve" ? approvedHours : null,
+      }),
+    invalidateKeys: ["/api/overtime-requests", "/api/overtime-requests/pending-count", "/api/timesheets"],
+    noteRequiredForActions: ["reject"],
+    getToast: (action, item) => {
+      const typeLabel = item.isWeekendWork ? "Weekend work" : "Overtime";
+      return {
+        title: action === "approve" ? `${typeLabel} approved` : `${typeLabel} rejected`,
+        description: `The ${typeLabel.toLowerCase()} request has been ${action === "approve" ? "approved" : "rejected"}.`,
+      };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/overtime-requests"] });
-      const typeLabel = variables.isWeekendWork ? "Weekend work" : "Overtime";
-      toast({
-        title: variables.status === "approved" ? `${typeLabel} approved` : `${typeLabel} rejected`,
-        description: `The ${typeLabel.toLowerCase()} request has been ${variables.status}.`,
-      });
-      setSelectedRequest(null);
-      setReviewNote("");
-      setApprovedHours(0);
-      setActionType(null);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to process request. Please try again.",
-        variant: "destructive",
-      });
-    },
+    onSuccess: () => setApprovedHours(0),
   });
 
   const getUserName = (userId: string) => {
@@ -93,25 +73,13 @@ export default function OvertimeApprovalsPage() {
     if (usersLoading) return "...";
     const foundUser = users?.find((u) => u.id === userId);
     if (!foundUser) return "?";
-    return `${foundUser.firstName?.[0] || ""}${foundUser.lastName?.[0] || ""}`.toUpperCase();
+    return getInitialsFromParts(foundUser.firstName, foundUser.lastName);
   };
 
   const handleAction = (request: OvertimeRequest, action: "approve" | "reject") => {
-    setSelectedRequest(request);
-    setActionType(action);
+    review.start(request, action);
     if (action === "approve") {
       setApprovedHours(request.requestedHours);
-    }
-  };
-
-  const confirmAction = () => {
-    if (selectedRequest && actionType) {
-      reviewMutation.mutate({
-        id: selectedRequest.id,
-        status: actionType === "approve" ? "approved" : "rejected",
-        approvedHours: actionType === "approve" ? approvedHours : undefined,
-        isWeekendWork: selectedRequest.isWeekendWork,
-      });
     }
   };
 
@@ -230,7 +198,7 @@ export default function OvertimeApprovalsPage() {
     );
   };
 
-  const selectedRequestWithLog = overtimeRequests?.find((r) => r.id === selectedRequest?.id) as EnrichedOvertimeRequest | undefined;
+  const selectedRequestWithLog = overtimeRequests?.find((r) => r.id === review.item?.id) as EnrichedOvertimeRequest | undefined;
 
   return (
     <div className="p-6 flex flex-col gap-[18px]">
@@ -371,121 +339,91 @@ export default function OvertimeApprovalsPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setReviewNote(""); setApprovedHours(0); setActionType(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === "approve" 
-                ? `Approve ${selectedRequest?.isWeekendWork ? "Weekend Work" : "Overtime"}` 
-                : `Reject ${selectedRequest?.isWeekendWork ? "Weekend Work" : "Overtime"}`}
-            </DialogTitle>
-            <DialogDescription>
-              {actionType === "approve"
-                ? `Confirm the ${selectedRequest?.isWeekendWork ? "weekend work" : "overtime"} hours to approve.`
-                : `Please provide a reason for rejecting this ${selectedRequest?.isWeekendWork ? "weekend work" : "overtime"} request.`}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="py-4 space-y-4">
-              <div className="p-4 rounded-md bg-muted/50 space-y-2">
-                <p className="font-medium">{getUserName(selectedRequest.userId)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(selectedRequest.date), "EEEE, MMMM d, yyyy")}
-                </p>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  {selectedRequest.isWeekendWork && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-500">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      Weekend Work
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-blue-600 border-blue-500">
-                    <Clock className="w-3 h-3 mr-1" />
-                    {selectedRequest.requestedHours} hours requested
+      <ReviewDialog
+        open={review.isOpen}
+        onOpenChange={() => review.close()}
+        title={
+          review.action === "approve"
+            ? `Approve ${review.item?.isWeekendWork ? "Weekend Work" : "Overtime"}`
+            : `Reject ${review.item?.isWeekendWork ? "Weekend Work" : "Overtime"}`
+        }
+        description={
+          review.action === "approve"
+            ? `Confirm the ${review.item?.isWeekendWork ? "weekend work" : "overtime"} hours to approve.`
+            : `Please provide a reason for rejecting this ${review.item?.isWeekendWork ? "weekend work" : "overtime"} request.`
+        }
+        confirmLabel={
+          review.action === "approve"
+            ? `Approve ${review.item?.isWeekendWork ? "Weekend Work" : "Overtime"}`
+            : `Reject ${review.item?.isWeekendWork ? "Weekend Work" : "Overtime"}`
+        }
+        confirmVariant={review.action === "approve" ? "default" : "destructive"}
+        isPending={review.isPending}
+        confirmDisabled={!review.canConfirm}
+        onConfirm={review.confirm}
+        onCancel={review.close}
+      >
+        {review.item && (
+          <div className="py-4 space-y-4">
+            <div className="p-4 rounded-md bg-muted/50 space-y-2">
+              <p className="font-medium">{getUserName(review.item.userId)}</p>
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(review.item.date), "EEEE, MMMM d, yyyy")}
+              </p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {review.item.isWeekendWork && (
+                  <Badge variant="outline" className="text-orange-600 border-orange-500">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    Weekend Work
                   </Badge>
-                </div>
-                {selectedRequestWithLog?.activityLog && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Work performed:</span>{" "}
-                      {selectedRequestWithLog.activityLog}
-                    </p>
-                  </div>
                 )}
+                <Badge variant="outline" className="text-blue-600 border-blue-500">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {review.item.requestedHours} hours requested
+                </Badge>
               </div>
-
-              {actionType === "approve" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Approved Hours</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max={selectedRequest.requestedHours}
-                    value={approvedHours}
-                    onChange={(e) => setApprovedHours(parseInt(e.target.value) || 1)}
-                    data-testid="input-approved-hours"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You can approve fewer hours than requested (minimum 1).
+              {selectedRequestWithLog?.activityLog && (
+                <div className="pt-2 border-t mt-2">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Work performed:</span>{" "}
+                    {selectedRequestWithLog.activityLog}
                   </p>
                 </div>
               )}
+            </div>
 
+            {review.action === "approve" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {actionType === "approve" ? "Note (optional)" : "Reason for rejection"}
-                </label>
-                <Textarea
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value.slice(0, NOTE_MAX))}
-                  placeholder={
-                    actionType === "approve"
-                      ? "Add a note..."
-                      : `Please explain why this ${selectedRequest.isWeekendWork ? "weekend work" : "overtime"} is being rejected...`
-                  }
-                  rows={3}
-                  className="resize-none"
-                  data-testid="input-overtime-note"
+                <label className="text-sm font-medium">Approved Hours</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={review.item.requestedHours}
+                  value={approvedHours}
+                  onChange={(e) => setApprovedHours(parseInt(e.target.value) || 1)}
+                  data-testid="input-approved-hours"
                 />
-                <p className="text-xs text-muted-foreground text-right">
-                  {reviewNote.length} / {NOTE_MAX}
+                <p className="text-xs text-muted-foreground">
+                  You can approve fewer hours than requested (minimum 1).
                 </p>
               </div>
-            </div>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedRequest(null);
-                setReviewNote("");
-                setApprovedHours(0);
-                setActionType(null);
-              }}
-              data-testid="button-cancel-overtime-review"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={actionType === "approve" ? "default" : "destructive"}
-              onClick={confirmAction}
-              disabled={reviewMutation.isPending || (actionType === "reject" && !reviewNote)}
-              data-testid="button-confirm-overtime-action"
-            >
-              {reviewMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : actionType === "approve" ? (
-                `Approve ${selectedRequest?.isWeekendWork ? "Weekend Work" : "Overtime"}`
-              ) : (
-                `Reject ${selectedRequest?.isWeekendWork ? "Weekend Work" : "Overtime"}`
-              )}
-            </Button>
+            )}
+
+            <ReviewNoteField
+              label={review.action === "approve" ? "Note (optional)" : "Reason for rejection"}
+              required={review.noteRequired}
+              value={review.note}
+              onChange={review.setNote}
+              maxLength={NOTE_MAX}
+              placeholder={
+                review.action === "approve"
+                  ? "Add a note..."
+                  : `Please explain why this ${review.item.isWeekendWork ? "weekend work" : "overtime"} is being rejected...`
+              }
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </ReviewDialog>
     </div>
   );
 }

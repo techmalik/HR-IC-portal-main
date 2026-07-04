@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { StatCard } from "@/components/stat-card";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
 import { Plus, ArrowRight } from "lucide-react";
@@ -9,6 +10,7 @@ import type { OOORequest, Timesheet, Invoice, OvertimeRequest } from "@shared/sc
 import { formatMoney } from "@/lib/currency";
 import { format, getDaysInMonth, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getGreeting } from "@/lib/dates";
 
 // Count Mon-Fri days in [start, end] inclusive.
 function countWeekdaysBetween(start: Date, end: Date): number {
@@ -22,42 +24,6 @@ function countWeekdaysBetween(start: Date, end: Date): number {
     d.setDate(d.getDate() + 1);
   }
   return count;
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-  hintClassName,
-  loading,
-  testId,
-}: {
-  label: string;
-  value: React.ReactNode;
-  hint?: React.ReactNode;
-  hintClassName?: string;
-  loading?: boolean;
-  testId?: string;
-}) {
-  return (
-    <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
-      <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">
-        {label}
-      </div>
-      {loading ? (
-        <Skeleton className="h-8 w-16" />
-      ) : (
-        <div className="text-[28px] font-bold text-foreground leading-none" data-testid={testId}>
-          {value}
-        </div>
-      )}
-      {hint && !loading && (
-        <div className={cn("text-xs mt-1.5 font-medium", hintClassName || "text-muted-foreground")}>
-          {hint}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function DashboardIC() {
@@ -175,7 +141,7 @@ export default function DashboardIC() {
     <div className="p-6 space-y-6">
       <div data-testid="tour-target-welcome">
         <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">
-          Good morning, {user?.firstName}.
+          {getGreeting()}, {user?.firstName}.
         </h1>
         <p className="text-[13px] text-muted-foreground">
           {currentMonth} &middot; Independent Contractor

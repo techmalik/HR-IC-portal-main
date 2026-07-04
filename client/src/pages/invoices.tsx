@@ -46,6 +46,7 @@ import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry,
 import { formatMoney, getCurrencySymbol, normalizeCurrency } from "@/lib/currency";
 import { OnboardingTour, invoicesTourConfig } from "@/components/onboarding-tour";
 import { cn } from "@/lib/utils";
+import { openInvoiceFile, downloadInvoiceFile } from "@/lib/invoice-file";
 
 interface LineItem {
   description: string;
@@ -1575,19 +1576,7 @@ export default function InvoicesPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => {
-                              if (invoice.fileUrl) {
-                                const filename = invoice.fileName || "invoice.pdf";
-                                // Handle both relative and absolute URLs
-                                let urlStr = invoice.fileUrl;
-                                if (!invoice.fileUrl.startsWith("http")) {
-                                  const url = new URL(invoice.fileUrl, window.location.origin);
-                                  url.searchParams.set("filename", filename);
-                                  urlStr = url.toString();
-                                }
-                                window.open(urlStr, "_blank");
-                              }
-                            }}
+                            onClick={() => openInvoiceFile(invoice.fileUrl, invoice.fileName)}
                             data-testid={`button-view-${invoice.id}`}
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -1596,25 +1585,7 @@ export default function InvoicesPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => {
-                              if (invoice.fileUrl) {
-                                const filename = invoice.fileName || "invoice.pdf";
-                                // Handle both relative and absolute URLs
-                                let urlStr = invoice.fileUrl;
-                                if (!invoice.fileUrl.startsWith("http")) {
-                                  const url = new URL(invoice.fileUrl, window.location.origin);
-                                  url.searchParams.set("filename", filename);
-                                  url.searchParams.set("download", "true");
-                                  urlStr = url.toString();
-                                }
-                                const link = document.createElement("a");
-                                link.href = urlStr;
-                                link.download = filename;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }
-                            }}
+                            onClick={() => downloadInvoiceFile(invoice.fileUrl, invoice.fileName)}
                             data-testid={`button-download-${invoice.id}`}
                           >
                             <Download className="w-3.5 h-3.5" />

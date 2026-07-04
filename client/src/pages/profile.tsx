@@ -31,6 +31,7 @@ import { Loader2, Save, Bell, User, Lock, FileSignature } from "lucide-react";
 import type { NotificationPreferences } from "@shared/schema";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractsSection } from "@/components/contracts-section";
+import { getInitialsFromParts } from "@/lib/initials";
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -159,7 +160,7 @@ export default function ProfilePage() {
 
   const getInitials = () => {
     if (!user) return "U";
-    return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "U";
+    return getInitialsFromParts(user.firstName, user.lastName, "U");
   };
 
   return (

@@ -1,30 +1,23 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/bulk-action-bar";
+import { ReviewDialog, ReviewNoteField } from "@/components/review-dialog";
+import { useReviewAction } from "@/hooks/use-review-action";
 import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
-import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle, XCircle, Calendar, Loader2, Clock, RefreshCw, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Calendar, Clock, RefreshCw, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { OOORequest } from "@shared/schema";
-import { useState } from "react";
 import { differenceInDays } from "date-fns";
+import { getInitialsFromName } from "@/lib/initials";
 
 interface OOORequestWithUser extends OOORequest {
   userName: string;
@@ -33,12 +26,20 @@ interface OOORequestWithUser extends OOORequest {
 
 const NOTE_MAX = 500;
 
+function parseReviewErrorMessage(error: unknown): string {
+  const raw = (error as any)?.message || "";
+  try {
+    const jsonPart = raw.includes("{") ? raw.slice(raw.indexOf("{")) : "";
+    if (jsonPart) {
+      const parsed = JSON.parse(jsonPart);
+      if (parsed.error) return parsed.error;
+    }
+  } catch {}
+  return "Failed to process request. Please try again.";
+}
+
 export default function LeaveRequestsPage() {
-  const [selectedRequest, setSelectedRequest] = useState<OOORequestWithUser | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const { data: pendingRequests, isLoading: pendingLoading, isFetching: pendingFetching, refetch: refetchPending } = useQuery<OOORequestWithUser[]>({
     queryKey: [`/api/leave-requests/pending?managerId=${user?.id}`],
@@ -50,63 +51,27 @@ export default function LeaveRequestsPage() {
     enabled: !!user?.id,
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest("PATCH", `/api/ooo-requests/${id}`, {
-        status,
+  const review = useReviewAction<OOORequestWithUser>({
+    mutationFn: ({ item, action, note }) =>
+      apiRequest("PATCH", `/api/ooo-requests/${item.id}`, {
+        status: action === "approve" ? "approved" : "rejected",
         reviewedBy: user?.id,
-        reviewNote: reviewNote || null,
-      });
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
-      queryClient.invalidateQueries({ predicate: (query) => 
-        typeof query.queryKey[0] === 'string' && 
-        query.queryKey[0].startsWith('/api/leave-requests/pending')
-      });
-      toast({
-        title: variables.status === "approved" ? "Request approved" : "Request rejected",
-        description: `The leave request has been ${variables.status}.`,
-      });
-      setSelectedRequest(null);
-      setReviewNote("");
-      setActionType(null);
-    },
-    onError: (error: any) => {
-      let message = "Failed to process request. Please try again.";
-      try {
-        const raw = error?.message || "";
-        const jsonPart = raw.includes("{") ? raw.slice(raw.indexOf("{")) : "";
-        if (jsonPart) {
-          const parsed = JSON.parse(jsonPart);
-          if (parsed.error) message = parsed.error;
-        }
-      } catch {}
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
-    },
+        reviewNote: note || null,
+      }),
+    invalidateKeys: ["/api/leave-requests", "/api/ooo-requests"],
+    invalidatePredicate: (query) =>
+      typeof query.queryKey[0] === "string" && (query.queryKey[0] as string).startsWith("/api/leave-requests/pending"),
+    noteRequiredForActions: ["reject"],
+    getToast: (action) => ({
+      title: action === "approve" ? "Request approved" : "Request rejected",
+      description: `The leave request has been ${action === "approve" ? "approved" : "rejected"}.`,
+    }),
+    getErrorMessage: parseReviewErrorMessage,
   });
-
-  const handleAction = (request: OOORequestWithUser, action: "approve" | "reject") => {
-    setSelectedRequest(request);
-    setActionType(action);
-  };
 
   const getDurationDays = (start: string, end: string, isHalfDay: boolean) => {
     const days = differenceInDays(new Date(end), new Date(start)) + 1;
     return isHalfDay ? days * 0.5 : days;
-  };
-
-  const confirmAction = () => {
-    if (selectedRequest && actionType) {
-      reviewMutation.mutate({
-        id: selectedRequest.id,
-        status: actionType === "approve" ? "approved" : "rejected",
-      });
-    }
   };
 
   const getConflictingTeammates = (request: OOORequestWithUser): OOORequestWithUser[] => {
@@ -155,7 +120,7 @@ export default function LeaveRequestsPage() {
             )}
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                {request.userName?.split(" ").map((n) => n[0]).join("").toUpperCase() || "?"}
+                {getInitialsFromName(request.userName)}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -196,7 +161,7 @@ export default function LeaveRequestsPage() {
           <div className="flex gap-2 pt-2">
             <Button
               size="sm"
-              onClick={() => handleAction(request, "approve")}
+              onClick={() => review.start(request, "approve")}
               data-testid={`button-approve-${request.id}`}
             >
               <CheckCircle className="w-4 h-4 mr-1" />
@@ -205,7 +170,7 @@ export default function LeaveRequestsPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleAction(request, "reject")}
+              onClick={() => review.start(request, "reject")}
               data-testid={`button-reject-${request.id}`}
             >
               <XCircle className="w-4 h-4 mr-1" />
@@ -391,95 +356,49 @@ export default function LeaveRequestsPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setReviewNote(""); setActionType(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === "approve" ? "Approve Request" : "Reject Request"}
-            </DialogTitle>
-            <DialogDescription>
-              {actionType === "approve"
-                ? "Confirm that you want to approve this leave request."
-                : "Please provide a reason for rejecting this request."}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="py-4 space-y-4">
-              <div className="p-4 rounded-md bg-muted/50">
-                <p className="font-medium">{selectedRequest.userName}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {format(new Date(selectedRequest.startDate), "MMM d")} -{" "}
-                  {format(new Date(selectedRequest.endDate), "MMM d, yyyy")}
-                </p>
-                {selectedRequest.reason && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {selectedRequest.reason}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {actionType === "approve" ? "Note (optional)" : (
-                    <>
-                      Reason for rejection{" "}
-                      <span className="text-destructive" aria-hidden="true">*</span>
-                    </>
-                  )}
-                </label>
-                {actionType === "reject" && (
-                  <p className="text-xs text-destructive">Required</p>
-                )}
-                <Textarea
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value.slice(0, NOTE_MAX))}
-                  placeholder={
-                    actionType === "approve"
-                      ? "Add a note for the employee..."
-                      : "Please explain why this request is being rejected..."
-                  }
-                  rows={3}
-                  className="resize-none"
-                  data-testid="input-review-note"
-                />
-                <p className="text-xs text-muted-foreground text-right">
-                  {reviewNote.length} / {NOTE_MAX}
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedRequest(null);
-                setReviewNote("");
-                setActionType(null);
-              }}
-              data-testid="button-cancel-review"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={actionType === "approve" ? "default" : "destructive"}
-              onClick={confirmAction}
-              disabled={reviewMutation.isPending || (actionType === "reject" && !reviewNote)}
-              data-testid="button-confirm-action"
-            >
-              {reviewMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : actionType === "approve" ? (
-                "Approve Request"
-              ) : (
-                "Reject Request"
+      <ReviewDialog
+        open={review.isOpen}
+        onOpenChange={() => review.close()}
+        title={review.action === "approve" ? "Approve Request" : "Reject Request"}
+        description={
+          review.action === "approve"
+            ? "Confirm that you want to approve this leave request."
+            : "Please provide a reason for rejecting this request."
+        }
+        confirmLabel={review.action === "approve" ? "Approve Request" : "Reject Request"}
+        confirmVariant={review.action === "approve" ? "default" : "destructive"}
+        isPending={review.isPending}
+        confirmDisabled={!review.canConfirm}
+        onConfirm={review.confirm}
+        onCancel={review.close}
+      >
+        {review.item && (
+          <div className="py-4 space-y-4">
+            <div className="p-4 rounded-md bg-muted/50">
+              <p className="font-medium">{review.item.userName}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {format(new Date(review.item.startDate), "MMM d")} -{" "}
+                {format(new Date(review.item.endDate), "MMM d, yyyy")}
+              </p>
+              {review.item.reason && (
+                <p className="text-sm text-muted-foreground mt-2">{review.item.reason}</p>
               )}
-            </Button>
+            </div>
+            <ReviewNoteField
+              label={review.action === "approve" ? "Note (optional)" : "Reason for rejection"}
+              required={review.noteRequired}
+              value={review.note}
+              onChange={review.setNote}
+              maxLength={NOTE_MAX}
+              placeholder={
+                review.action === "approve"
+                  ? "Add a note for the employee..."
+                  : "Please explain why this request is being rejected..."
+              }
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </ReviewDialog>
     </div>
   );
 }

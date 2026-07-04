@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { StatCard } from "@/components/stat-card";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
 import {
@@ -120,41 +121,27 @@ export default function DashboardAdmin() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Total users</div>
-          {usersLoading ? (
-            <Skeleton className="h-7 w-14" />
-          ) : (
-            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-total-users">
-              {allUsers?.length || 0}
-            </div>
-          )}
-          <div className="text-xs text-muted-foreground">{activeUsers?.length || 0} active</div>
-        </div>
-
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Independent contractors</div>
-          {usersLoading ? (
-            <Skeleton className="h-7 w-14" />
-          ) : (
-            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-ic-count">
-              {icCount}
-            </div>
-          )}
-          <div className="text-xs text-muted-foreground">across the organization</div>
-        </div>
-
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Admins</div>
-          {usersLoading ? (
-            <Skeleton className="h-7 w-14" />
-          ) : (
-            <div className="text-[26px] font-bold text-foreground mb-0.5" data-testid="text-admin-count">
-              {adminCount}
-            </div>
-          )}
-          <div className="text-xs text-muted-foreground">with full access</div>
-        </div>
+        <StatCard
+          label="Total users"
+          value={allUsers?.length || 0}
+          hint={`${activeUsers?.length || 0} active`}
+          loading={usersLoading}
+          testId="text-total-users"
+        />
+        <StatCard
+          label="Independent contractors"
+          value={icCount}
+          hint="across the organization"
+          loading={usersLoading}
+          testId="text-ic-count"
+        />
+        <StatCard
+          label="Admins"
+          value={adminCount}
+          hint="with full access"
+          loading={usersLoading}
+          testId="text-admin-count"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { usePendingCount } from "@/hooks/use-pending-count";
 import {
   Sidebar,
   SidebarContent,
@@ -47,6 +47,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { getInitialsFromParts } from "@/lib/initials";
 
 interface MenuItem {
   title: string;
@@ -78,91 +79,20 @@ export function AppSidebar() {
   };
 
   // Fetch pending counts for badges (only for users with supervisor privileges)
-  const { data: pendingLeaveCount } = useQuery<number>({
-    queryKey: ["/api/leave-requests/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/leave-requests/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user && isSupervisor,
-  });
-
-  const { data: pendingOvertimeCount } = useQuery<number>({
-    queryKey: ["/api/overtime-requests/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/overtime-requests/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user && isSupervisor,
-  });
-
-  const { data: pendingTimesheetsCount } = useQuery<number>({
-    queryKey: ["/api/timesheets/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/timesheets/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user && isSupervisor,
-  });
-
-  const { data: pendingInvoicesCount } = useQuery<number>({
-    queryKey: ["/api/invoices/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/invoices/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user && isSupervisor,
-  });
-
-  const { data: pendingExpensesCount } = useQuery<number>({
-    queryKey: ["/api/expenses/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/expenses/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user && isSupervisor,
-  });
-
-  const { data: pendingEvaluationsCount } = useQuery<number>({
-    queryKey: ["/api/evaluations/pending-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/evaluations/pending-count", {
-        credentials: "include",
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return data.count || 0;
-    },
-    enabled: !!user,
-  });
+  const pendingLeaveCount = usePendingCount("/api/leave-requests/pending-count", !!user && isSupervisor);
+  const pendingOvertimeCount = usePendingCount("/api/overtime-requests/pending-count", !!user && isSupervisor);
+  const pendingTimesheetsCount = usePendingCount("/api/timesheets/pending-count", !!user && isSupervisor);
+  const pendingInvoicesCount = usePendingCount("/api/invoices/pending-count", !!user && isSupervisor);
+  const pendingExpensesCount = usePendingCount("/api/expenses/pending-count", !!user && isSupervisor);
+  const pendingEvaluationsCount = usePendingCount("/api/evaluations/pending-count", !!user);
 
   const badgeCounts: Record<string, number> = {
-    leaveRequests: pendingLeaveCount || 0,
-    overtime: pendingOvertimeCount || 0,
-    timesheets: pendingTimesheetsCount || 0,
-    invoices: pendingInvoicesCount || 0,
-    evaluations: pendingEvaluationsCount || 0,
-    expenses: pendingExpensesCount || 0,
+    leaveRequests: pendingLeaveCount,
+    overtime: pendingOvertimeCount,
+    timesheets: pendingTimesheetsCount,
+    invoices: pendingInvoicesCount,
+    evaluations: pendingEvaluationsCount,
+    expenses: pendingExpensesCount,
   };
 
   const getMenuGroups = (): MenuGroup[] => {
@@ -278,7 +208,7 @@ export function AppSidebar() {
 
   const getInitials = () => {
     if (!user) return "U";
-    return `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "U";
+    return getInitialsFromParts(user.firstName, user.lastName, "U");
   };
 
   return (

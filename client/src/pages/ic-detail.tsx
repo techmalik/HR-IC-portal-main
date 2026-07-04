@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import type { User, Timesheet, Invoice, OOORequest, Evaluation, DailyEntry } from "@shared/schema";
 import { formatMoney } from "@/lib/currency";
+import { openInvoiceFile, downloadInvoiceFile } from "@/lib/invoice-file";
 import { ContractsSection, type Contract } from "@/components/contracts-section";
 import { FileSignature, AlertTriangle } from "lucide-react";
 import { differenceInDays } from "date-fns";
@@ -727,22 +728,20 @@ export default function ICDetailPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            asChild
+                            title="View invoice"
+                            onClick={() => openInvoiceFile(invoice.fileUrl, invoice.fileName)}
                             data-testid={`button-view-invoice-${invoice.id}`}
                           >
-                            <a href={invoice.fileUrl} target="_blank" rel="noopener noreferrer" title="View invoice">
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            asChild
+                            title="Download invoice"
+                            onClick={() => downloadInvoiceFile(invoice.fileUrl, invoice.fileName)}
                             data-testid={`button-download-invoice-${invoice.id}`}
                           >
-                            <a href={invoice.fileUrl} download={invoice.fileName} title="Download invoice">
-                              <Download className="w-4 h-4" />
-                            </a>
+                            <Download className="w-4 h-4" />
                           </Button>
                         </>
                       )}

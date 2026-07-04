@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/bulk-action-bar";
+import { ReviewDialog, ReviewNoteField } from "@/components/review-dialog";
+import { useReviewAction } from "@/hooks/use-review-action";
 import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -90,10 +92,6 @@ export default function ExpensesPage() {
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [reviewExpense, setReviewExpense] = useState<ExpenseWithUser | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [pendingAction, setPendingAction] = useState<"approve" | "reject" | null>(null);
 
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
@@ -213,31 +211,17 @@ export default function ExpensesPage() {
     },
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: async (params: { id: string; status: "approved" | "rejected"; reviewNote?: string }) => {
-      const res = await apiRequest("PATCH", `/api/expenses/${params.id}/review`, {
-        status: params.status,
-        reviewNote: params.reviewNote,
-      });
-      return res.json();
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/pending-count"] });
-      toast({
-        title: variables.status === "approved" ? "Expense approved" : "Expense rejected",
-      });
-      setReviewExpense(null);
-      setReviewNote("");
-      setPendingAction(null);
-    },
-    onError: () => {
-      toast({
-        title: "Action failed",
-        description: "Could not update the expense.",
-        variant: "destructive",
-      });
-    },
+  const review = useReviewAction<ExpenseWithUser>({
+    mutationFn: ({ item, action, note }) =>
+      apiRequest("PATCH", `/api/expenses/${item.id}/review`, {
+        status: action === "approve" ? "approved" : "rejected",
+        reviewNote: note.trim() || undefined,
+      }),
+    invalidateKeys: ["/api/expenses", "/api/expenses/pending-count"],
+    getToast: (action) => ({
+      title: action === "approve" ? "Expense approved" : "Expense rejected",
+    }),
+    errorMessage: "Could not update the expense.",
   });
 
   const deleteMutation = useMutation({
@@ -256,15 +240,6 @@ export default function ExpensesPage() {
       });
     },
   });
-
-  const handleSubmitReview = () => {
-    if (!reviewExpense || !pendingAction) return;
-    reviewMutation.mutate({
-      id: reviewExpense.id,
-      status: pendingAction === "approve" ? "approved" : "rejected",
-      reviewNote: reviewNote.trim() || undefined,
-    });
-  };
 
   const renderMyExpenseRow = (e: Expense, index: number) => (
     <div
@@ -360,11 +335,7 @@ export default function ExpensesPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => {
-                  setReviewExpense(e);
-                  setPendingAction("approve");
-                  setReviewNote("");
-                }}
+                onClick={() => review.start(e, "approve")}
                 data-testid={`approve-expense-${e.id}`}
               >
                 <CheckCircle className="w-4 h-4 mr-1" />
@@ -373,11 +344,7 @@ export default function ExpensesPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => {
-                  setReviewExpense(e);
-                  setPendingAction("reject");
-                  setReviewNote("");
-                }}
+                onClick={() => review.start(e, "reject")}
                 data-testid={`reject-expense-${e.id}`}
               >
                 <XCircle className="w-4 h-4 mr-1" />
@@ -669,75 +636,42 @@ export default function ExpensesPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog
-        open={!!reviewExpense}
-        onOpenChange={(open) => {
-          if (!open) {
-            setReviewExpense(null);
-            setReviewNote("");
-            setPendingAction(null);
-          }
-        }}
+      <ReviewDialog
+        open={review.isOpen}
+        onOpenChange={() => review.close()}
+        title={`${review.action === "approve" ? "Approve" : "Reject"} expense`}
+        description={
+          review.item && (
+            <>
+              {formatMoney(review.item.amount, review.item.currency)},{" "}
+              {categoryLabel(review.item.category)} on{" "}
+              {format(new Date(review.item.expenseDate), "MMM d, yyyy")}
+            </>
+          )
+        }
+        confirmLabel={`Confirm ${review.action === "approve" ? "Approval" : "Rejection"}`}
+        isPending={review.isPending}
+        confirmDisabled={!review.canConfirm}
+        onConfirm={review.confirm}
+        onCancel={review.close}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {pendingAction === "approve" ? "Approve" : "Reject"} expense
-            </DialogTitle>
-            <DialogDescription>
-              {reviewExpense && (
-                <>
-                  {formatMoney(reviewExpense.amount, reviewExpense.currency)},{" "}
-                  {categoryLabel(reviewExpense.category)} on{" "}
-                  {format(new Date(reviewExpense.expenseDate), "MMM d, yyyy")}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {reviewExpense?.description && (
-              <div className="text-sm bg-muted/50 rounded-md p-3">{reviewExpense.description}</div>
-            )}
-            <div>
-              <Label htmlFor="review-note">
-                {pendingAction === "approve" ? "Note (optional)" : "Reason (optional)"}
-              </Label>
-              <Textarea
-                id="review-note"
-                value={reviewNote}
-                onChange={(e) => setReviewNote(e.target.value)}
-                rows={3}
-                data-testid="input-review-note"
-              />
+        <div className="space-y-3">
+          {review.item?.description && (
+            <div className="text-sm bg-muted/50 rounded-md p-3">{review.item.description}</div>
+          )}
+          <ReviewNoteField
+            label={review.action === "approve" ? "Note (optional)" : "Reason (optional)"}
+            value={review.note}
+            onChange={review.setNote}
+          />
+          {review.action === "reject" && (
+            <div className="flex items-start gap-2 text-xs text-[#D97706] bg-[#FFFBEB] border border-[#FDE68A] rounded-md p-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>The contractor will be notified about the rejection.</span>
             </div>
-            {pendingAction === "reject" && (
-              <div className="flex items-start gap-2 text-xs text-[#D97706] bg-[#FFFBEB] border border-[#FDE68A] rounded-md p-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>The contractor will be notified about the rejection.</span>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setReviewExpense(null);
-                setPendingAction(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitReview}
-              disabled={reviewMutation.isPending}
-              data-testid="button-confirm-review"
-            >
-              {reviewMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Confirm {pendingAction === "approve" ? "Approval" : "Rejection"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </div>
+      </ReviewDialog>
 
       <AlertDialog
         open={!!expenseToDelete}

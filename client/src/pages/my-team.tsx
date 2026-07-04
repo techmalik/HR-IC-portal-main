@@ -5,10 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { Users, ChevronRight } from "lucide-react";
 import type { User } from "@shared/schema";
-
-function getInitials(firstName?: string | null, lastName?: string | null) {
-  return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "?";
-}
+import { getInitialsFromParts } from "@/lib/initials";
 
 // StatusBadge renders approval/workflow statuses (pending/approved/etc.), not
 // user roles — reuse its pill shape but with a role-appropriate label/color.
@@ -69,7 +66,7 @@ export default function MyTeamPage() {
               <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-[#111827] text-white text-[10px] font-bold">
-                    {getInitials(member.firstName, member.lastName)}
+                    {getInitialsFromParts(member.firstName, member.lastName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">

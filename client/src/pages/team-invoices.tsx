@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format, startOfWeek, getWeek } from "date-fns";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -16,19 +15,21 @@ import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/bulk-action-bar";
+import { ReviewDialog, ReviewNoteField } from "@/components/review-dialog";
+import { useReviewAction } from "@/hooks/use-review-action";
+import { WeeklyEntriesViewer } from "@/components/weekly-entries-viewer";
+import { useWeeklyEntries } from "@/hooks/use-weekly-entries";
 import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Loader2, 
-  FileText, 
-  ExternalLink, 
-  ChevronDown, 
-  ChevronRight,
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Loader2,
+  FileText,
+  ExternalLink,
   DollarSign,
   Calendar,
   Download,
@@ -37,10 +38,11 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Invoice, Timesheet, DailyEntry, OOORequest } from "@shared/schema";
 import { formatMoney } from "@/lib/currency";
 import { APPROVE_BUTTON_CLASS as TINTED_BTN, REJECT_BUTTON_CLASS as DANGER_BTN } from "@/lib/utils";
+import { openInvoiceFile, downloadInvoiceFile } from "@/lib/invoice-file";
+import { getInitialsFromParts, getInitialsFromName } from "@/lib/initials";
 
 import { CalendarOff } from "lucide-react";
 
@@ -58,23 +60,12 @@ interface InvoiceWithDetails extends Invoice {
   timesheet: Timesheet | null;
 }
 
-interface WeeklyGroup {
-  weekNum: number;
-  weekStart: Date;
-  entries: DailyEntry[];
-  totalHours: number;
-}
-
 export default function TeamInvoicesPage() {
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceWithDetails | null>(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [actionType, setActionType] = useState<"approve" | "reject" | "request_revision" | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceWithDetails | null>(null);
   const [payingInvoice, setPayingInvoice] = useState<InvoiceWithDetails | null>(null);
   const [paidDate, setPaidDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentReference, setPaymentReference] = useState("");
-  const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set());
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -128,87 +119,60 @@ export default function TeamInvoicesPage() {
     });
   }, [oooRequests, viewingInvoice]);
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest("PATCH", `/api/invoices/${id}`, {
-        status,
+  const invoiceStatusMap: Record<string, string> = {
+    approve: "approved",
+    reject: "rejected",
+    request_revision: "revision_requested",
+  };
+  const invoiceToastTitles: Record<string, string> = {
+    approved: "Invoice approved",
+    rejected: "Invoice rejected",
+    revision_requested: "Revision requested",
+  };
+  const invoiceToastDescriptions: Record<string, string> = {
+    approved: "The invoice has been approved.",
+    rejected: "The invoice has been rejected.",
+    revision_requested: "The contractor has been notified to make changes.",
+  };
+
+  const review = useReviewAction<InvoiceWithDetails, "approve" | "reject" | "request_revision">({
+    mutationFn: ({ item, action, note }) =>
+      apiRequest("PATCH", `/api/invoices/${item.id}`, {
+        status: invoiceStatusMap[action],
         reviewedBy: user?.id,
-        reviewNote: reviewNote || null,
-      });
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/team/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices/pending-count"] });
-      const toastTitles: Record<string, string> = {
-        approved: "Invoice approved",
-        rejected: "Invoice rejected",
-        revision_requested: "Revision requested",
+        reviewNote: note || null,
+      }),
+    invalidateKeys: [
+      "/api/team/invoices",
+      "/api/invoices",
+      "/api/invoices/pending-count",
+      "/api/team/timesheets",
+      "/api/timesheets",
+    ],
+    noteRequiredForActions: ["reject", "request_revision"],
+    getToast: (action) => {
+      const status = invoiceStatusMap[action];
+      return {
+        title: invoiceToastTitles[status] || "Invoice updated",
+        description: invoiceToastDescriptions[status] || `The invoice has been ${status}.`,
       };
-      const toastDescriptions: Record<string, string> = {
-        approved: "The invoice has been approved.",
-        rejected: "The invoice has been rejected.",
-        revision_requested: "The contractor has been notified to make changes.",
-      };
-      toast({
-        title: toastTitles[variables.status] || "Invoice updated",
-        description: toastDescriptions[variables.status] || `The invoice has been ${variables.status}.`,
-      });
-      setSelectedInvoice(null);
-      setReviewNote("");
-      setActionType(null);
-      setViewingInvoice(null);
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to process invoice. Please try again.",
-        variant: "destructive",
-      });
-    },
+    errorMessage: "Failed to process invoice. Please try again.",
+    onSuccess: () => setViewingInvoice(null),
   });
 
-  const weeklyGroups = useMemo(() => {
-    if (!entries || entries.length === 0) return [];
-    
-    const groups: Map<number, WeeklyGroup> = new Map();
-    
-    entries.forEach((entry) => {
-      const date = new Date(entry.date);
-      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-      const weekNum = getWeek(date, { weekStartsOn: 1 });
-      
-      if (!groups.has(weekNum)) {
-        groups.set(weekNum, {
-          weekNum,
-          weekStart,
-          entries: [],
-          totalHours: 0,
-        });
-      }
-      
-      const group = groups.get(weekNum)!;
-      group.entries.push(entry);
-      group.totalHours += entry.hours || 0;
-    });
-    
-    return Array.from(groups.values())
-      .sort((a, b) => a.weekNum - b.weekNum)
-      .map((group) => ({
-        ...group,
-        entries: group.entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-      }));
-  }, [entries]);
+  const { weeklyGroups, summaryStats, collapsedWeeks, setCollapsedWeeks, toggleWeekCollapse, collapseAllWeeks } =
+    useWeeklyEntries(entries);
 
   // Collapse all weeks by default when viewing an invoice
   useEffect(() => {
     if (weeklyGroups.length > 0) {
-      const allWeekNums = new Set(weeklyGroups.map(g => g.weekNum));
-      setCollapsedWeeks(allWeekNums);
+      collapseAllWeeks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weeklyGroups]);
 
-  const toggleEntryExpand = (entryId: number) => {
+  const toggleEntryExpand = (entryId: string) => {
     setExpandedEntries((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(entryId)) {
@@ -220,45 +184,6 @@ export default function TeamInvoicesPage() {
     });
   };
 
-  const toggleWeekCollapse = (weekNum: number) => {
-    setCollapsedWeeks((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(weekNum)) {
-        newSet.delete(weekNum);
-      } else {
-        newSet.add(weekNum);
-      }
-      return newSet;
-    });
-  };
-
-  const summaryStats = useMemo(() => {
-    if (!entries || entries.length === 0) return null;
-    const daysWorked = entries.length;
-    const totalHours = entries.reduce((sum, e) => sum + (e.hours || 0), 0);
-    const avgHoursPerDay = daysWorked > 0 ? (totalHours / daysWorked).toFixed(1) : "0";
-    return { daysWorked, totalHours, avgHoursPerDay };
-  }, [entries]);
-
-  const handleAction = (invoice: InvoiceWithDetails, action: "approve" | "reject" | "request_revision") => {
-    setSelectedInvoice(invoice);
-    setActionType(action);
-  };
-
-  const confirmAction = () => {
-    if (selectedInvoice && actionType) {
-      const statusMap: Record<string, string> = {
-        approve: "approved",
-        reject: "rejected",
-        request_revision: "revision_requested",
-      };
-      reviewMutation.mutate({
-        id: selectedInvoice.id,
-        status: statusMap[actionType],
-      });
-    }
-  };
-
   const getContractorName = (invoice: InvoiceWithDetails | Invoice) => {
     if ("user" in invoice && invoice.user) {
       return `${invoice.user.firstName} ${invoice.user.lastName}`;
@@ -268,12 +193,9 @@ export default function TeamInvoicesPage() {
 
   const getContractorInitials = (invoice: InvoiceWithDetails | Invoice) => {
     if ("user" in invoice && invoice.user) {
-      return `${invoice.user.firstName[0]}${invoice.user.lastName[0]}`;
+      return getInitialsFromParts(invoice.user.firstName, invoice.user.lastName);
     }
-    if (invoice.contractorName) {
-      return invoice.contractorName.split(" ").map(n => n[0]).join("").slice(0, 2);
-    }
-    return "?";
+    return getInitialsFromName(invoice.contractorName).slice(0, 2);
   };
 
   const formatAmount = (amount: number | null | undefined, currency?: string | null) => {
@@ -389,7 +311,7 @@ export default function TeamInvoicesPage() {
               size="sm"
               variant="ghost"
               className={TINTED_BTN}
-              onClick={() => handleAction(invoice, "approve")}
+              onClick={() => review.start(invoice, "approve")}
               data-testid={`button-approve-${invoice.id}`}
             >
               Approve
@@ -397,7 +319,7 @@ export default function TeamInvoicesPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleAction(invoice, "request_revision")}
+              onClick={() => review.start(invoice, "request_revision")}
               data-testid={`button-revision-${invoice.id}`}
             >
               Request revision
@@ -406,7 +328,7 @@ export default function TeamInvoicesPage() {
               size="sm"
               variant="ghost"
               className={DANGER_BTN}
-              onClick={() => handleAction(invoice, "reject")}
+              onClick={() => review.start(invoice, "reject")}
               data-testid={`button-reject-${invoice.id}`}
             >
               Reject
@@ -467,22 +389,7 @@ export default function TeamInvoicesPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                const filename = invoice.fileName || "invoice.pdf";
-                let urlStr = invoice.fileUrl!;
-                if (!invoice.fileUrl!.startsWith("http")) {
-                  const url = new URL(invoice.fileUrl!, window.location.origin);
-                  url.searchParams.set("filename", filename);
-                  url.searchParams.set("download", "true");
-                  urlStr = url.toString();
-                }
-                const link = document.createElement("a");
-                link.href = urlStr;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
+              onClick={() => downloadInvoiceFile(invoice.fileUrl, invoice.fileName)}
               data-testid={`button-download-invoice-${invoice.id}`}
             >
               <Download className="w-4 h-4 mr-1" />
@@ -679,97 +586,71 @@ export default function TeamInvoicesPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle data-testid="text-dialog-title">
-              {actionType === "approve" 
-                ? "Approve Invoice" 
-                : actionType === "request_revision"
-                ? "Request Invoice Revision"
-                : "Reject Invoice"}
-            </DialogTitle>
-            <DialogDescription>
-              {actionType === "approve"
-                ? "Confirm that you want to approve this invoice."
-                : actionType === "request_revision"
-                ? "Request changes to this invoice. The contractor will be notified and can update and resubmit."
-                : "Please provide a reason for rejecting this invoice."}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedInvoice && (
-            <div className="py-4 space-y-4">
-              <div className="p-4 rounded-md bg-muted/50">
-                <p className="font-medium">
-                  {getContractorName(selectedInvoice)} - #{selectedInvoice.invoiceNumber}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {format(new Date(selectedInvoice.year, selectedInvoice.month - 1), "MMMM yyyy")}
-                </p>
-                <p className="text-sm font-medium mt-1">
-                  Amount: {formatAmount(selectedInvoice.amount, selectedInvoice.currency)}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {actionType === "approve" 
-                    ? "Note (optional)" 
-                    : actionType === "request_revision"
-                    ? "What changes are needed?"
-                    : "Reason for rejection"}
-                </label>
-                <Textarea
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value)}
-                  placeholder={
-                    actionType === "approve"
-                      ? "Add a note for the contractor..."
-                      : actionType === "request_revision"
-                      ? "Please describe what changes are needed in the invoice..."
-                      : "Please explain why this invoice is being rejected..."
-                  }
-                  rows={3}
-                  className="resize-none"
-                  data-testid="input-review-note"
-                />
-              </div>
+      <ReviewDialog
+        open={review.isOpen}
+        onOpenChange={() => review.close()}
+        title={
+          review.action === "approve"
+            ? "Approve Invoice"
+            : review.action === "request_revision"
+            ? "Request Invoice Revision"
+            : "Reject Invoice"
+        }
+        description={
+          review.action === "approve"
+            ? "Confirm that you want to approve this invoice."
+            : review.action === "request_revision"
+            ? "Request changes to this invoice. The contractor will be notified and can update and resubmit."
+            : "Please provide a reason for rejecting this invoice."
+        }
+        confirmLabel={
+          review.action === "approve"
+            ? "Approve Invoice"
+            : review.action === "request_revision"
+            ? "Request Revision"
+            : "Reject Invoice"
+        }
+        confirmVariant={review.action === "approve" ? "default" : review.action === "request_revision" ? "outline" : "destructive"}
+        isPending={review.isPending}
+        confirmDisabled={!review.canConfirm}
+        onConfirm={review.confirm}
+        onCancel={review.close}
+      >
+        {review.item && (
+          <div className="py-4 space-y-4">
+            <div className="p-4 rounded-md bg-muted/50">
+              <p className="font-medium">
+                {getContractorName(review.item)} - #{review.item.invoiceNumber}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {format(new Date(review.item.year, review.item.month - 1), "MMMM yyyy")}
+              </p>
+              <p className="text-sm font-medium mt-1">
+                Amount: {formatAmount(review.item.amount, review.item.currency)}
+              </p>
             </div>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedInvoice(null);
-                setReviewNote("");
-                setActionType(null);
-              }}
-              data-testid="button-cancel-review"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={actionType === "approve" ? "default" : actionType === "request_revision" ? "outline" : "destructive"}
-              onClick={confirmAction}
-              disabled={reviewMutation.isPending || ((actionType === "reject" || actionType === "request_revision") && !reviewNote)}
-              data-testid="button-confirm-action"
-            >
-              {reviewMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : actionType === "approve" ? (
-                "Approve Invoice"
-              ) : actionType === "request_revision" ? (
-                "Request Revision"
-              ) : (
-                "Reject Invoice"
-              )}
-            </Button>
+            <ReviewNoteField
+              label={
+                review.action === "approve"
+                  ? "Note (optional)"
+                  : review.action === "request_revision"
+                  ? "What changes are needed?"
+                  : "Reason for rejection"
+              }
+              required={review.noteRequired}
+              value={review.note}
+              onChange={review.setNote}
+              placeholder={
+                review.action === "approve"
+                  ? "Add a note for the contractor..."
+                  : review.action === "request_revision"
+                  ? "Please describe what changes are needed in the invoice..."
+                  : "Please explain why this invoice is being rejected..."
+              }
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </ReviewDialog>
 
       <Dialog open={!!payingInvoice} onOpenChange={(open) => { if (!open) { setPayingInvoice(null); setPaymentReference(""); } }}>
         <DialogContent>
@@ -897,17 +778,7 @@ export default function TeamInvoicesPage() {
                     variant="outline"
                     size="sm"
                     className="shrink-0"
-                    onClick={() => {
-                      const filename = viewingInvoice.fileName || "invoice.pdf";
-                      // Handle both relative and absolute URLs
-                      let urlStr = viewingInvoice.fileUrl!;
-                      if (!viewingInvoice.fileUrl!.startsWith("http")) {
-                        const url = new URL(viewingInvoice.fileUrl!, window.location.origin);
-                        url.searchParams.set("filename", filename);
-                        urlStr = url.toString();
-                      }
-                      window.open(urlStr, "_blank");
-                    }}
+                    onClick={() => openInvoiceFile(viewingInvoice.fileUrl, viewingInvoice.fileName)}
                     data-testid="link-view-file"
                   >
                     <ExternalLink className="w-4 h-4 mr-1" />
@@ -917,23 +788,7 @@ export default function TeamInvoicesPage() {
                     variant="outline"
                     size="sm"
                     className="shrink-0"
-                    onClick={() => {
-                      const filename = viewingInvoice.fileName || "invoice.pdf";
-                      // Handle both relative and absolute URLs
-                      let urlStr = viewingInvoice.fileUrl!;
-                      if (!viewingInvoice.fileUrl!.startsWith("http")) {
-                        const url = new URL(viewingInvoice.fileUrl!, window.location.origin);
-                        url.searchParams.set("filename", filename);
-                        url.searchParams.set("download", "true");
-                        urlStr = url.toString();
-                      }
-                      const link = document.createElement("a");
-                      link.href = urlStr;
-                      link.download = filename;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
+                    onClick={() => downloadInvoiceFile(viewingInvoice.fileUrl, viewingInvoice.fileName)}
                     data-testid="button-download-invoice"
                   >
                     <Download className="w-4 h-4 mr-1" />
@@ -1000,71 +855,15 @@ export default function TeamInvoicesPage() {
                     </div>
                   )}
                   
-                  <div className="max-h-60 overflow-y-auto overflow-x-hidden space-y-2">
-                    {entriesLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full" />
-                      </div>
-                    ) : weeklyGroups.length > 0 ? (
-                      weeklyGroups.map((group) => (
-                        <Collapsible
-                          key={group.weekNum}
-                          open={!collapsedWeeks.has(group.weekNum)}
-                          onOpenChange={() => toggleWeekCollapse(group.weekNum)}
-                        >
-                          <CollapsibleTrigger asChild>
-                            <div
-                              className="flex items-center justify-between p-3 rounded-md bg-muted cursor-pointer hover-elevate min-w-0"
-                              data-testid={`week-header-${group.weekNum}`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                {collapsedWeeks.has(group.weekNum) ? (
-                                  <ChevronRight className="w-4 h-4 shrink-0" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 shrink-0" />
-                                )}
-                                <span className="font-medium text-sm truncate">
-                                  Week of {format(group.weekStart, "MMM d")}
-                                </span>
-                                <span className="text-xs text-muted-foreground shrink-0">
-                                  ({group.entries.length} {group.entries.length === 1 ? "day" : "days"})
-                                </span>
-                              </div>
-                              <span className="font-semibold text-sm shrink-0 ml-2">{group.totalHours}h</span>
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="pl-6 pt-2 space-y-1">
-                              {group.entries.map((entry) => (
-                                <div
-                                  key={entry.id}
-                                  className="p-2 rounded-md bg-muted/30 cursor-pointer hover-elevate"
-                                  data-testid={`entry-${entry.id}`}
-                                  onClick={() => toggleEntryExpand(entry.id)}
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm">
-                                        {format(new Date(entry.date), "EEEE, MMM d")}
-                                      </p>
-                                    </div>
-                                    <div className="text-right ml-2 shrink-0">
-                                      <p className="font-medium text-sm">{entry.hours}h</p>
-                                    </div>
-                                  </div>
-                                  <p className={`text-xs text-muted-foreground mt-1 ${expandedEntries.has(entry.id) ? 'whitespace-pre-wrap' : 'truncate'}`}>
-                                    {entry.activityLog || "No activity log"}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">No entries found</p>
-                    )}
+                  <div className="max-h-60 overflow-y-auto overflow-x-hidden">
+                    <WeeklyEntriesViewer
+                      isLoading={entriesLoading}
+                      weeklyGroups={weeklyGroups}
+                      collapsedWeeks={collapsedWeeks}
+                      onToggleWeek={toggleWeekCollapse}
+                      expandedEntries={expandedEntries}
+                      onToggleEntry={toggleEntryExpand}
+                    />
                   </div>
                 </div>
               )}
@@ -1092,7 +891,7 @@ export default function TeamInvoicesPage() {
                   variant="outline"
                   onClick={() => {
                     setViewingInvoice(null);
-                    handleAction(viewingInvoice!, "reject");
+                    review.start(viewingInvoice!, "reject");
                   }}
                   data-testid="button-reject-from-view"
                 >
@@ -1102,7 +901,7 @@ export default function TeamInvoicesPage() {
                 <Button
                   onClick={() => {
                     setViewingInvoice(null);
-                    handleAction(viewingInvoice!, "approve");
+                    review.start(viewingInvoice!, "approve");
                   }}
                   data-testid="button-approve-from-view"
                 >

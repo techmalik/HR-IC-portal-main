@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
+import { StatCard } from "@/components/stat-card";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
 import type { OOORequest, Timesheet, User, Invoice } from "@shared/schema";
 import { isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { OnboardingTour, supervisorApprovalsTourConfig, useTour } from "@/components/onboarding-tour";
+import { getGreeting } from "@/lib/dates";
+import { getInitialsFromName } from "@/lib/initials";
 
 interface OOORequestWithUser extends OOORequest {
   userName: string;
@@ -30,15 +33,6 @@ type ApprovalItem = {
   href: string;
   kind: "leave" | "timesheet";
 };
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .filter(Boolean)
-    .join("")
-    .toUpperCase() || "?";
-}
 
 export default function DashboardSupervisor() {
   const { user } = useAuth();
@@ -187,7 +181,7 @@ export default function DashboardSupervisor() {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar className="h-7 w-7">
                       <AvatarFallback className="bg-[#1C2230] border border-[#2A3545] text-[#8DAFC8] text-[9px] font-bold">
-                        {getInitials(item.name)}
+                        {getInitialsFromName(item.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
@@ -300,49 +294,6 @@ export default function DashboardSupervisor() {
       )}
     </div>
   );
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  tone?: "default" | "warning";
-}) {
-  return (
-    <div
-      className={`rounded-xl px-4 py-3.5 border-[1.5px] ${
-        tone === "warning"
-          ? "bg-[#FFFBEB] dark:bg-[#D97706]/10 border-[#FDE68A] dark:border-[#D97706]/30"
-          : "bg-white dark:bg-card border-neutral-200 dark:border-white/10"
-      }`}
-    >
-      <div
-        className={`text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 ${
-          tone === "warning" ? "text-[#92400E] dark:text-[#FBBF24]" : "text-neutral-400"
-        }`}
-      >
-        {label}
-      </div>
-      <div className={`text-2xl font-bold mb-0.5 ${tone === "warning" ? "text-[#92400E] dark:text-[#FBBF24]" : "text-neutral-900 dark:text-neutral-50"}`}>
-        {value}
-      </div>
-      <div className={`text-[11.5px] ${tone === "warning" ? "text-[#B45309] dark:text-[#FBBF24]/80" : "text-neutral-500 dark:text-neutral-400"}`}>
-        {hint}
-      </div>
-    </div>
-  );
-}
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
 }
 
 function formatMonthYear(month: number, year: number) {

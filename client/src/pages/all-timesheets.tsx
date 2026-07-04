@@ -22,6 +22,8 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { getInitialsFromParts } from "@/lib/initials";
+import { StatCard } from "@/components/stat-card";
 import type { User, Timesheet } from "@shared/schema";
 
 interface TimesheetWithUser extends Timesheet {
@@ -145,9 +147,6 @@ export default function AllTimesheetsPage() {
     setLocation(`/team/${userId}?tab=timesheets`);
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
-  };
 
   const isLoading = membersLoading || timesheetsLoading;
 
@@ -179,21 +178,13 @@ export default function AllTimesheetsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Total team members</div>
-          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.totalICs}</div>
-          <div className="text-xs text-muted-foreground">independent contractors</div>
-        </div>
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Pending review</div>
-          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.withPending}</div>
-          <div className="text-xs text-muted-foreground">with submitted timesheets</div>
-        </div>
-        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-[18px] py-3.5">
-          <div className="text-[9.5px] font-semibold text-muted-foreground tracking-[0.1em] uppercase mb-2">Active this month</div>
-          <div className="text-[26px] font-bold text-foreground mb-0.5">{stats.withCurrentMonth}</div>
-          <div className="text-xs text-muted-foreground">hours logged in {format(new Date(), "MMMM")}</div>
-        </div>
+        <StatCard label="Total team members" value={stats.totalICs} hint="independent contractors" />
+        <StatCard label="Pending review" value={stats.withPending} hint="with submitted timesheets" />
+        <StatCard
+          label="Active this month"
+          value={stats.withCurrentMonth}
+          hint={`hours logged in ${format(new Date(), "MMMM")}`}
+        />
       </div>
 
       {/* Team Members List */}
@@ -263,7 +254,7 @@ export default function AllTimesheetsPage() {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                       <AvatarFallback className="bg-[#111827] text-white text-xs font-bold">
-                        {getInitials(member.firstName, member.lastName)}
+                        {getInitialsFromParts(member.firstName, member.lastName)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
