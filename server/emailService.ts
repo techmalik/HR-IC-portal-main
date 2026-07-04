@@ -7,7 +7,7 @@ if (resend) {
   console.log(`[EMAIL] Using FROM_EMAIL: ${process.env.FROM_EMAIL || "notifications@resend.dev"}`);
 }
 
-const APP_NAME = "TeamFlow";
+const APP_NAME = "Axle";
 const BRAND_COLOR = "#2563EB";
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "notifications@resend.dev";

@@ -45,6 +45,10 @@ import AdminBlogPage from "@/pages/admin-blog";
 import AdminSeoPage from "@/pages/admin-seo";
 import ExpensesPage from "@/pages/expenses";
 import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
+import BackofficeOverviewPage from "@/pages/backoffice-overview";
+import BackofficeTenantDetailPage from "@/pages/backoffice-tenant-detail";
+import BackofficeLogsPage from "@/pages/backoffice-logs";
+import BackofficeFlagsPage from "@/pages/backoffice-flags";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -508,8 +512,22 @@ function PublicRoutes() {
   );
 }
 
+// Internal console for the Axle team (owner/engineers/support) to manage
+// tenants — mocked data only, gated the same way as other admin-only areas.
+function BackOfficeRoutes() {
+  return (
+    <Switch>
+      <Route path="/back-office" component={BackofficeOverviewPage} />
+      <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
+      <Route path="/back-office/logs" component={BackofficeLogsPage} />
+      <Route path="/back-office/flags" component={BackofficeFlagsPage} />
+      <Route component={BackofficeOverviewPage} />
+    </Switch>
+  );
+}
+
 function ProtectedRoutes() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -538,6 +556,11 @@ function ProtectedRoutes() {
   // a double header/sidebar for authenticated users.
   if (location === "/competitive-analysis") {
     return <CompetitiveAnalysisPage />;
+  }
+
+  // Internal back-office console — own sidebar/shell, gated like other admin-only areas.
+  if (location.startsWith("/back-office")) {
+    return isAdmin ? <BackOfficeRoutes /> : <AccessDenied />;
   }
 
   const sidebarStyle = {

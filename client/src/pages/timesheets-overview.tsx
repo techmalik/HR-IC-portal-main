@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, subMonths, addMonths } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
-import { Calendar, ChevronRight, Clock, CheckCircle, AlertCircle, FileText } from "lucide-react";
+import { Calendar, ChevronRight } from "lucide-react";
 import type { Timesheet } from "@shared/schema";
 import { OnboardingTour, timesheetsTourConfig } from "@/components/onboarding-tour";
+import { cn } from "@/lib/utils";
 
 export default function TimesheetsOverviewPage() {
   const { user } = useAuth();
@@ -66,38 +66,18 @@ export default function TimesheetsOverviewPage() {
         return !!getTimesheetForMonth(month, year);
       });
 
-  const getStatusIcon = (status?: string) => {
-    switch (status) {
-      case "approved":
-        return <CheckCircle className="w-5 h-5 text-emerald-500" />;
-      case "submitted":
-        return <Clock className="w-5 h-5 text-amber-500" />;
-      case "rejected":
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return <FileText className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "approved":
-        return "border-emerald-500/30 bg-emerald-500/5";
-      case "submitted":
-        return "border-amber-500/30 bg-amber-500/5";
-      case "rejected":
-        return "border-red-500/30 bg-red-500/5";
-      default:
-        return "border-border";
-    }
-  };
+  const currentTimesheet = getTimesheetForMonth(currentMonth, currentYear);
+  const currentHours = currentTimesheet?.totalHours || 0;
+  const submittedCount = (timesheets || []).filter((t) => t.status === "submitted").length;
+  const approvedThisYear = (timesheets || []).filter((t) => t.status === "approved" && t.year === currentYear);
+  const approvedHoursThisYear = approvedThisYear.reduce((sum, t) => sum + (t.totalHours || 0), 0);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Timesheets Overview</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Timesheets</h1>
+          <p className="text-[13px] text-muted-foreground">
             View your monthly timesheets and their status
           </p>
         </div>
@@ -109,59 +89,68 @@ export default function TimesheetsOverviewPage() {
         </Link>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">This month</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{currentHours}h</div>
+          <div className="text-xs mt-1.5 font-medium text-muted-foreground">
+            {currentTimesheet ? "logged so far" : "not started yet"}
+          </div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Awaiting approval</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{submittedCount}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#D97706]">{submittedCount > 0 ? "pending review" : "all clear"}</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Approved this year</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{approvedHoursThisYear}h</div>
+          <div className="text-xs mt-1.5 font-medium text-[#059669]">{approvedThisYear.length} month{approvedThisYear.length === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-32" />
+            <Skeleton key={i} className="h-14" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="tour-target-timesheet-submit">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl overflow-hidden" data-testid="tour-target-timesheet-submit">
+          <div className="px-5 py-3.5 border-b border-border">
+            <span className="text-[13.5px] font-semibold text-foreground">Past timesheets</span>
+          </div>
           {monthsToShow.map(({ month, year, label }, index) => {
             const timesheet = getTimesheetForMonth(month, year);
-            const status = timesheet?.status || "not_started";
             const totalHours = timesheet?.totalHours || 0;
 
             return (
               <Link
                 key={`${month}-${year}`}
                 href={`/timesheets?month=${month}&year=${year}`}
+                className={cn(
+                  "flex justify-between items-center px-5 py-3.5 border-b border-border last:border-b-0 hover-elevate",
+                  index % 2 === 1 && "bg-[#FAFAFA]"
+                )}
+                data-testid={`card-month-${month}-${year}`}
               >
-                <Card
-                  className={`cursor-pointer hover-elevate transition-all ${getStatusColor(timesheet?.status)}`}
-                  data-testid={`card-month-${month}-${year}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {getStatusIcon(timesheet?.status)}
-                        <div>
-                          <p className="font-semibold">{label}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {totalHours > 0 ? `${totalHours} hours logged` : "No hours logged"}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div className="mt-4 flex items-center justify-between" data-testid={index === 0 ? "tour-target-timesheet-status" : undefined}>
-                      <div className="flex items-center gap-2">
-                        {timesheet ? (
-                          <StatusBadge status={timesheet.status} />
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            Not Started
-                          </Badge>
-                        )}
-                      </div>
-                      {timesheet?.submittedAt && (
-                        <span className="text-xs text-muted-foreground">
-                          Submitted {format(new Date(timesheet.submittedAt), "MMM d")}
-                        </span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                <div>
+                  <div className="text-[13px] font-medium text-foreground">{label}</div>
+                  <div className="text-[11.5px] text-muted-foreground">
+                    {totalHours > 0 ? `${totalHours}h logged` : "No hours logged"}
+                    {timesheet?.submittedAt && ` · submitted ${format(new Date(timesheet.submittedAt), "MMM d")}`}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3" data-testid={index === 0 ? "tour-target-timesheet-status" : undefined}>
+                  {timesheet ? (
+                    <StatusBadge status={timesheet.status} />
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Not started
+                    </Badge>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
               </Link>
             );
           })}

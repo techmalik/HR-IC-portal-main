@@ -362,7 +362,7 @@ export const portalTourConfig: TourConfig = {
   steps: [
     {
       target: "tour-target-welcome",
-      title: "Welcome to TeamFlow",
+      title: "Welcome to Axle",
       description: "This is your central hub for managing timesheets, time off requests, invoices, and more. Let's take a quick tour!",
       placement: "bottom",
     },
@@ -500,7 +500,7 @@ export const ownerTourConfig: TourConfig = {
   steps: [
     {
       target: "tour-target-welcome",
-      title: "Welcome to TeamFlow!",
+      title: "Welcome to Axle!",
       description: "Congratulations on setting up your organization! Let's walk you through the key steps to get your team up and running.",
       placement: "bottom",
     },

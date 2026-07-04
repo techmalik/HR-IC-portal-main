@@ -312,7 +312,7 @@ function AnalyticsTab() {
   const totalViews = analytics?.reduce((sum, a) => sum + a.views, 0) ?? 0;
 
   return (
-    <Card>
+    <Card className="border-[1.5px] border-neutral-200 rounded-xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -321,7 +321,7 @@ function AnalyticsTab() {
               Article View Counts
             </CardTitle>
             <CardDescription>
-              Articles ranked by page views. Referral source is detected from the browser's Referer header — no cookies or user PII are collected.
+              Articles ranked by page views. Referral source is detected from the browser's Referer header, no cookies or user PII are collected.
             </CardDescription>
           </div>
           {totalViews > 0 && (
@@ -347,11 +347,11 @@ function AnalyticsTab() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-8">#</TableHead>
-                <TableHead>Article</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-                <TableHead>Top Referrers</TableHead>
+              <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                <TableHead className="w-8 text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">#</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Article</TableHead>
+                <TableHead className="text-right text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Views</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Top Referrers</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -418,6 +418,10 @@ export default function AdminBlogPage() {
 
   return (
     <div className="p-6 space-y-6">
+      <div>
+        <h1 className="font-serif text-[28px] font-normal text-neutral-900">Blog</h1>
+        <p className="text-muted-foreground mt-1">Manage articles published on the Axle blog</p>
+      </div>
       <Tabs defaultValue="articles">
         <TabsList>
           <TabsTrigger value="articles" className="flex items-center gap-2">
@@ -431,7 +435,7 @@ export default function AdminBlogPage() {
         </TabsList>
 
         <TabsContent value="articles" className="mt-4">
-          <Card>
+          <Card className="border-[1.5px] border-neutral-200 rounded-xl">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -468,12 +472,12 @@ export default function AdminBlogPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Slug</TableHead>
-                      <TableHead>Published</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead className="text-right">Read Time</TableHead>
+                    <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                      <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Title</TableHead>
+                      <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Slug</TableHead>
+                      <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Published</TableHead>
+                      <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Updated</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Read Time</TableHead>
                       <TableHead className="w-[120px]"></TableHead>
                     </TableRow>
                   </TableHeader>

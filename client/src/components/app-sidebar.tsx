@@ -40,7 +40,6 @@ import {
   Briefcase,
   CheckSquare,
   Building2,
-  Layers,
   CreditCard,
   BookOpen,
   Receipt,
@@ -245,6 +244,7 @@ export function AppSidebar() {
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
           { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
           { title: "SEO Content", url: "/admin/seo", icon: BookOpen },
+          { title: "Back-office", url: "/back-office", icon: Building2 },
         ],
       });
     }
@@ -283,15 +283,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="px-4 py-3 border-b border-sidebar-border flex flex-row items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-md shrink-0 bg-sidebar-primary flex items-center justify-center">
-            <Layers className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-lg text-sidebar-foreground">TeamFlow</span>
-            <span className="text-xs text-sidebar-foreground/70">Contractor Portal</span>
-          </div>
+      <SidebarHeader className="px-4 py-[18px] border-b border-sidebar-border flex flex-row items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5 min-w-0">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none" className="shrink-0">
+            <circle cx="14" cy="14" r="11.5" stroke="white" strokeWidth="2" />
+            <circle cx="14" cy="14" r="4" fill="white" />
+          </svg>
+          <span className="font-bold text-[15px] tracking-tight text-neutral-50">Axle</span>
         </Link>
         <SidebarTrigger
           data-testid="button-sidebar-toggle"
@@ -303,7 +301,7 @@ export function AppSidebar() {
         {menuGroups.map((group, index) => (
           <SidebarGroup key={group.label || `group-${index}`}>
             {group.label && (
-              <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider px-5 py-2">
+              <SidebarGroupLabel className="text-sidebar-foreground/50 text-[9.5px] font-semibold uppercase tracking-[0.12em] px-5 pt-3.5 pb-1">
                 {group.label}
               </SidebarGroupLabel>
             )}
@@ -342,23 +340,23 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 px-3 py-6 text-sidebar-foreground hover:bg-sidebar-accent"
+              className="w-full justify-start gap-2.5 px-2.5 py-6 text-sidebar-foreground hover:bg-sidebar-accent"
               data-testid="button-user-menu"
             >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm font-medium">
+              <Avatar className="h-[30px] w-[30px] border border-[#2A3545]">
+                <AvatarFallback className="bg-[#1C2230] text-[#8DAFC8] text-[10.5px] font-bold">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start flex-1 min-w-0">
-                <span className="font-medium text-sm truncate w-full text-left">
+                <span className="font-semibold text-[12.5px] text-neutral-200 truncate w-full text-left">
                   {user?.firstName} {user?.lastName}
                 </span>
-                <span className="text-xs text-sidebar-foreground/60 truncate w-full text-left">
+                <span className="text-[10.5px] text-sidebar-foreground/70 truncate w-full text-left">
                   {getRoleLabel()}
                 </span>
               </div>
-              <ChevronUp className="w-4 h-4 opacity-60" />
+              <ChevronUp className="w-3 h-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">

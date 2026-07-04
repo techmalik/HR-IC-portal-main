@@ -2,10 +2,10 @@
   {
     "slug": "deel-alternative",
     "competitorName": "Deel",
-    "metaTitle": "Deel Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "Looking for a Deel alternative? TeamFlow gives you contractor timesheets, invoice approvals, and audit-ready records — without payment-volume markup.",
-    "intro": "Deel is a great fit for teams that need EOR (employer of record) and global payroll bundled with contractor management. But for many SaaS and services teams, that bundle is overkill — you already have a payment provider, and what you actually need is a clean ops layer for timesheets, approvals, and audit trail. That's where TeamFlow shines.",
-    "positioning": "TeamFlow is the focused contractor ops platform. We don't process payments — we handle the approval workflow and record keeping. The result: clearer pricing, a tool that doesn't try to replace your finance stack, and a platform built end-to-end for the contractor model.",
+    "metaTitle": "Deel Alternative for Contractor Management | Axle",
+    "metaDescription": "Looking for a Deel alternative? Axle gives you contractor timesheets, invoice approvals, and audit-ready records — without payment-volume markup.",
+    "intro": "Deel is a great fit for teams that need EOR (employer of record) and global payroll bundled with contractor management. But for many SaaS and services teams, that bundle is overkill — you already have a payment provider, and what you actually need is a clean ops layer for timesheets, approvals, and audit trail. That's where Axle shines.",
+    "positioning": "Axle is the focused contractor ops platform. We don't process payments — we handle the approval workflow and record keeping. The result: clearer pricing, a tool that doesn't try to replace your finance stack, and a platform built end-to-end for the contractor model.",
     "competitorWeaknesses": [
       "Pricing scales with payment volume, country, and currency conversion — hard to predict month-over-month",
       "Bundles features you may not need (EOR, payroll) into the contractor workflow",
@@ -55,23 +55,23 @@
         "competitor": "Deel pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Deel's pricing model varies by entity, country, and payment method, with EOR fees often starting around $599/month/employee and contractor fees from $49/contractor/month plus payment processing. TeamFlow's pricing is a flat per-seat monthly fee with no transaction markup.",
+    "pricingNote": "Deel's pricing model varies by entity, country, and payment method, with EOR fees often starting around $599/month/employee and contractor fees from $49/contractor/month plus payment processing. Axle's pricing is a flat per-seat monthly fee with no transaction markup.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Deel?",
-        "a": "Deel bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Deel?",
+        "a": "Deel bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Deel to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Deel."
+        "q": "Can I switch from Deel to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Deel."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Deel does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Deel does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Deel for contractor-only teams?",
-        "a": "Usually, yes. Deel's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Deel for contractor-only teams?",
+        "a": "Usually, yes. Deel's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -79,10 +79,10 @@
   {
     "slug": "remote-alternative",
     "competitorName": "Remote",
-    "metaTitle": "Remote.com Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is a leaner alternative to Remote.com — contractor timesheets, invoice approvals, and audit-ready records without EOR markup.",
-    "intro": "Remote is a strong choice for companies that need full EOR services in many countries, but the platform's strength is also its overhead: you're paying for global payroll infrastructure even if you only need a contractor ops layer. TeamFlow takes the opposite approach — narrow scope, transparent pricing, faster setup.",
-    "positioning": "TeamFlow handles contractor operations without trying to be your global payroll provider. Use your existing payment provider; let TeamFlow handle the approval workflow, records, and audit trail.",
+    "metaTitle": "Remote.com Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is a leaner alternative to Remote.com — contractor timesheets, invoice approvals, and audit-ready records without EOR markup.",
+    "intro": "Remote is a strong choice for companies that need full EOR services in many countries, but the platform's strength is also its overhead: you're paying for global payroll infrastructure even if you only need a contractor ops layer. Axle takes the opposite approach — narrow scope, transparent pricing, faster setup.",
+    "positioning": "Axle handles contractor operations without trying to be your global payroll provider. Use your existing payment provider; let Axle handle the approval workflow, records, and audit trail.",
     "competitorWeaknesses": [
       "EOR-first product means contractor-only customers pay for capabilities they don't use",
       "Contractor payment fees apply per transaction in addition to platform fees",
@@ -132,23 +132,23 @@
         "competitor": "Remote pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Remote charges $29/contractor/month for contractor management plus payment fees per transaction. TeamFlow uses a flat per-seat fee with no transaction markup.",
+    "pricingNote": "Remote charges $29/contractor/month for contractor management plus payment fees per transaction. Axle uses a flat per-seat fee with no transaction markup.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Remote?",
-        "a": "Remote bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Remote?",
+        "a": "Remote bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Remote to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Remote."
+        "q": "Can I switch from Remote to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Remote."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Remote does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Remote does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Remote for contractor-only teams?",
-        "a": "Usually, yes. Remote's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Remote for contractor-only teams?",
+        "a": "Usually, yes. Remote's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -156,10 +156,10 @@
   {
     "slug": "rippling-alternative",
     "competitorName": "Rippling",
-    "metaTitle": "Rippling Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "Looking for a Rippling alternative just for contractors? TeamFlow handles timesheets, invoices, and OOO without the full HRIS overhead.",
-    "intro": "Rippling is a powerful HRIS for companies that want one system for HR, IT, and finance. But if your team is contractor-heavy, you don't need an HRIS — you need a focused contractor ops layer. TeamFlow is that layer, without the breadth and price tag of Rippling.",
-    "positioning": "TeamFlow does one thing very well: manage independent contractors. We don't try to be your HRIS, your IT provisioning system, or your payroll engine. The benefit: less overhead, faster setup, lower cost.",
+    "metaTitle": "Rippling Alternative for Contractor Management | Axle",
+    "metaDescription": "Looking for a Rippling alternative just for contractors? Axle handles timesheets, invoices, and OOO without the full HRIS overhead.",
+    "intro": "Rippling is a powerful HRIS for companies that want one system for HR, IT, and finance. But if your team is contractor-heavy, you don't need an HRIS — you need a focused contractor ops layer. Axle is that layer, without the breadth and price tag of Rippling.",
+    "positioning": "Axle does one thing very well: manage independent contractors. We don't try to be your HRIS, your IT provisioning system, or your payroll engine. The benefit: less overhead, faster setup, lower cost.",
     "competitorWeaknesses": [
       "Pricing assumes broad HRIS adoption; contractor-only customers overpay",
       "Setup and configuration meaningful even for the contractor-only module",
@@ -209,23 +209,23 @@
         "competitor": "Rippling pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Rippling's contractor management is part of a broader HRIS suite with module-based pricing typically starting at $8/employee/month plus per-module fees. TeamFlow is a flat per-seat fee that covers all contractor ops features.",
+    "pricingNote": "Rippling's contractor management is part of a broader HRIS suite with module-based pricing typically starting at $8/employee/month plus per-module fees. Axle is a flat per-seat fee that covers all contractor ops features.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Rippling?",
-        "a": "Rippling bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Rippling?",
+        "a": "Rippling bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Rippling to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Rippling."
+        "q": "Can I switch from Rippling to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Rippling."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Rippling does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Rippling does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Rippling for contractor-only teams?",
-        "a": "Usually, yes. Rippling's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Rippling for contractor-only teams?",
+        "a": "Usually, yes. Rippling's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -233,10 +233,10 @@
   {
     "slug": "bonsai-alternative",
     "competitorName": "Bonsai",
-    "metaTitle": "Bonsai Alternative for Contractor-Heavy Teams | TeamFlow",
-    "metaDescription": "TeamFlow is the team-first alternative to Bonsai — built for companies managing contractors, not for solo freelancers managing themselves.",
-    "intro": "Bonsai is excellent if you're an individual freelancer running your own books. But if you're on the other side of the table — a company managing many contractors — Bonsai's freelancer-first design starts working against you. TeamFlow flips the model: built from the ground up for the company managing contractors, not for the contractor managing themselves.",
-    "positioning": "TeamFlow is purpose-built for the company side of the contractor relationship. Layered approval workflows, supervisor permissions, multi-tenant role-based access — features that don't exist when the platform's primary user is a solo freelancer.",
+    "metaTitle": "Bonsai Alternative for Contractor-Heavy Teams | Axle",
+    "metaDescription": "Axle is the team-first alternative to Bonsai — built for companies managing contractors, not for solo freelancers managing themselves.",
+    "intro": "Bonsai is excellent if you're an individual freelancer running your own books. But if you're on the other side of the table — a company managing many contractors — Bonsai's freelancer-first design starts working against you. Axle flips the model: built from the ground up for the company managing contractors, not for the contractor managing themselves.",
+    "positioning": "Axle is purpose-built for the company side of the contractor relationship. Layered approval workflows, supervisor permissions, multi-tenant role-based access — features that don't exist when the platform's primary user is a solo freelancer.",
     "competitorWeaknesses": [
       "Designed for individual freelancers, not multi-contractor teams",
       "Approval workflows and supervisor roles aren't first-class concepts",
@@ -286,23 +286,23 @@
         "competitor": "Bonsai pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Bonsai's pricing assumes a freelancer-first model and starts at around $25/month per freelancer's account. TeamFlow charges per company seat with a free plan for small teams.",
+    "pricingNote": "Bonsai's pricing assumes a freelancer-first model and starts at around $25/month per freelancer's account. Axle charges per company seat with a free plan for small teams.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Bonsai?",
-        "a": "Bonsai is designed around the individual freelancer running their own business — invoicing clients, tracking their own time, managing their own contracts. TeamFlow is designed for the company on the other side of the table: the ops, finance, and supervisor roles managing many contractors at once, with layered approvals and role-based permissions."
+        "q": "How is Axle different from Bonsai?",
+        "a": "Bonsai is designed around the individual freelancer running their own business — invoicing clients, tracking their own time, managing their own contracts. Axle is designed for the company on the other side of the table: the ops, finance, and supervisor roles managing many contractors at once, with layered approvals and role-based permissions."
       },
       {
-        "q": "Can I switch from Bonsai to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Bonsai."
+        "q": "Can I switch from Bonsai to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Bonsai."
       },
       {
-        "q": "Does TeamFlow give supervisors and admins their own views?",
+        "q": "Does Axle give supervisors and admins their own views?",
         "a": "Yes. Contractors, supervisors, admins, and owners are first-class roles. Each sees only what their role needs — a structure that's awkward to retrofit on a tool built for solo freelancers."
       },
       {
         "q": "Can a small team start free?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice approval, and OOO features."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice approval, and OOO features."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -310,10 +310,10 @@
   {
     "slug": "worksuite-alternative",
     "competitorName": "Worksuite",
-    "metaTitle": "Worksuite Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is a faster-to-deploy alternative to Worksuite for SaaS teams managing contractors — without the enterprise overhead.",
-    "intro": "Worksuite (formerly Shortlist) is built for enterprise contractor management — large workforces, complex compliance, custom integrations. For SaaS startups and mid-market services firms, that depth often becomes overhead. TeamFlow gives you the ops fundamentals without the enterprise procurement cycle.",
-    "positioning": "TeamFlow is contractor ops for teams that don't have a procurement team. Setup measured in hours; pricing transparent and per-seat; functionality focused on the 90% of contractor workflows that actually move the needle.",
+    "metaTitle": "Worksuite Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is a faster-to-deploy alternative to Worksuite for SaaS teams managing contractors — without the enterprise overhead.",
+    "intro": "Worksuite (formerly Shortlist) is built for enterprise contractor management — large workforces, complex compliance, custom integrations. For SaaS startups and mid-market services firms, that depth often becomes overhead. Axle gives you the ops fundamentals without the enterprise procurement cycle.",
+    "positioning": "Axle is contractor ops for teams that don't have a procurement team. Setup measured in hours; pricing transparent and per-seat; functionality focused on the 90% of contractor workflows that actually move the needle.",
     "competitorWeaknesses": [
       "Enterprise-first sales process; not self-serve",
       "Implementation typically requires dedicated CSM and configuration weeks",
@@ -363,23 +363,23 @@
         "competitor": "Worksuite pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Worksuite uses quote-based enterprise pricing typically scaled to workforce size and modules. TeamFlow uses transparent per-seat pricing with a free plan for small teams.",
+    "pricingNote": "Worksuite uses quote-based enterprise pricing typically scaled to workforce size and modules. Axle uses transparent per-seat pricing with a free plan for small teams.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Worksuite?",
-        "a": "Worksuite is enterprise contractor management — large workforces, complex compliance modules, custom integrations, sales-led procurement. TeamFlow targets the SaaS and mid-market services teams that don't have a procurement team and don't need that depth. Setup is self-serve, pricing is transparent, and the workflows are scoped to what most teams actually use day to day."
+        "q": "How is Axle different from Worksuite?",
+        "a": "Worksuite is enterprise contractor management — large workforces, complex compliance modules, custom integrations, sales-led procurement. Axle targets the SaaS and mid-market services teams that don't have a procurement team and don't need that depth. Setup is self-serve, pricing is transparent, and the workflows are scoped to what most teams actually use day to day."
       },
       {
-        "q": "Can I switch from Worksuite to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Worksuite."
+        "q": "Can I switch from Worksuite to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Worksuite."
       },
       {
         "q": "Can a non-enterprise team get started without a sales call?",
-        "a": "Yes. TeamFlow has self-serve signup, a free plan for up to 3 contractors, and per-seat pricing published on the website. Most teams are operational the same day."
+        "a": "Yes. Axle has self-serve signup, a free plan for up to 3 contractors, and per-seat pricing published on the website. Most teams are operational the same day."
       },
       {
         "q": "What about advanced compliance and integrations?",
-        "a": "If your team has dedicated procurement and needs deep custom integrations, Worksuite or another enterprise platform may be a better fit. TeamFlow is intentionally scoped to the workflows that move the needle for SaaS and services teams; we'd rather do that well than be everything to everyone."
+        "a": "If your team has dedicated procurement and needs deep custom integrations, Worksuite or another enterprise platform may be a better fit. Axle is intentionally scoped to the workflows that move the needle for SaaS and services teams; we'd rather do that well than be everything to everyone."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -387,10 +387,10 @@
   {
     "slug": "plane-alternative",
     "competitorName": "Plane",
-    "metaTitle": "Plane Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the ops-focused alternative to Plane — contractor timesheets, approvals, and audit trail without payment-rail markup.",
-    "intro": "Plane (formerly Pilot) is built around international payment processing — they pay your contractors, you pay them. That's valuable if you don't have a global payment infrastructure already. If you do, you're effectively paying twice: once for your bank and again for Plane's rails. TeamFlow handles the ops layer without touching payments.",
-    "positioning": "TeamFlow is contractor ops without payment processing. Approve timesheets, approve invoices, keep clean records. Pay through whatever financial infrastructure you already have.",
+    "metaTitle": "Plane Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the ops-focused alternative to Plane — contractor timesheets, approvals, and audit trail without payment-rail markup.",
+    "intro": "Plane (formerly Pilot) is built around international payment processing — they pay your contractors, you pay them. That's valuable if you don't have a global payment infrastructure already. If you do, you're effectively paying twice: once for your bank and again for Plane's rails. Axle handles the ops layer without touching payments.",
+    "positioning": "Axle is contractor ops without payment processing. Approve timesheets, approve invoices, keep clean records. Pay through whatever financial infrastructure you already have.",
     "competitorWeaknesses": [
       "Pricing tied to payment processing — costs scale with payment volume",
       "Payment processing markup baked into the platform fee",
@@ -440,23 +440,23 @@
         "competitor": "Plane pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Plane's pricing model includes per-contractor monthly fees plus payment processing fees per transaction. TeamFlow charges a flat per-seat fee with no transaction processing.",
+    "pricingNote": "Plane's pricing model includes per-contractor monthly fees plus payment processing fees per transaction. Axle charges a flat per-seat fee with no transaction processing.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Plane?",
-        "a": "Plane bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Plane?",
+        "a": "Plane bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Plane to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Plane."
+        "q": "Can I switch from Plane to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Plane."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Plane does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Plane does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Plane for contractor-only teams?",
-        "a": "Usually, yes. Plane's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Plane for contractor-only teams?",
+        "a": "Usually, yes. Plane's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -464,10 +464,10 @@
   {
     "slug": "multiplier-alternative",
     "competitorName": "Multiplier",
-    "metaTitle": "Multiplier Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the focused contractor ops alternative to Multiplier — without EOR overhead or payment-volume pricing.",
-    "intro": "Multiplier focuses on global hiring, EOR services, and contractor payments. If you need EOR, that's a real value proposition. If you don't, the EOR-first design becomes friction: extra fields, extra workflows, extra cost. TeamFlow is the contractor ops layer without the EOR overhead.",
-    "positioning": "TeamFlow is contractor management without EOR. We assume you've already figured out how to engage contractors legally; we focus on the ongoing operational layer.",
+    "metaTitle": "Multiplier Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the focused contractor ops alternative to Multiplier — without EOR overhead or payment-volume pricing.",
+    "intro": "Multiplier focuses on global hiring, EOR services, and contractor payments. If you need EOR, that's a real value proposition. If you don't, the EOR-first design becomes friction: extra fields, extra workflows, extra cost. Axle is the contractor ops layer without the EOR overhead.",
+    "positioning": "Axle is contractor management without EOR. We assume you've already figured out how to engage contractors legally; we focus on the ongoing operational layer.",
     "competitorWeaknesses": [
       "EOR-first design imposes overhead on contractor-only customers",
       "Pricing scales with payment volume in addition to platform fees",
@@ -517,23 +517,23 @@
         "competitor": "Multiplier pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Multiplier's pricing model includes per-contractor and per-EOR-employee monthly fees plus payment fees per transaction. TeamFlow uses a flat per-seat fee with no payment markup.",
+    "pricingNote": "Multiplier's pricing model includes per-contractor and per-EOR-employee monthly fees plus payment fees per transaction. Axle uses a flat per-seat fee with no payment markup.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Multiplier?",
-        "a": "Multiplier bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Multiplier?",
+        "a": "Multiplier bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Multiplier to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Multiplier."
+        "q": "Can I switch from Multiplier to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Multiplier."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Multiplier does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Multiplier does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Multiplier for contractor-only teams?",
-        "a": "Usually, yes. Multiplier's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Multiplier for contractor-only teams?",
+        "a": "Usually, yes. Multiplier's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -541,10 +541,10 @@
   {
     "slug": "hubstaff-alternative",
     "competitorName": "Hubstaff",
-    "metaTitle": "Hubstaff Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the trust-based alternative to Hubstaff — contractor timesheets and invoice approvals without screenshot surveillance.",
-    "intro": "Hubstaff's core value proposition is automated time tracking with screenshots and activity monitoring. That works for some teams. For most modern contractor relationships — particularly with senior specialists — surveillance-based time tracking actively damages the relationship. TeamFlow takes the opposite stance: structured self-reported timesheets with approval gates.",
-    "positioning": "TeamFlow trusts contractors to track their own time and gives supervisors clean approval workflows to verify it. No screenshots, no activity monitoring, no surveillance — just structured records and supervisor sign-off.",
+    "metaTitle": "Hubstaff Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the trust-based alternative to Hubstaff — contractor timesheets and invoice approvals without screenshot surveillance.",
+    "intro": "Hubstaff's core value proposition is automated time tracking with screenshots and activity monitoring. That works for some teams. For most modern contractor relationships — particularly with senior specialists — surveillance-based time tracking actively damages the relationship. Axle takes the opposite stance: structured self-reported timesheets with approval gates.",
+    "positioning": "Axle trusts contractors to track their own time and gives supervisors clean approval workflows to verify it. No screenshots, no activity monitoring, no surveillance — just structured records and supervisor sign-off.",
     "competitorWeaknesses": [
       "Screenshot and activity monitoring damages senior contractor relationships",
       "Surveillance approach incompatible with how most knowledge work is done",
@@ -594,22 +594,22 @@
         "competitor": "Hubstaff pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Hubstaff charges per-user/month with feature tiers, often starting around $7-$20/user/month. TeamFlow uses a flat per-seat fee with all features included.",
+    "pricingNote": "Hubstaff charges per-user/month with feature tiers, often starting around $7-$20/user/month. Axle uses a flat per-seat fee with all features included.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Hubstaff?",
-        "a": "Hubstaff is fundamentally a time-tracking tool — it tracks hours and produces basic invoices. TeamFlow extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, Hubstaff is fine; if you need the rest of the ops layer, TeamFlow is built for it."
+        "q": "How is Axle different from Hubstaff?",
+        "a": "Hubstaff is fundamentally a time-tracking tool — it tracks hours and produces basic invoices. Axle extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, Hubstaff is fine; if you need the rest of the ops layer, Axle is built for it."
       },
       {
-        "q": "Can I switch from Hubstaff to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Hubstaff."
+        "q": "Can I switch from Hubstaff to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Hubstaff."
       },
       {
-        "q": "Does TeamFlow have its own time tracking?",
+        "q": "Does Axle have its own time tracking?",
         "a": "Yes. Contractors log hours per day with project/client tags, supervisors approve, and approved hours flow into the invoice approval queue automatically. The difference from Hubstaff is that approval gating and audit trail are first-class, not bolted on."
       },
       {
-        "q": "Can I use TeamFlow alongside Hubstaff?",
+        "q": "Can I use Axle alongside Hubstaff?",
         "a": "Some teams do, especially during a transition. Long term, having two systems for the same hours creates reconciliation work — most teams consolidate onto one tool once they validate the new workflow."
       }
     ],
@@ -618,10 +618,10 @@
   {
     "slug": "harvest-alternative",
     "competitorName": "Harvest",
-    "metaTitle": "Harvest Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow extends beyond Harvest's time-tracking focus with contractor invoicing, OOO, and audit-ready approval workflows.",
-    "intro": "Harvest is a long-standing time-tracking and invoicing tool. It's good at what it does. But contractor management isn't just time tracking — it's the full lifecycle: timesheets, approval, invoicing, OOO, audit trail. TeamFlow covers that full lifecycle in one tool, where Harvest stops at time and basic invoicing.",
-    "positioning": "TeamFlow is the full contractor ops platform. Time tracking is one component — alongside approval workflows, OOO management, audit trail, and supervisor permissions that don't exist in pure time-tracking tools.",
+    "metaTitle": "Harvest Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle extends beyond Harvest's time-tracking focus with contractor invoicing, OOO, and audit-ready approval workflows.",
+    "intro": "Harvest is a long-standing time-tracking and invoicing tool. It's good at what it does. But contractor management isn't just time tracking — it's the full lifecycle: timesheets, approval, invoicing, OOO, audit trail. Axle covers that full lifecycle in one tool, where Harvest stops at time and basic invoicing.",
+    "positioning": "Axle is the full contractor ops platform. Time tracking is one component — alongside approval workflows, OOO management, audit trail, and supervisor permissions that don't exist in pure time-tracking tools.",
     "competitorWeaknesses": [
       "Time-tracking-first product; contractor workflows are an afterthought",
       "OOO and supervisor approval not first-class features",
@@ -671,22 +671,22 @@
         "competitor": "Harvest pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Harvest charges per user/month at around $13.75/user with a free plan limited to one user and two projects. TeamFlow includes all contractor ops features at every paid tier.",
+    "pricingNote": "Harvest charges per user/month at around $13.75/user with a free plan limited to one user and two projects. Axle includes all contractor ops features at every paid tier.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Harvest?",
-        "a": "Harvest is fundamentally a time-tracking tool — it tracks hours and produces basic invoices. TeamFlow extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, Harvest is fine; if you need the rest of the ops layer, TeamFlow is built for it."
+        "q": "How is Axle different from Harvest?",
+        "a": "Harvest is fundamentally a time-tracking tool — it tracks hours and produces basic invoices. Axle extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, Harvest is fine; if you need the rest of the ops layer, Axle is built for it."
       },
       {
-        "q": "Can I switch from Harvest to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Harvest."
+        "q": "Can I switch from Harvest to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Harvest."
       },
       {
-        "q": "Does TeamFlow have its own time tracking?",
+        "q": "Does Axle have its own time tracking?",
         "a": "Yes. Contractors log hours per day with project/client tags, supervisors approve, and approved hours flow into the invoice approval queue automatically. The difference from Harvest is that approval gating and audit trail are first-class, not bolted on."
       },
       {
-        "q": "Can I use TeamFlow alongside Harvest?",
+        "q": "Can I use Axle alongside Harvest?",
         "a": "Some teams do, especially during a transition. Long term, having two systems for the same hours creates reconciliation work — most teams consolidate onto one tool once they validate the new workflow."
       }
     ],
@@ -695,10 +695,10 @@
   {
     "slug": "gusto-alternative",
     "competitorName": "Gusto",
-    "metaTitle": "Gusto Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow handles contractor ops the way Gusto handles employee payroll — focused, structured, and audit-grade.",
-    "intro": "Gusto is the gold standard for SMB payroll. Their contractor support exists, but it's a side feature — focused on 1099 generation and basic payment, not on the operational layer of timesheet approval, OOO, and audit trail. TeamFlow complements Gusto: keep Gusto for payroll and 1099 generation, add TeamFlow for the ops layer.",
-    "positioning": "TeamFlow is the ops complement to Gusto. We track timesheets, approvals, OOO, and audit trail. Gusto handles the actual payment and 1099. The two work cleanly together.",
+    "metaTitle": "Gusto Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle handles contractor ops the way Gusto handles employee payroll — focused, structured, and audit-grade.",
+    "intro": "Gusto is the gold standard for SMB payroll. Their contractor support exists, but it's a side feature — focused on 1099 generation and basic payment, not on the operational layer of timesheet approval, OOO, and audit trail. Axle complements Gusto: keep Gusto for payroll and 1099 generation, add Axle for the ops layer.",
+    "positioning": "Axle is the ops complement to Gusto. We track timesheets, approvals, OOO, and audit trail. Gusto handles the actual payment and 1099. The two work cleanly together.",
     "competitorWeaknesses": [
       "Contractor management is a secondary feature behind employee payroll",
       "Limited approval workflow for contractor timesheets",
@@ -748,23 +748,23 @@
         "competitor": "Gusto pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Gusto's contractor-only plan starts at $35/month plus $6 per contractor. TeamFlow's per-seat pricing covers contractor ops features specifically — and the two tools work cleanly side by side.",
+    "pricingNote": "Gusto's contractor-only plan starts at $35/month plus $6 per contractor. Axle's per-seat pricing covers contractor ops features specifically — and the two tools work cleanly side by side.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Gusto?",
-        "a": "Gusto is built primarily for SMB payroll. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. TeamFlow is the ops layer that complements Gusto: keep Gusto for SMB payroll and tax forms, add TeamFlow for contractor operations."
+        "q": "How is Axle different from Gusto?",
+        "a": "Gusto is built primarily for SMB payroll. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. Axle is the ops layer that complements Gusto: keep Gusto for SMB payroll and tax forms, add Axle for contractor operations."
       },
       {
-        "q": "Can TeamFlow and Gusto be used together?",
-        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Gusto handles SMB payroll; TeamFlow handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from TeamFlow can be paid through Gusto or your bank."
+        "q": "Can Axle and Gusto be used together?",
+        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Gusto handles SMB payroll; Axle handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from Axle can be paid through Gusto or your bank."
       },
       {
-        "q": "Does TeamFlow handle 1099 generation?",
+        "q": "Does Axle handle 1099 generation?",
         "a": "No. We deliberately keep tax form generation out of scope and integrate cleanly with the tools that do it well, including Gusto. Contractor records and totals are exportable, so producing 1099s through your existing provider is straightforward."
       },
       {
-        "q": "Can I switch from Gusto to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Gusto."
+        "q": "Can I switch from Gusto to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Gusto."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -772,10 +772,10 @@
   {
     "slug": "paychex-alternative",
     "competitorName": "Paychex",
-    "metaTitle": "Paychex Alternative for Modern Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the modern, self-serve alternative to Paychex for SaaS teams managing contractors at scale.",
-    "intro": "Paychex is built for traditional payroll and HR — large workforces, established processes, dedicated HR teams. For modern SaaS and services teams that work primarily with independent contractors, that legacy infrastructure is overkill. TeamFlow is the modern, self-serve contractor ops layer that fits how today's teams actually work.",
-    "positioning": "TeamFlow is contractor ops for the modern team — self-serve, fast to set up, transparent pricing, no enterprise sales motion.",
+    "metaTitle": "Paychex Alternative for Modern Contractor Management | Axle",
+    "metaDescription": "Axle is the modern, self-serve alternative to Paychex for SaaS teams managing contractors at scale.",
+    "intro": "Paychex is built for traditional payroll and HR — large workforces, established processes, dedicated HR teams. For modern SaaS and services teams that work primarily with independent contractors, that legacy infrastructure is overkill. Axle is the modern, self-serve contractor ops layer that fits how today's teams actually work.",
+    "positioning": "Axle is contractor ops for the modern team — self-serve, fast to set up, transparent pricing, no enterprise sales motion.",
     "competitorWeaknesses": [
       "Enterprise-first product designed for traditional HR teams",
       "Setup involves sales conversations and lengthy onboarding",
@@ -825,23 +825,23 @@
         "competitor": "Paychex pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Paychex uses quote-based pricing for contractor management bundled with broader HR services. TeamFlow is a flat per-seat fee, with a free plan for small teams.",
+    "pricingNote": "Paychex uses quote-based pricing for contractor management bundled with broader HR services. Axle is a flat per-seat fee, with a free plan for small teams.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Paychex?",
-        "a": "Paychex is built primarily for traditional payroll and HR. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. TeamFlow is the ops layer that complements Paychex: keep Paychex for traditional payroll and HR and tax forms, add TeamFlow for contractor operations."
+        "q": "How is Axle different from Paychex?",
+        "a": "Paychex is built primarily for traditional payroll and HR. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. Axle is the ops layer that complements Paychex: keep Paychex for traditional payroll and HR and tax forms, add Axle for contractor operations."
       },
       {
-        "q": "Can TeamFlow and Paychex be used together?",
-        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Paychex handles traditional payroll and HR; TeamFlow handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from TeamFlow can be paid through Paychex or your bank."
+        "q": "Can Axle and Paychex be used together?",
+        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Paychex handles traditional payroll and HR; Axle handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from Axle can be paid through Paychex or your bank."
       },
       {
-        "q": "Does TeamFlow handle 1099 generation?",
+        "q": "Does Axle handle 1099 generation?",
         "a": "No. We deliberately keep tax form generation out of scope and integrate cleanly with the tools that do it well, including Paychex. Contractor records and totals are exportable, so producing 1099s through your existing provider is straightforward."
       },
       {
-        "q": "Can I switch from Paychex to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Paychex."
+        "q": "Can I switch from Paychex to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Paychex."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -849,10 +849,10 @@
   {
     "slug": "qwick-alternative",
     "competitorName": "Qwick",
-    "metaTitle": "Qwick Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow handles ongoing contractor operations the way Qwick handles short-term staffing — focused tools for different problems.",
-    "intro": "Qwick is built for hospitality on-demand staffing — booking workers for individual shifts. TeamFlow is built for ongoing contractor relationships — recurring engagements with timesheet, invoice, and OOO management. Different problems, different tools.",
-    "positioning": "TeamFlow is for ongoing contractor relationships, not on-demand shift booking. If your contractors come back week after week, project after project, TeamFlow's ops layer fits cleanly.",
+    "metaTitle": "Qwick Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle handles ongoing contractor operations the way Qwick handles short-term staffing — focused tools for different problems.",
+    "intro": "Qwick is built for hospitality on-demand staffing — booking workers for individual shifts. Axle is built for ongoing contractor relationships — recurring engagements with timesheet, invoice, and OOO management. Different problems, different tools.",
+    "positioning": "Axle is for ongoing contractor relationships, not on-demand shift booking. If your contractors come back week after week, project after project, Axle's ops layer fits cleanly.",
     "competitorWeaknesses": [
       "Designed for one-off shifts, not ongoing engagements",
       "Limited approval and invoice workflows for recurring billing",
@@ -902,23 +902,23 @@
         "competitor": "Qwick pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Qwick charges per-shift booking fees for hospitality staffing. TeamFlow charges per-seat for ongoing contractor relationship management — they're complementary tools for different needs.",
+    "pricingNote": "Qwick charges per-shift booking fees for hospitality staffing. Axle charges per-seat for ongoing contractor relationship management — they're complementary tools for different needs.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Qwick?",
-        "a": "Qwick is built around on-demand hospitality shift staffing — its core value is the service it provides on top of the platform. TeamFlow is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, TeamFlow is the focused alternative."
+        "q": "How is Axle different from Qwick?",
+        "a": "Qwick is built around on-demand hospitality shift staffing — its core value is the service it provides on top of the platform. Axle is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, Axle is the focused alternative."
       },
       {
-        "q": "Can I switch from Qwick to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Qwick."
+        "q": "Can I switch from Qwick to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Qwick."
       },
       {
-        "q": "Does TeamFlow handle contractor classification or compliance services?",
-        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. TeamFlow focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
+        "q": "Does Axle handle contractor classification or compliance services?",
+        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. Axle focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
       },
       {
-        "q": "Is TeamFlow a fit if I'm not running an enterprise workforce?",
-        "a": "Yes. TeamFlow is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
+        "q": "Is Axle a fit if I'm not running an enterprise workforce?",
+        "a": "Yes. Axle is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -926,10 +926,10 @@
   {
     "slug": "oyster-alternative",
     "competitorName": "Oyster",
-    "metaTitle": "Oyster Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the focused contractor ops alternative to Oyster — without EOR overhead or payment-volume pricing.",
-    "intro": "Oyster's strength is global EOR and compliance for distributed teams. If you need EOR, Oyster is a strong choice. If you don't — if your contractors are properly classified independent contractors — TeamFlow gives you the ops layer without the EOR overhead.",
-    "positioning": "TeamFlow is contractor ops without EOR. We assume you've already validated contractor classification; we focus on the ongoing operational workflows.",
+    "metaTitle": "Oyster Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the focused contractor ops alternative to Oyster — without EOR overhead or payment-volume pricing.",
+    "intro": "Oyster's strength is global EOR and compliance for distributed teams. If you need EOR, Oyster is a strong choice. If you don't — if your contractors are properly classified independent contractors — Axle gives you the ops layer without the EOR overhead.",
+    "positioning": "Axle is contractor ops without EOR. We assume you've already validated contractor classification; we focus on the ongoing operational workflows.",
     "competitorWeaknesses": [
       "EOR-first design imposes overhead on contractor-only customers",
       "Pricing structure assumes EOR usage",
@@ -979,23 +979,23 @@
         "competitor": "Oyster pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Oyster's contractor management starts around $29/contractor/month plus payment fees, with EOR services significantly higher. TeamFlow uses a flat per-seat fee.",
+    "pricingNote": "Oyster's contractor management starts around $29/contractor/month plus payment fees, with EOR services significantly higher. Axle uses a flat per-seat fee.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Oyster?",
-        "a": "Oyster bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Oyster?",
+        "a": "Oyster bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Oyster to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Oyster."
+        "q": "Can I switch from Oyster to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Oyster."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Oyster does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Oyster does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Oyster for contractor-only teams?",
-        "a": "Usually, yes. Oyster's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Oyster for contractor-only teams?",
+        "a": "Usually, yes. Oyster's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1003,10 +1003,10 @@
   {
     "slug": "papaya-global-alternative",
     "competitorName": "Papaya Global",
-    "metaTitle": "Papaya Global Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the lean alternative to Papaya Global for SaaS teams that need contractor ops without enterprise payroll overhead.",
-    "intro": "Papaya Global is built for enterprise global payroll and EOR — comprehensive, but heavy. For SaaS and mid-market services firms that need a contractor ops layer without the enterprise payroll engine, TeamFlow is the lighter alternative.",
-    "positioning": "TeamFlow is contractor ops sized for SaaS and mid-market — not for Fortune 500 global payroll. The right tool when you need clean operational records without enterprise platform overhead.",
+    "metaTitle": "Papaya Global Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the lean alternative to Papaya Global for SaaS teams that need contractor ops without enterprise payroll overhead.",
+    "intro": "Papaya Global is built for enterprise global payroll and EOR — comprehensive, but heavy. For SaaS and mid-market services firms that need a contractor ops layer without the enterprise payroll engine, Axle is the lighter alternative.",
+    "positioning": "Axle is contractor ops sized for SaaS and mid-market — not for Fortune 500 global payroll. The right tool when you need clean operational records without enterprise platform overhead.",
     "competitorWeaknesses": [
       "Enterprise-grade product means enterprise-grade procurement cycle",
       "Pricing not transparent — quote-based",
@@ -1056,23 +1056,23 @@
         "competitor": "Papaya Global pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Papaya Global uses quote-based enterprise pricing. TeamFlow uses transparent per-seat pricing with a free plan for small teams.",
+    "pricingNote": "Papaya Global uses quote-based enterprise pricing. Axle uses transparent per-seat pricing with a free plan for small teams.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Papaya Global?",
-        "a": "Papaya Global bundles employer-of-record, global payroll, and contractor payments into one platform. TeamFlow is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, TeamFlow gives you the ops layer without that bundle."
+        "q": "How is Axle different from Papaya Global?",
+        "a": "Papaya Global bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle."
       },
       {
-        "q": "Can I switch from Papaya Global to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Papaya Global."
+        "q": "Can I switch from Papaya Global to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Papaya Global."
       },
       {
-        "q": "Does TeamFlow process contractor payments the way Papaya Global does?",
-        "a": "No — and that's intentional. TeamFlow approves and records the work; your finance team pays through your existing banking infrastructure. That keeps TeamFlow lean and avoids introducing another financial intermediary."
+        "q": "Does Axle process contractor payments the way Papaya Global does?",
+        "a": "No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary."
       },
       {
-        "q": "Is TeamFlow cheaper than Papaya Global for contractor-only teams?",
-        "a": "Usually, yes. Papaya Global's effective cost scales with payment volume, country mix, and FX fees. TeamFlow is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
+        "q": "Is Axle cheaper than Papaya Global for contractor-only teams?",
+        "a": "Usually, yes. Papaya Global's effective cost scales with payment volume, country mix, and FX fees. Axle is a flat per-seat fee with no per-payment markup, so the price stays predictable as your contractor spend grows."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1080,10 +1080,10 @@
   {
     "slug": "justworks-alternative",
     "competitorName": "Justworks",
-    "metaTitle": "Justworks Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the contractor-focused alternative to Justworks — without PEO overhead, just clean ops workflows.",
-    "intro": "Justworks is a PEO — they co-employ your team, handling payroll, benefits, and HR compliance. That's a strong fit for full-time employee teams. For contractor-heavy teams, the PEO model doesn't apply: contractors aren't employees. TeamFlow is contractor management built for that distinction.",
-    "positioning": "TeamFlow is contractor ops separate from PEO services. We don't co-employ; we don't run benefits; we don't process payroll. We give you the operational layer for managing independent contractors as independent contractors.",
+    "metaTitle": "Justworks Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the contractor-focused alternative to Justworks — without PEO overhead, just clean ops workflows.",
+    "intro": "Justworks is a PEO — they co-employ your team, handling payroll, benefits, and HR compliance. That's a strong fit for full-time employee teams. For contractor-heavy teams, the PEO model doesn't apply: contractors aren't employees. Axle is contractor management built for that distinction.",
+    "positioning": "Axle is contractor ops separate from PEO services. We don't co-employ; we don't run benefits; we don't process payroll. We give you the operational layer for managing independent contractors as independent contractors.",
     "competitorWeaknesses": [
       "PEO model doesn't apply to contractors",
       "Contractor management is a secondary feature",
@@ -1133,23 +1133,23 @@
         "competitor": "Justworks pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Justworks's PEO model bundles payroll, benefits, and HR services starting around $59/employee/month. TeamFlow's contractor-focused per-seat pricing avoids the PEO bundle.",
+    "pricingNote": "Justworks's PEO model bundles payroll, benefits, and HR services starting around $59/employee/month. Axle's contractor-focused per-seat pricing avoids the PEO bundle.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Justworks?",
-        "a": "Justworks is built primarily for PEO services and benefits. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. TeamFlow is the ops layer that complements Justworks: keep Justworks for PEO services and benefits and tax forms, add TeamFlow for contractor operations."
+        "q": "How is Axle different from Justworks?",
+        "a": "Justworks is built primarily for PEO services and benefits. Its contractor support exists, but it's a secondary feature focused on payment and tax forms (1099 in the US), not on the operational layer of timesheet approval, OOO, and audit trail. Axle is the ops layer that complements Justworks: keep Justworks for PEO services and benefits and tax forms, add Axle for contractor operations."
       },
       {
-        "q": "Can TeamFlow and Justworks be used together?",
-        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Justworks handles PEO services and benefits; TeamFlow handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from TeamFlow can be paid through Justworks or your bank."
+        "q": "Can Axle and Justworks be used together?",
+        "a": "Yes — that's the most common pattern for teams running both employees and contractors. Justworks handles PEO services and benefits; Axle handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from Axle can be paid through Justworks or your bank."
       },
       {
-        "q": "Does TeamFlow handle 1099 generation?",
+        "q": "Does Axle handle 1099 generation?",
         "a": "No. We deliberately keep tax form generation out of scope and integrate cleanly with the tools that do it well, including Justworks. Contractor records and totals are exportable, so producing 1099s through your existing provider is straightforward."
       },
       {
-        "q": "Can I switch from Justworks to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Justworks."
+        "q": "Can I switch from Justworks to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off Justworks."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1157,10 +1157,10 @@
   {
     "slug": "workmarket-alternative",
     "competitorName": "WorkMarket",
-    "metaTitle": "WorkMarket Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the modern, lighter alternative to WorkMarket for SaaS teams managing contractors at scale.",
-    "intro": "WorkMarket is enterprise contractor management — built for large workforces with complex compliance. For SaaS and mid-market services firms, TeamFlow gives you the operational fundamentals without the enterprise procurement and configuration cycle.",
-    "positioning": "TeamFlow is contractor ops without the enterprise weight. Self-serve, fast to set up, focused on the workflows most teams actually use.",
+    "metaTitle": "WorkMarket Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the modern, lighter alternative to WorkMarket for SaaS teams managing contractors at scale.",
+    "intro": "WorkMarket is enterprise contractor management — built for large workforces with complex compliance. For SaaS and mid-market services firms, Axle gives you the operational fundamentals without the enterprise procurement and configuration cycle.",
+    "positioning": "Axle is contractor ops without the enterprise weight. Self-serve, fast to set up, focused on the workflows most teams actually use.",
     "competitorWeaknesses": [
       "Enterprise sales motion and procurement cycle",
       "Implementation requires dedicated team for weeks",
@@ -1210,23 +1210,23 @@
         "competitor": "WorkMarket pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "WorkMarket uses quote-based enterprise pricing. TeamFlow is a transparent per-seat fee with a free plan for small teams.",
+    "pricingNote": "WorkMarket uses quote-based enterprise pricing. Axle is a transparent per-seat fee with a free plan for small teams.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from WorkMarket?",
-        "a": "WorkMarket is built around enterprise contractor workforce management — its core value is the service it provides on top of the platform. TeamFlow is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, TeamFlow is the focused alternative."
+        "q": "How is Axle different from WorkMarket?",
+        "a": "WorkMarket is built around enterprise contractor workforce management — its core value is the service it provides on top of the platform. Axle is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, Axle is the focused alternative."
       },
       {
-        "q": "Can I switch from WorkMarket to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off WorkMarket."
+        "q": "Can I switch from WorkMarket to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off WorkMarket."
       },
       {
-        "q": "Does TeamFlow handle contractor classification or compliance services?",
-        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. TeamFlow focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
+        "q": "Does Axle handle contractor classification or compliance services?",
+        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. Axle focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
       },
       {
-        "q": "Is TeamFlow a fit if I'm not running an enterprise workforce?",
-        "a": "Yes. TeamFlow is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
+        "q": "Is Axle a fit if I'm not running an enterprise workforce?",
+        "a": "Yes. Axle is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1234,10 +1234,10 @@
   {
     "slug": "mbo-partners-alternative",
     "competitorName": "MBO Partners",
-    "metaTitle": "MBO Partners Alternative for Contractor Management | TeamFlow",
-    "metaDescription": "TeamFlow is the lean ops platform alternative to MBO Partners for teams managing direct independent contractor relationships.",
-    "intro": "MBO Partners specializes in compliance services and W-2 conversion for independent professionals. If you need that compliance layer, MBO is a strong choice. If you've handled compliance separately and you just need the operational layer for managing independent contractors, TeamFlow is the focused alternative.",
-    "positioning": "TeamFlow is contractor ops without compliance services. We focus on the operational workflows; you handle classification and compliance through whatever channel makes sense for your team.",
+    "metaTitle": "MBO Partners Alternative for Contractor Management | Axle",
+    "metaDescription": "Axle is the lean ops platform alternative to MBO Partners for teams managing direct independent contractor relationships.",
+    "intro": "MBO Partners specializes in compliance services and W-2 conversion for independent professionals. If you need that compliance layer, MBO is a strong choice. If you've handled compliance separately and you just need the operational layer for managing independent contractors, Axle is the focused alternative.",
+    "positioning": "Axle is contractor ops without compliance services. We focus on the operational workflows; you handle classification and compliance through whatever channel makes sense for your team.",
     "competitorWeaknesses": [
       "Compliance-services model adds significant cost on top of ops",
       "W-2 conversion features irrelevant for properly-classified contractors",
@@ -1287,23 +1287,23 @@
         "competitor": "MBO Partners pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "MBO Partners' pricing bundles compliance services with the ops platform. TeamFlow charges only for the ops layer.",
+    "pricingNote": "MBO Partners' pricing bundles compliance services with the ops platform. Axle charges only for the ops layer.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from MBO Partners?",
-        "a": "MBO Partners is built around contractor compliance services and W-2 conversion — its core value is the service it provides on top of the platform. TeamFlow is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, TeamFlow is the focused alternative."
+        "q": "How is Axle different from MBO Partners?",
+        "a": "MBO Partners is built around contractor compliance services and W-2 conversion — its core value is the service it provides on top of the platform. Axle is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, Axle is the focused alternative."
       },
       {
-        "q": "Can I switch from MBO Partners to TeamFlow without losing history?",
-        "a": "Yes. TeamFlow lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off MBO Partners."
+        "q": "Can I switch from MBO Partners to Axle without losing history?",
+        "a": "Yes. Axle lets you import contractor records and historical timesheet/invoice data via CSV, so you keep a continuous audit trail when you migrate off MBO Partners."
       },
       {
-        "q": "Does TeamFlow handle contractor classification or compliance services?",
-        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. TeamFlow focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
+        "q": "Does Axle handle contractor classification or compliance services?",
+        "a": "No. We assume you've validated classification through legal, HR, or a specialized provider. Axle focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business."
       },
       {
-        "q": "Is TeamFlow a fit if I'm not running an enterprise workforce?",
-        "a": "Yes. TeamFlow is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
+        "q": "Is Axle a fit if I'm not running an enterprise workforce?",
+        "a": "Yes. Axle is sized for SaaS and mid-market services teams: self-serve, transparent per-seat pricing, free plan for small teams, no procurement cycle."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1311,10 +1311,10 @@
   {
     "slug": "andela-alternative",
     "competitorName": "Andela",
-    "metaTitle": "Andela Alternative: Manage Your Own Contractors | TeamFlow",
-    "metaDescription": "Already have your own contractor network? TeamFlow is the ops platform — Andela is a marketplace. Different tools for different problems.",
-    "intro": "Andela is a contractor marketplace — they source and place engineers for you. TeamFlow is an ops platform — once you have your own contractor relationships (whether sourced through Andela or independently), TeamFlow is where you manage the ongoing operations. The two complement each other.",
-    "positioning": "TeamFlow is contractor ops — not contractor sourcing. Bring your own contractors and manage them with structured timesheets, approvals, and audit trail.",
+    "metaTitle": "Andela Alternative: Manage Your Own Contractors | Axle",
+    "metaDescription": "Already have your own contractor network? Axle is the ops platform — Andela is a marketplace. Different tools for different problems.",
+    "intro": "Andela is a contractor marketplace — they source and place engineers for you. Axle is an ops platform — once you have your own contractor relationships (whether sourced through Andela or independently), Axle is where you manage the ongoing operations. The two complement each other.",
+    "positioning": "Axle is contractor ops — not contractor sourcing. Bring your own contractors and manage them with structured timesheets, approvals, and audit trail.",
     "competitorWeaknesses": [
       "Marketplace model — sourcing, not ops management",
       "No tooling for managing contractors you sourced elsewhere",
@@ -1364,23 +1364,23 @@
         "competitor": "Andela pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Andela charges placement fees per engagement plus markup on contractor rates. TeamFlow charges only for the ops layer — bring contractors from any source.",
+    "pricingNote": "Andela charges placement fees per engagement plus markup on contractor rates. Axle charges only for the ops layer — bring contractors from any source.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Andela?",
-        "a": "Andela is a marketplace — it sources and places freelancers and takes a cut of the engagement. TeamFlow is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Andela, manage day-to-day on TeamFlow — or bring contractors from any source."
+        "q": "How is Axle different from Andela?",
+        "a": "Andela is a marketplace — it sources and places freelancers and takes a cut of the engagement. Axle is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Andela, manage day-to-day on Axle — or bring contractors from any source."
       },
       {
-        "q": "Do I need to leave Andela to use TeamFlow?",
-        "a": "No. TeamFlow doesn't replace Andela's sourcing — it sits alongside it. Many teams keep using Andela for discovery and run TeamFlow as the ongoing ops layer once a contractor relationship is established."
+        "q": "Do I need to leave Andela to use Axle?",
+        "a": "No. Axle doesn't replace Andela's sourcing — it sits alongside it. Many teams keep using Andela for discovery and run Axle as the ongoing ops layer once a contractor relationship is established."
       },
       {
-        "q": "Does TeamFlow take a markup on contractor pay?",
-        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. TeamFlow charges a flat per-seat platform fee — what you pay your contractor is what they receive."
+        "q": "Does Axle take a markup on contractor pay?",
+        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. Axle charges a flat per-seat platform fee — what you pay your contractor is what they receive."
       },
       {
         "q": "Can I import historical engagements from Andela?",
-        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Andela's in-platform messaging and reviews stay where they are — TeamFlow focuses on the operational record from engagement onward."
+        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Andela's in-platform messaging and reviews stay where they are — Axle focuses on the operational record from engagement onward."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1388,10 +1388,10 @@
   {
     "slug": "toptal-alternative",
     "competitorName": "Toptal",
-    "metaTitle": "Toptal Alternative: Manage Your Own Contractors | TeamFlow",
-    "metaDescription": "TeamFlow is the ops layer for managing the contractors you already have — Toptal is a sourcing marketplace.",
-    "intro": "Toptal is a curated talent marketplace — they screen and place freelance engineers, designers, and product managers. TeamFlow is the ops platform that manages the ongoing relationship after the placement. If you've already sourced your contractors (through Toptal or otherwise), TeamFlow is where you manage them.",
-    "positioning": "TeamFlow is contractor ops — not contractor sourcing. Manage timesheets, approvals, invoices, and audit trail across your existing contractor network.",
+    "metaTitle": "Toptal Alternative: Manage Your Own Contractors | Axle",
+    "metaDescription": "Axle is the ops layer for managing the contractors you already have — Toptal is a sourcing marketplace.",
+    "intro": "Toptal is a curated talent marketplace — they screen and place freelance engineers, designers, and product managers. Axle is the ops platform that manages the ongoing relationship after the placement. If you've already sourced your contractors (through Toptal or otherwise), Axle is where you manage them.",
+    "positioning": "Axle is contractor ops — not contractor sourcing. Manage timesheets, approvals, invoices, and audit trail across your existing contractor network.",
     "competitorWeaknesses": [
       "Marketplace model — sourcing, not ongoing ops",
       "Markup on contractor rates as part of the placement",
@@ -1441,23 +1441,23 @@
         "competitor": "Toptal pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Toptal builds margin into contractor rates as part of its sourcing service. TeamFlow charges per ops seat with no markup on what you pay contractors.",
+    "pricingNote": "Toptal builds margin into contractor rates as part of its sourcing service. Axle charges per ops seat with no markup on what you pay contractors.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Toptal?",
-        "a": "Toptal is a marketplace — it sources and places freelancers and takes a cut of the engagement. TeamFlow is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Toptal, manage day-to-day on TeamFlow — or bring contractors from any source."
+        "q": "How is Axle different from Toptal?",
+        "a": "Toptal is a marketplace — it sources and places freelancers and takes a cut of the engagement. Axle is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Toptal, manage day-to-day on Axle — or bring contractors from any source."
       },
       {
-        "q": "Do I need to leave Toptal to use TeamFlow?",
-        "a": "No. TeamFlow doesn't replace Toptal's sourcing — it sits alongside it. Many teams keep using Toptal for discovery and run TeamFlow as the ongoing ops layer once a contractor relationship is established."
+        "q": "Do I need to leave Toptal to use Axle?",
+        "a": "No. Axle doesn't replace Toptal's sourcing — it sits alongside it. Many teams keep using Toptal for discovery and run Axle as the ongoing ops layer once a contractor relationship is established."
       },
       {
-        "q": "Does TeamFlow take a markup on contractor pay?",
-        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. TeamFlow charges a flat per-seat platform fee — what you pay your contractor is what they receive."
+        "q": "Does Axle take a markup on contractor pay?",
+        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. Axle charges a flat per-seat platform fee — what you pay your contractor is what they receive."
       },
       {
         "q": "Can I import historical engagements from Toptal?",
-        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Toptal's in-platform messaging and reviews stay where they are — TeamFlow focuses on the operational record from engagement onward."
+        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Toptal's in-platform messaging and reviews stay where they are — Axle focuses on the operational record from engagement onward."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1465,10 +1465,10 @@
   {
     "slug": "upwork-alternative",
     "competitorName": "Upwork",
-    "metaTitle": "Upwork Alternative for Managing Your Contractor Team | TeamFlow",
-    "metaDescription": "TeamFlow is the ops platform for ongoing contractor relationships — Upwork is a marketplace for one-off freelance gigs.",
-    "intro": "Upwork is a freelance marketplace — great for one-off gigs and discovery. But once you have a recurring contractor team, Upwork's marketplace fees, payment structure, and platform overhead become friction. TeamFlow is the ops platform for managing that recurring contractor team directly.",
-    "positioning": "TeamFlow is for managing your established contractor team off-marketplace. Direct relationships, no marketplace markup, structured ops workflows.",
+    "metaTitle": "Upwork Alternative for Managing Your Contractor Team | Axle",
+    "metaDescription": "Axle is the ops platform for ongoing contractor relationships — Upwork is a marketplace for one-off freelance gigs.",
+    "intro": "Upwork is a freelance marketplace — great for one-off gigs and discovery. But once you have a recurring contractor team, Upwork's marketplace fees, payment structure, and platform overhead become friction. Axle is the ops platform for managing that recurring contractor team directly.",
+    "positioning": "Axle is for managing your established contractor team off-marketplace. Direct relationships, no marketplace markup, structured ops workflows.",
     "competitorWeaknesses": [
       "Marketplace fees apply to every transaction",
       "Communication and payment locked into the platform",
@@ -1518,23 +1518,23 @@
         "competitor": "Upwork pricing often varies with payment volume and country"
       }
     ],
-    "pricingNote": "Upwork charges marketplace fees on every contractor payment plus platform service fees. TeamFlow charges per ops seat with no transaction or rate markup.",
+    "pricingNote": "Upwork charges marketplace fees on every contractor payment plus platform service fees. Axle charges per ops seat with no transaction or rate markup.",
     "faqs": [
       {
-        "q": "How is TeamFlow different from Upwork?",
-        "a": "Upwork is a marketplace — it sources and places freelancers and takes a cut of the engagement. TeamFlow is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Upwork, manage day-to-day on TeamFlow — or bring contractors from any source."
+        "q": "How is Axle different from Upwork?",
+        "a": "Upwork is a marketplace — it sources and places freelancers and takes a cut of the engagement. Axle is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on Upwork, manage day-to-day on Axle — or bring contractors from any source."
       },
       {
-        "q": "Do I need to leave Upwork to use TeamFlow?",
-        "a": "No. TeamFlow doesn't replace Upwork's sourcing — it sits alongside it. Many teams keep using Upwork for discovery and run TeamFlow as the ongoing ops layer once a contractor relationship is established."
+        "q": "Do I need to leave Upwork to use Axle?",
+        "a": "No. Axle doesn't replace Upwork's sourcing — it sits alongside it. Many teams keep using Upwork for discovery and run Axle as the ongoing ops layer once a contractor relationship is established."
       },
       {
-        "q": "Does TeamFlow take a markup on contractor pay?",
-        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. TeamFlow charges a flat per-seat platform fee — what you pay your contractor is what they receive."
+        "q": "Does Axle take a markup on contractor pay?",
+        "a": "No. Marketplaces typically build margin into contractor rates or charge transaction fees. Axle charges a flat per-seat platform fee — what you pay your contractor is what they receive."
       },
       {
         "q": "Can I import historical engagements from Upwork?",
-        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Upwork's in-platform messaging and reviews stay where they are — TeamFlow focuses on the operational record from engagement onward."
+        "a": "You can import contractor records and historical timesheet/invoice data via CSV. Upwork's in-platform messaging and reviews stay where they are — Axle focuses on the operational record from engagement onward."
       }
     ],
     "updatedDate": "2025-04-30"

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format, startOfDay } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,8 +46,7 @@ import { cn } from "@/lib/utils";
 import { trackFirst } from "@/lib/analytics";
 import { enqueueDraft } from "@/lib/offline-queue";
 import { Input } from "@/components/ui/input";
-import { Plus, CalendarIcon, Loader2, Clock, Edit2, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Plus, CalendarIcon, Loader2, Edit2, RefreshCw } from "lucide-react";
 import type { OOORequest, User } from "@shared/schema";
 import { OnboardingTour, oooTourConfig } from "@/components/onboarding-tour";
 
@@ -245,17 +244,32 @@ export default function OOORequestsPage() {
 
   const isEditingRejected = editingRequest?.status === "rejected";
 
-  const sortedRequests = requests?.sort((a, b) => 
+  const sortedRequests = requests?.sort((a, b) =>
     new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
   ) || [];
+
+  // Stat row derived entirely from the requests already fetched above.
+  const daysInRequest = (r: OOORequest) => {
+    const start = new Date(r.startDate);
+    const end = new Date(r.endDate);
+    const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    return r.oooType === "half_day" ? days * 0.5 : days;
+  };
+  const currentYear = new Date().getFullYear();
+  const approvedThisYear = sortedRequests.filter(
+    (r) => r.status === "approved" && new Date(r.startDate).getFullYear() === currentYear
+  );
+  const approvedDaysThisYear = approvedThisYear.reduce((sum, r) => sum + daysInRequest(r), 0);
+  const pendingRequests = sortedRequests.filter((r) => r.status === "pending");
+  const upcomingRequests = sortedRequests.filter((r) => new Date(r.startDate) >= today);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Out of Office Requests</h1>
-          <p className="text-muted-foreground mt-1">
-            Request time off and view your OOO history
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Time Off</h1>
+          <p className="text-[13px] text-muted-foreground">
+            Request and track your out of office time
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -463,71 +477,95 @@ export default function OOORequestsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Approved this year</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{approvedDaysThisYear}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#059669]">{approvedThisYear.length} request{approvedThisYear.length === 1 ? "" : "s"}</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Pending requests</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{pendingRequests.length}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#D97706]">{pendingRequests.length > 0 ? "awaiting approval" : "all clear"}</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Upcoming</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{upcomingRequests.length}</div>
+          <div className="text-xs mt-1.5 font-medium text-muted-foreground">scheduled</div>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-32 w-full" />
         </div>
       ) : sortedRequests.length > 0 ? (
-        <Card data-testid="tour-target-ooo-list" ref={listRef}>
-          <CardHeader>
-            <CardTitle className="text-base">All Requests</CardTitle>
-            <CardDescription>Your out of office request history</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {sortedRequests.map((request, index) => {
-                const bgClass = request.status === "approved" 
-                  ? "bg-emerald-500/5 border-emerald-500/20"
-                  : request.status === "rejected"
-                  ? "bg-red-500/5 border-red-500/20"
-                  : "bg-amber-500/5 border-amber-500/20";
-
-                return (
-                  <div
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl overflow-hidden" data-testid="tour-target-ooo-list" ref={listRef}>
+          <div className="px-5 py-3.5 border-b border-border">
+            <span className="text-[13.5px] font-semibold text-foreground">Your requests</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#F9FAFB] border-b border-border">
+                  <th className="px-5 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Period</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Type</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Days</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Status</th>
+                  <th className="px-5 py-2.5 text-right text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRequests.map((request, index) => (
+                  <tr
                     key={request.id}
-                    className={`flex items-center justify-between p-4 rounded-md border ${bgClass}`}
+                    className={cn(
+                      "border-b border-border last:border-b-0 align-top",
+                      index % 2 === 1 && "bg-[#FAFAFA]"
+                    )}
                     data-testid={`request-${request.id}`}
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium">
-                          {format(new Date(request.startDate), "MMM d")} -{" "}
-                          {format(new Date(request.endDate), "MMM d, yyyy")}
-                        </p>
-                        <Badge variant="outline" className="text-xs">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {request.oooType === "half_day" ? "Half Day" : "Full Day"}
-                        </Badge>
+                    <td className="px-5 py-3.5">
+                      <div className="text-[13px] font-medium text-foreground">
+                        {format(new Date(request.startDate), "MMM d")} to{" "}
+                        {format(new Date(request.endDate), "MMM d, yyyy")}
                       </div>
                       {request.reason && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {request.reason}
-                        </p>
+                        <div className="text-[11.5px] text-muted-foreground mt-0.5">{request.reason}</div>
                       )}
                       {request.reviewNote && request.status === "rejected" && (
-                        <p className="text-sm text-red-600 dark:text-red-400 mt-2">
-                          Note: {request.reviewNote}
-                        </p>
+                        <div className="text-[11.5px] text-[#DC2626] mt-1">Note. {request.reviewNote}</div>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2" data-testid={index === 0 ? "tour-target-ooo-status" : undefined}>
+                    </td>
+                    <td className="px-2 py-3.5 text-[12.5px] text-muted-foreground whitespace-nowrap">
+                      {request.oooType === "half_day" ? "Half day" : "Full day"}
+                    </td>
+                    <td className="px-2 py-3.5 text-[13px] font-semibold text-foreground whitespace-nowrap">
+                      {daysInRequest(request)}
+                    </td>
+                    <td className="px-2 py-3.5" data-testid={index === 0 ? "tour-target-ooo-status" : undefined}>
                       <StatusBadge status={request.status} />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditRequest(request)}
-                        data-testid={`button-edit-${request.id}`}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex justify-end">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleEditRequest(request)}
+                          data-testid={`button-edit-${request.id}`}
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Edit
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <Card data-testid="tour-target-ooo-list" ref={listRef}>
           <CardContent className="py-12">

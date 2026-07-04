@@ -52,9 +52,9 @@ interface CompetitorPage {
 function StatusBadge({ status }: { status?: PageStatus }) {
   const s = status ?? "published";
   const cls = s === "published"
-    ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{s === "published" ? "Published" : "Draft"}</span>;
+    ? "bg-[#ECFDF5] text-[#059669]"
+    : "bg-[#F9FAFB] text-[#9CA3AF] border border-[#E5E7EB]";
+  return <span className={`inline-block rounded-full px-3 py-[3px] text-xs font-medium ${cls}`}>{s === "published" ? "Published" : "Draft"}</span>;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -342,7 +342,7 @@ function CompetitorEditor({
       </div>
 
       <div>
-        <label className="text-sm font-medium">TeamFlow strengths (one per line)</label>
+        <label className="text-sm font-medium">Axle strengths (one per line)</label>
         <Textarea
           rows={4}
           value={form.teamflowStrengths.join("\n")}
@@ -351,7 +351,7 @@ function CompetitorEditor({
       </div>
 
       <div>
-        <label className="text-sm font-medium">Comparison rows (Feature :: TeamFlow :: Competitor, one per line)</label>
+        <label className="text-sm font-medium">Comparison rows (Feature :: Axle :: Competitor, one per line)</label>
         <Textarea
           rows={6}
           value={form.comparison.map((c) => `${c.feature} :: ${c.teamflow} :: ${c.competitor}`).join("\n")}
@@ -443,11 +443,11 @@ function IndustriesTab() {
   });
 
   return (
-    <Card>
+    <Card className="border-[1.5px] border-neutral-200 rounded-xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2"><Building2 className="w-5 h-5" />Industry Pages</CardTitle>
+            <CardTitle className="text-[13.5px] font-semibold text-neutral-900 flex items-center gap-2"><Building2 className="w-4 h-4 text-neutral-400" />Industry pages</CardTitle>
             <CardDescription>
               Pages live at <code>/contractor-management-for-:slug</code>. Edits are reflected immediately without a code deploy.
             </CardDescription>
@@ -463,11 +463,11 @@ function IndustriesTab() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Industry</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Updated</TableHead>
+              <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Industry</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Slug</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Status</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Updated</TableHead>
                 <TableHead className="w-[140px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -550,11 +550,11 @@ function CompetitorsTab() {
   });
 
   return (
-    <Card>
+    <Card className="border-[1.5px] border-neutral-200 rounded-xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2"><Swords className="w-5 h-5" />Competitor Comparison Pages</CardTitle>
+            <CardTitle className="text-[13.5px] font-semibold text-neutral-900 flex items-center gap-2"><Swords className="w-4 h-4 text-neutral-400" />Competitor comparison pages</CardTitle>
             <CardDescription>
               Pages live at <code>/:slug</code> (e.g. /deel-alternative). Edits are reflected immediately.
             </CardDescription>
@@ -570,11 +570,11 @@ function CompetitorsTab() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Competitor</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Updated</TableHead>
+              <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Competitor</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Slug</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Status</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Updated</TableHead>
                 <TableHead className="w-[140px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -641,9 +641,9 @@ export default function AdminSeoPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">SEO Content</h1>
+        <h1 className="font-serif text-[28px] font-normal text-neutral-900">SEO content</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage programmatic SEO pages — industry guides and competitor comparison pages. Changes go live immediately.
+          Manage programmatic SEO pages, industry guides and competitor comparison pages. Changes go live immediately.
         </p>
       </div>
       <Tabs defaultValue="industries">

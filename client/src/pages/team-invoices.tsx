@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, startOfWeek, getWeek } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -43,6 +42,11 @@ import type { Invoice, Timesheet, DailyEntry, OOORequest } from "@shared/schema"
 import { formatMoney } from "@/lib/currency";
 
 import { CalendarOff } from "lucide-react";
+
+const TINTED_BTN =
+  "bg-[#ECFDF5] dark:bg-[#059669]/15 text-[#059669] dark:text-[#34D399] border-[1.5px] border-[#A7F3D0] dark:border-[#059669]/30 hover:bg-[#D1FAE5] dark:hover:bg-[#059669]/25 font-semibold";
+const DANGER_BTN =
+  "bg-[#FEF2F2] dark:bg-[#DC2626]/15 text-[#DC2626] dark:text-[#F87171] border-[1.5px] border-[#FECACA] dark:border-[#DC2626]/30 hover:bg-[#FEE2E2] dark:hover:bg-[#DC2626]/25";
 
 type BasicUser = { id: string; firstName: string; lastName: string; };
 
@@ -331,42 +335,42 @@ export default function TeamInvoicesPage() {
     return (
       <div
         key={invoice.id}
-        className="p-4 rounded-md bg-muted/50 space-y-3"
+        className="px-[18px] py-3.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0"
         data-testid={`invoice-card-${invoice.id}`}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 min-w-0">
             {showActions && (invoice.status === "pending_review" || invoice.status === "revision_requested") && (
               <Checkbox
-                className="mt-1 h-5 w-5"
+                className="mt-1 h-4 w-4"
                 checked={invoiceBulk.isSelected(invoice.id)}
                 onCheckedChange={(c) => invoiceBulk.setSelected(invoice.id, c === true)}
                 data-testid={`select-invoice-${invoice.id}`}
                 aria-label="Select invoice"
               />
             )}
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-[#1C2230] border border-[#2A3545] text-[#8DAFC8] text-[10px] font-bold">
                 {getContractorInitials(invoice)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="font-medium">{getContractorName(invoice)}</p>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                <p className="text-sm text-muted-foreground">
+              <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">{getContractorName(invoice)}</p>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <p className="text-[11.5px] text-neutral-400">
                   #{invoice.invoiceNumber}
                 </p>
-                <span className="text-muted-foreground">-</span>
-                <p className="text-sm text-muted-foreground">
+                <span className="text-neutral-300">·</span>
+                <p className="text-[11.5px] text-neutral-400">
                   {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")}
                 </p>
               </div>
-              <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <p className="text-sm font-medium">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">
                   {formatAmount(invoice.amount, invoice.currency)}
                 </p>
                 {invoice.timesheet && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[11px] text-neutral-400">
                     ({invoice.timesheet.totalHours}h linked)
                   </span>
                 )}
@@ -376,53 +380,47 @@ export default function TeamInvoicesPage() {
           <StatusBadge status={invoice.status === "pending_review" ? "pending" : invoice.status} />
         </div>
         {showActions && (
-          <div className="flex gap-2 pt-2 flex-wrap">
+          <div className="flex gap-1.5 pt-2.5 pl-11 flex-wrap">
             <Button
               size="sm"
               variant="outline"
               onClick={() => setViewingInvoice(invoice)}
               data-testid={`button-view-invoice-${invoice.id}`}
             >
-              <FileText className="w-4 h-4 mr-1" />
-              Review Details
+              Review details
             </Button>
             <Button
               size="sm"
-              className="flex-1"
+              variant="ghost"
+              className={TINTED_BTN}
               onClick={() => handleAction(invoice, "approve")}
               data-testid={`button-approve-${invoice.id}`}
             >
-              <CheckCircle className="w-4 h-4 mr-1" />
               Approve
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="flex-1"
               onClick={() => handleAction(invoice, "request_revision")}
               data-testid={`button-revision-${invoice.id}`}
             >
-              <Edit className="w-4 h-4 mr-1" />
-              Request Revision
+              Request revision
             </Button>
             <Button
               size="sm"
-              variant="outline"
-              className="flex-1"
+              variant="ghost"
+              className={DANGER_BTN}
               onClick={() => handleAction(invoice, "reject")}
               data-testid={`button-reject-${invoice.id}`}
             >
-              <XCircle className="w-4 h-4 mr-1" />
               Reject
             </Button>
           </div>
         )}
         {invoice.reviewNote && (
-          <div className="pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Review Note:</span> {invoice.reviewNote}
-            </p>
-          </div>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-2 pl-11">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">Review note:</span> {invoice.reviewNote}
+          </p>
         )}
       </div>
     );
@@ -432,43 +430,42 @@ export default function TeamInvoicesPage() {
     return (
       <div
         key={invoice.id}
-        className="p-4 rounded-md bg-muted/50 space-y-3"
+        className="px-[18px] py-3.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0"
         data-testid={`invoice-card-${invoice.id}`}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm">
+          <div className="flex items-start gap-3 min-w-0">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-[#1C2230] border border-[#2A3545] text-[#8DAFC8] text-[10px] font-bold">
                 {getContractorInitials(invoice)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="font-medium">{getContractorName(invoice)}</p>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                <p className="text-sm text-muted-foreground">
+              <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">{getContractorName(invoice)}</p>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <p className="text-[11.5px] text-neutral-400">
                   #{invoice.invoiceNumber}
                 </p>
-                <span className="text-muted-foreground">-</span>
-                <p className="text-sm text-muted-foreground">
+                <span className="text-neutral-300">·</span>
+                <p className="text-[11.5px] text-neutral-400">
                   {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")}
                 </p>
               </div>
-              <p className="text-sm font-medium mt-1">
+              <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 mt-1">
                 {formatAmount(invoice.amount, invoice.currency)}
               </p>
             </div>
           </div>
           <StatusBadge status={invoice.status === "pending_review" ? "pending" : invoice.status} />
         </div>
-        <div className="flex gap-2 pt-1 flex-wrap">
+        <div className="flex gap-1.5 pt-2.5 pl-11 flex-wrap">
           <Button
             size="sm"
             variant="outline"
             onClick={() => setViewingInvoice(invoice)}
             data-testid={`button-view-invoice-${invoice.id}`}
           >
-            <FileText className="w-4 h-4 mr-1" />
-            View Details
+            View details
           </Button>
           {invoice.fileUrl && (
             <Button
@@ -499,6 +496,8 @@ export default function TeamInvoicesPage() {
           {isAdmin && invoice.status === "approved" && (
             <Button
               size="sm"
+              variant="ghost"
+              className={TINTED_BTN}
               onClick={() => {
                 setPayingInvoice(invoice);
                 setPaidDate(format(new Date(), "yyyy-MM-dd"));
@@ -507,13 +506,13 @@ export default function TeamInvoicesPage() {
               data-testid={`button-mark-paid-${invoice.id}`}
             >
               <BadgeCheck className="w-4 h-4 mr-1" />
-              Mark as Paid
+              Mark as paid
             </Button>
           )}
         </div>
         {invoice.status === "paid" && invoice.paidAt && (
-          <div className="pt-2 border-t text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Paid</span>{" "}
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-2 pl-11">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">Paid</span>{" "}
             on {format(new Date(invoice.paidAt), "MMM d, yyyy")}
             {invoice.paymentReference && (
               <> · Ref: <span className="font-mono">{invoice.paymentReference}</span></>
@@ -521,24 +520,22 @@ export default function TeamInvoicesPage() {
             {invoice.paidBy && getUserName(invoice.paidBy) && (
               <> · by {getUserName(invoice.paidBy)}</>
             )}
-          </div>
+          </p>
         )}
         {invoice.reviewNote && (
-          <div className="pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Review Note:</span> {invoice.reviewNote}
-            </p>
-          </div>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-2 pl-11">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">Review note:</span> {invoice.reviewNote}
+          </p>
         )}
       </div>
     );
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 flex flex-col gap-[18px]">
       <div>
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Team Invoices</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-xl font-normal text-neutral-900 dark:text-neutral-50 font-serif mb-0.5" data-testid="text-page-title">Team invoices</h1>
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
           Review and approve contractor invoice submissions
         </p>
       </div>
@@ -559,55 +556,50 @@ export default function TeamInvoicesPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending" className="mt-6">
+        <TabsContent value="pending" className="mt-4">
           {pendingLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-32 w-full" />
             </div>
           ) : getPendingReviewInvoices().length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Pending Review</CardTitle>
-                <CardDescription>
-                  Invoices awaiting your approval
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {bulkEligibleInvoices.length > 0 && (
-                  <div className="flex items-center gap-2 pb-3 mb-3 border-b">
-                    <Checkbox
-                      checked={
-                        invoiceBulk.allVisibleSelected
-                          ? true
-                          : invoiceBulk.someVisibleSelected
-                          ? "indeterminate"
-                          : false
-                      }
-                      onCheckedChange={(c) => invoiceBulk.toggleAll(c === true)}
-                      data-testid="select-all-invoices"
-                      aria-label="Select all"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      Select all eligible on page
-                    </span>
-                  </div>
-                )}
-                <div className="space-y-4">
-                  {getPendingReviewInvoices().map((invoice) => renderInvoiceCard(invoice, true))}
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10 flex justify-between items-center">
+                <div>
+                  <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Pending review</div>
+                  <div className="text-[11.5px] text-neutral-400">Invoices awaiting your approval</div>
                 </div>
-              </CardContent>
-            </Card>
+                <span className="text-[11px] font-semibold bg-[#FFFBEB] dark:bg-[#D97706]/15 text-[#D97706] dark:text-[#FBBF24] px-2.5 py-1 rounded-full">
+                  {getPendingReviewInvoices().length} items
+                </span>
+              </div>
+              {bulkEligibleInvoices.length > 0 && (
+                <div className="flex items-center gap-2 px-[18px] py-2.5 border-b border-neutral-100 dark:border-white/10 bg-[#F9FAFB] dark:bg-white/5">
+                  <Checkbox
+                    checked={
+                      invoiceBulk.allVisibleSelected
+                        ? true
+                        : invoiceBulk.someVisibleSelected
+                        ? "indeterminate"
+                        : false
+                    }
+                    onCheckedChange={(c) => invoiceBulk.toggleAll(c === true)}
+                    data-testid="select-all-invoices"
+                    aria-label="Select all"
+                  />
+                  <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                    Select all eligible on page
+                  </span>
+                </div>
+              )}
+              <div>{getPendingReviewInvoices().map((invoice) => renderInvoiceCard(invoice, true))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No pending invoices</p>
-                  <p className="mt-1">All invoices have been reviewed</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <FileText className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No pending invoices</p>
+              <p className="text-[12px] text-neutral-400 mt-1">All invoices have been reviewed</p>
+            </div>
           )}
           <BulkActionBar
             selectedIds={invoiceBulk.selectedArray}
@@ -624,99 +616,69 @@ export default function TeamInvoicesPage() {
           />
         </TabsContent>
 
-        <TabsContent value="approved" className="mt-6">
+        <TabsContent value="approved" className="mt-4">
           {allLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
             </div>
           ) : approvedInvoices.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Approved Invoices</CardTitle>
-                <CardDescription>
-                  Invoices that have been approved
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {approvedInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Approved invoices</div>
+                <div className="text-[11.5px] text-neutral-400">Invoices that have been approved</div>
+              </div>
+              <div>{approvedInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No approved invoices</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <CheckCircle className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No approved invoices</p>
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="paid" className="mt-6">
+        <TabsContent value="paid" className="mt-4">
           {allLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
             </div>
           ) : paidInvoices.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Paid Invoices</CardTitle>
-                <CardDescription>
-                  Invoices that have been paid out
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {paidInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Paid invoices</div>
+                <div className="text-[11.5px] text-neutral-400">Invoices that have been paid out</div>
+              </div>
+              <div>{paidInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <BadgeCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No paid invoices yet</p>
-                  <p className="mt-1">Approved invoices marked as paid will appear here</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <BadgeCheck className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No paid invoices yet</p>
+              <p className="text-[12px] text-neutral-400 mt-1">Approved invoices marked as paid will appear here</p>
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="rejected" className="mt-6">
+        <TabsContent value="rejected" className="mt-4">
           {allLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
             </div>
           ) : rejectedInvoices.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Rejected Invoices</CardTitle>
-                <CardDescription>
-                  Invoices that were not approved
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {rejectedInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Rejected invoices</div>
+                <div className="text-[11.5px] text-neutral-400">Invoices that were not approved</div>
+              </div>
+              <div>{rejectedInvoices.map((invoice) => renderSimpleInvoiceCard(invoice))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <XCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No rejected invoices</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <XCircle className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No rejected invoices</p>
+            </div>
           )}
         </TabsContent>
       </Tabs>

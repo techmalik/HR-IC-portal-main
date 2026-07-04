@@ -4,9 +4,9 @@
     "name": "marketing agencies",
     "shortName": "agencies",
     "heroTitle": "Contractor Management for Marketing Agencies",
-    "metaTitle": "Contractor Management for Marketing Agencies | TeamFlow",
-    "metaDescription": "Run a marketing agency without spreadsheet chaos. TeamFlow handles freelancer timesheets, retainer billing, OOO, and approvals — built for agency ops.",
-    "intro": "Marketing agencies live and die by billable hours. When 60% of your delivery capacity is freelance — copywriters, designers, paid media specialists, video editors — your timesheet and invoice process is your margin. TeamFlow gives agency ops a single place to track contractor hours per client, gate invoices behind supervisor approval, and pull clean utilization reports without piecing together five spreadsheets.",
+    "metaTitle": "Contractor Management for Marketing Agencies | Axle",
+    "metaDescription": "Run a marketing agency without spreadsheet chaos. Axle handles freelancer timesheets, retainer billing, OOO, and approvals — built for agency ops.",
+    "intro": "Marketing agencies live and die by billable hours. When 60% of your delivery capacity is freelance — copywriters, designers, paid media specialists, video editors — your timesheet and invoice process is your margin. Axle gives agency ops a single place to track contractor hours per client, gate invoices behind supervisor approval, and pull clean utilization reports without piecing together five spreadsheets.",
     "painPoints": [
       "Freelancers logging hours in five different formats every month",
       "Retainer overruns nobody noticed until the client complained",
@@ -28,25 +28,25 @@
       },
       {
         "title": "Cross-currency invoicing",
-        "description": "Pay a US copywriter, an EU designer, and a LATAM developer from the same workflow — TeamFlow records each invoice in its native currency."
+        "description": "Pay a US copywriter, an EU designer, and a LATAM developer from the same workflow — Axle records each invoice in its native currency."
       }
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for marketing agencies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how marketing agencies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for marketing agencies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how marketing agencies actually engage and pay contractors."
       },
       {
-        "q": "Can marketing agencies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can marketing agencies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small marketing agencies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -56,9 +56,9 @@
     "name": "software development firms",
     "shortName": "dev shops",
     "heroTitle": "Contractor Management for Software Development Firms",
-    "metaTitle": "Contractor Management for Software Development Firms | TeamFlow",
-    "metaDescription": "Manage a contract dev shop without losing margin. TeamFlow runs sprint-aligned timesheets, invoice approvals, and utilization reporting for software teams.",
-    "intro": "Software shops that bill by the hour need precise contractor records — not because clients won't trust you, but because a single ambiguous timesheet can blow up an audit or a fixed-price scope conversation. TeamFlow gives engineering managers a clean weekly approval flow and finance a paper trail that holds up against an external review.",
+    "metaTitle": "Contractor Management for Software Development Firms | Axle",
+    "metaDescription": "Manage a contract dev shop without losing margin. Axle runs sprint-aligned timesheets, invoice approvals, and utilization reporting for software teams.",
+    "intro": "Software shops that bill by the hour need precise contractor records — not because clients won't trust you, but because a single ambiguous timesheet can blow up an audit or a fixed-price scope conversation. Axle gives engineering managers a clean weekly approval flow and finance a paper trail that holds up against an external review.",
     "painPoints": [
       "Contractors logging hours in Jira, Toggl, and a Google Sheet — none reconcile",
       "Sprint-aligned billing that doesn't match calendar months",
@@ -85,20 +85,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for software development firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how software development firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for software development firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how software development firms actually engage and pay contractors."
       },
       {
-        "q": "Can software development firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can software development firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small software development firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -108,9 +108,9 @@
     "name": "design studios",
     "shortName": "studios",
     "heroTitle": "Contractor Management for Design Studios",
-    "metaTitle": "Contractor Management for Design Studios | TeamFlow",
+    "metaTitle": "Contractor Management for Design Studios | Axle",
     "metaDescription": "Track freelance designer hours, approve invoices, and manage OOO across your studio's roster — without the spreadsheet sprawl.",
-    "intro": "Design studios run on bursts of contractor capacity — illustrators, motion designers, 3D artists who come in for a project and rotate out. The ops challenge isn't tracking employees; it's tracking a constantly-shifting roster of specialists with different rates, currencies, and billing rhythms. TeamFlow is built for exactly that.",
+    "intro": "Design studios run on bursts of contractor capacity — illustrators, motion designers, 3D artists who come in for a project and rotate out. The ops challenge isn't tracking employees; it's tracking a constantly-shifting roster of specialists with different rates, currencies, and billing rhythms. Axle is built for exactly that.",
     "painPoints": [
       "Onboarding a new freelancer every other week",
       "Different hourly rates per role — illustrator vs. motion vs. 3D",
@@ -137,20 +137,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for design studios?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how design studios actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for design studios?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how design studios actually engage and pay contractors."
       },
       {
-        "q": "Can design studios run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can design studios run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small design studios?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -160,9 +160,9 @@
     "name": "video production companies",
     "shortName": "production teams",
     "heroTitle": "Contractor Management for Video Production Companies",
-    "metaTitle": "Contractor Management for Video Production Companies | TeamFlow",
+    "metaTitle": "Contractor Management for Video Production Companies | Axle",
     "metaDescription": "Manage freelance crew, editors, and post-production talent with day rates, OOO, and per-project invoice approvals — built for video shops.",
-    "intro": "Video production runs on day rates, project-based crews, and tight delivery windows. TeamFlow handles freelance editors, motion designers, sound engineers, and on-set crew with the kind of structured records that survive a year-end audit and a client-side production audit.",
+    "intro": "Video production runs on day rates, project-based crews, and tight delivery windows. Axle handles freelance editors, motion designers, sound engineers, and on-set crew with the kind of structured records that survive a year-end audit and a client-side production audit.",
     "painPoints": [
       "Day-rate vs. hourly contractors mixed in the same team",
       "Crew rosters that change per project",
@@ -189,20 +189,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for video production companies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how video production companies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for video production companies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how video production companies actually engage and pay contractors."
       },
       {
-        "q": "Can video production companies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can video production companies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small video production companies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -212,9 +212,9 @@
     "name": "accounting firms",
     "shortName": "accounting practices",
     "heroTitle": "Contractor Management for Accounting Firms",
-    "metaTitle": "Contractor Management for Accounting Firms | TeamFlow",
+    "metaTitle": "Contractor Management for Accounting Firms | Axle",
     "metaDescription": "Manage seasonal accountants, audit contractors, and per-engagement billing with audit-grade records — built for accounting practice ops.",
-    "intro": "Accounting practices know structured records — but managing your own contractor roster often happens in a spreadsheet that wouldn't survive your own audit. TeamFlow gives partners and practice managers a clean approval workflow, per-engagement billing, and an audit trail that matches the rigor you apply to your clients.",
+    "intro": "Accounting practices know structured records — but managing your own contractor roster often happens in a spreadsheet that wouldn't survive your own audit. Axle gives partners and practice managers a clean approval workflow, per-engagement billing, and an audit trail that matches the rigor you apply to your clients.",
     "painPoints": [
       "Seasonal contractors during tax and audit busy season",
       "Per-engagement vs. per-hour billing mixed in one team",
@@ -241,20 +241,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for accounting firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how accounting firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for accounting firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how accounting firms actually engage and pay contractors."
       },
       {
-        "q": "Can accounting firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can accounting firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small accounting firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -264,9 +264,9 @@
     "name": "law firms",
     "shortName": "firms",
     "heroTitle": "Contractor Management for Law Firms",
-    "metaTitle": "Contractor Management for Law Firms | TeamFlow",
+    "metaTitle": "Contractor Management for Law Firms | Axle",
     "metaDescription": "Manage of-counsel attorneys, contract paralegals, and per-matter billing with the audit trail your firm's compliance needs.",
-    "intro": "Of-counsel attorneys, contract paralegals, and document review specialists are increasingly part of how modern firms staff matters. TeamFlow gives practice managers a clean, audit-grade record of every contractor hour, gated behind the approvals your billing partners already enforce.",
+    "intro": "Of-counsel attorneys, contract paralegals, and document review specialists are increasingly part of how modern firms staff matters. Axle gives practice managers a clean, audit-grade record of every contractor hour, gated behind the approvals your billing partners already enforce.",
     "painPoints": [
       "Of-counsel and contract attorneys outside payroll",
       "Per-matter billable hours that need clean reconciliation",
@@ -293,20 +293,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for law firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how law firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for law firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how law firms actually engage and pay contractors."
       },
       {
-        "q": "Can law firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can law firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small law firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -316,9 +316,9 @@
     "name": "consulting firms",
     "shortName": "consultancies",
     "heroTitle": "Contractor Management for Consulting Firms",
-    "metaTitle": "Contractor Management for Consulting Firms | TeamFlow",
+    "metaTitle": "Contractor Management for Consulting Firms | Axle",
     "metaDescription": "Manage subject-matter experts, contract analysts, and per-engagement billing across your consulting roster — clean utilization, clean audit trail.",
-    "intro": "Consulting firms scale by tapping a network of subject-matter experts on demand. TeamFlow handles the operational layer: structured timesheets per engagement, invoice approval workflows, and per-engagement utilization reporting that survives partner scrutiny.",
+    "intro": "Consulting firms scale by tapping a network of subject-matter experts on demand. Axle handles the operational layer: structured timesheets per engagement, invoice approval workflows, and per-engagement utilization reporting that survives partner scrutiny.",
     "painPoints": [
       "On-demand SME network — different per project",
       "Per-engagement billing across multiple clients",
@@ -340,25 +340,25 @@
       },
       {
         "title": "Cross-currency billing",
-        "description": "Engage SMEs globally and bill in native currency — TeamFlow keeps the records clean for your accounting team."
+        "description": "Engage SMEs globally and bill in native currency — Axle keeps the records clean for your accounting team."
       }
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for consulting firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how consulting firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for consulting firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how consulting firms actually engage and pay contractors."
       },
       {
-        "q": "Can consulting firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can consulting firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small consulting firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -368,9 +368,9 @@
     "name": "architecture firms",
     "shortName": "architecture practices",
     "heroTitle": "Contractor Management for Architecture Firms",
-    "metaTitle": "Contractor Management for Architecture Firms | TeamFlow",
+    "metaTitle": "Contractor Management for Architecture Firms | Axle",
     "metaDescription": "Track freelance designers, drafting specialists, and rendering contractors with per-project hour records — built for architecture practices.",
-    "intro": "Architecture firms scale capacity through freelance drafters, renderers, and BIM specialists. TeamFlow makes it straightforward to manage that contractor capacity per project, with the kind of clean record that aligns with your existing AIA billing rigor.",
+    "intro": "Architecture firms scale capacity through freelance drafters, renderers, and BIM specialists. Axle makes it straightforward to manage that contractor capacity per project, with the kind of clean record that aligns with your existing AIA billing rigor.",
     "painPoints": [
       "Project-based contractor rosters",
       "Drafters and renderers with different rate structures",
@@ -397,20 +397,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for architecture firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how architecture firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for architecture firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how architecture firms actually engage and pay contractors."
       },
       {
-        "q": "Can architecture firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can architecture firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small architecture firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -420,9 +420,9 @@
     "name": "healthcare startups",
     "shortName": "healthcare teams",
     "heroTitle": "Contractor Management for Healthcare Startups",
-    "metaTitle": "Contractor Management for Healthcare Startups | TeamFlow",
+    "metaTitle": "Contractor Management for Healthcare Startups | Axle",
     "metaDescription": "Manage clinical advisors, regulatory consultants, and contract clinicians with audit-ready records — built for healthcare startup ops.",
-    "intro": "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. TeamFlow gives ops a clean, audit-grade record of every contractor hour and invoice — exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
+    "intro": "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. Axle gives ops a clean, audit-grade record of every contractor hour and invoice — exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
     "painPoints": [
       "Clinical advisors with irregular hours",
       "Regulatory consultants on retainer",
@@ -449,20 +449,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for healthcare startups?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how healthcare startups actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for healthcare startups?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how healthcare startups actually engage and pay contractors."
       },
       {
-        "q": "Can healthcare startups run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can healthcare startups run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small healthcare startups?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -472,9 +472,9 @@
     "name": "e-commerce businesses",
     "shortName": "e-commerce brands",
     "heroTitle": "Contractor Management for E-Commerce Businesses",
-    "metaTitle": "Contractor Management for E-Commerce Businesses | TeamFlow",
+    "metaTitle": "Contractor Management for E-Commerce Businesses | Axle",
     "metaDescription": "Manage freelance copywriters, designers, paid media buyers, and CX agents on your e-commerce team without the spreadsheet sprawl.",
-    "intro": "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. TeamFlow gives founders a single ops layer for managing that team — timesheets, invoices, and OOO without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
+    "intro": "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. Axle gives founders a single ops layer for managing that team — timesheets, invoices, and OOO without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
     "painPoints": [
       "Freelance creatives across copy, design, and video",
       "Paid media specialists across Meta, Google, and TikTok",
@@ -501,20 +501,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for e-commerce businesses?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how e-commerce businesses actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for e-commerce businesses?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how e-commerce businesses actually engage and pay contractors."
       },
       {
-        "q": "Can e-commerce businesses run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can e-commerce businesses run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small e-commerce businesses?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -524,9 +524,9 @@
     "name": "real estate agencies",
     "shortName": "agencies",
     "heroTitle": "Contractor Management for Real Estate Agencies",
-    "metaTitle": "Contractor Management for Real Estate Agencies | TeamFlow",
+    "metaTitle": "Contractor Management for Real Estate Agencies | Axle",
     "metaDescription": "Manage transaction coordinators, photographers, virtual assistants, and contract agents with structured timesheets and invoice approvals.",
-    "intro": "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. TeamFlow gives broker-owners a clean way to manage that contractor team — structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
+    "intro": "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. Axle gives broker-owners a clean way to manage that contractor team — structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
     "painPoints": [
       "Transaction coordinators with deal-based billing",
       "Real estate photographers paid per shoot",
@@ -553,20 +553,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for real estate agencies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how real estate agencies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for real estate agencies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how real estate agencies actually engage and pay contractors."
       },
       {
-        "q": "Can real estate agencies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can real estate agencies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small real estate agencies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -576,9 +576,9 @@
     "name": "financial services firms",
     "shortName": "financial services teams",
     "heroTitle": "Contractor Management for Financial Services Firms",
-    "metaTitle": "Contractor Management for Financial Services Firms | TeamFlow",
+    "metaTitle": "Contractor Management for Financial Services Firms | Axle",
     "metaDescription": "Manage compliance consultants, contract analysts, and specialist advisors with audit-grade timesheets and invoice records.",
-    "intro": "Financial services teams operate under intense regulatory scrutiny. Every contractor hour, every approval, every payment needs to be defensible in an audit. TeamFlow gives compliance and ops leaders a structured workflow that produces records auditors actually want to see.",
+    "intro": "Financial services teams operate under intense regulatory scrutiny. Every contractor hour, every approval, every payment needs to be defensible in an audit. Axle gives compliance and ops leaders a structured workflow that produces records auditors actually want to see.",
     "painPoints": [
       "Compliance consultants on retainer",
       "Contract analysts during deal cycles",
@@ -605,20 +605,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for financial services firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how financial services firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for financial services firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how financial services firms actually engage and pay contractors."
       },
       {
-        "q": "Can financial services firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can financial services firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small financial services firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -628,9 +628,9 @@
     "name": "education technology companies",
     "shortName": "EdTech teams",
     "heroTitle": "Contractor Management for EdTech Companies",
-    "metaTitle": "Contractor Management for EdTech Companies | TeamFlow",
+    "metaTitle": "Contractor Management for EdTech Companies | Axle",
     "metaDescription": "Manage curriculum designers, contract tutors, content reviewers, and SMEs with structured timesheets and invoice approvals.",
-    "intro": "EdTech companies scale through a network of curriculum designers, contract tutors, and subject-matter experts. TeamFlow gives ops a single place to manage that network with structured timesheets, layered approval workflows, and clean per-course or per-program records.",
+    "intro": "EdTech companies scale through a network of curriculum designers, contract tutors, and subject-matter experts. Axle gives ops a single place to manage that network with structured timesheets, layered approval workflows, and clean per-course or per-program records.",
     "painPoints": [
       "Curriculum designers on project-based retainers",
       "Contract tutors with weekly hour fluctuations",
@@ -657,20 +657,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for education technology companies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how education technology companies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for education technology companies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how education technology companies actually engage and pay contractors."
       },
       {
-        "q": "Can education technology companies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can education technology companies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small education technology companies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -680,9 +680,9 @@
     "name": "fintech companies",
     "shortName": "fintechs",
     "heroTitle": "Contractor Management for Fintech Companies",
-    "metaTitle": "Contractor Management for Fintech Companies | TeamFlow",
+    "metaTitle": "Contractor Management for Fintech Companies | Axle",
     "metaDescription": "Manage compliance consultants, contract engineers, and specialist contractors across your fintech team — audit-grade by design.",
-    "intro": "Fintechs operate under intense regulatory and security scrutiny — and increasingly rely on specialist contractors for compliance, engineering, and risk. TeamFlow gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
+    "intro": "Fintechs operate under intense regulatory and security scrutiny — and increasingly rely on specialist contractors for compliance, engineering, and risk. Axle gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
     "painPoints": [
       "Compliance contractors with sensitive access",
       "Engineering contractors on regulated systems",
@@ -709,20 +709,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for fintech companies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how fintech companies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for fintech companies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how fintech companies actually engage and pay contractors."
       },
       {
-        "q": "Can fintech companies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can fintech companies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small fintech companies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -732,9 +732,9 @@
     "name": "SaaS startups",
     "shortName": "SaaS teams",
     "heroTitle": "Contractor Management for SaaS Startups",
-    "metaTitle": "Contractor Management for SaaS Startups | TeamFlow",
+    "metaTitle": "Contractor Management for SaaS Startups | Axle",
     "metaDescription": "Manage contract engineers, designers, and growth specialists across your SaaS team without spreadsheet chaos. Built for fast-moving SaaS ops.",
-    "intro": "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. TeamFlow is built specifically for that pattern — structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
+    "intro": "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. Axle is built specifically for that pattern — structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
     "painPoints": [
       "Contractor headcount growing faster than ops capacity",
       "Different rates and currencies across the team",
@@ -744,7 +744,7 @@
     "useCases": [
       {
         "title": "Lean ops setup",
-        "description": "Most SaaS teams are fully operational on TeamFlow within a single day. Invite contractors, set up approval flows, and you're done."
+        "description": "Most SaaS teams are fully operational on Axle within a single day. Invite contractors, set up approval flows, and you're done."
       },
       {
         "title": "Founder visibility",
@@ -752,7 +752,7 @@
       },
       {
         "title": "Diligence-ready",
-        "description": "Investors love clean contractor records. TeamFlow produces them automatically — no scramble before due diligence."
+        "description": "Investors love clean contractor records. Axle produces them automatically — no scramble before due diligence."
       },
       {
         "title": "Quick onboarding",
@@ -761,20 +761,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for SaaS startups?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how SaaS startups actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for SaaS startups?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how SaaS startups actually engage and pay contractors."
       },
       {
-        "q": "Can SaaS startups run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can SaaS startups run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small SaaS startups?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -784,9 +784,9 @@
     "name": "nonprofits",
     "shortName": "nonprofits",
     "heroTitle": "Contractor Management for Nonprofits",
-    "metaTitle": "Contractor Management for Nonprofits | TeamFlow",
+    "metaTitle": "Contractor Management for Nonprofits | Axle",
     "metaDescription": "Manage program consultants, grant writers, and contract program staff with grant-ready records — built for nonprofit ops.",
-    "intro": "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. TeamFlow gives nonprofit ops clean per-grant or per-program contractor records — the kind that simplify financial reporting to funders.",
+    "intro": "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. Axle gives nonprofit ops clean per-grant or per-program contractor records — the kind that simplify financial reporting to funders.",
     "painPoints": [
       "Per-grant or per-program budget tracking",
       "Grant writers and program consultants on project retainers",
@@ -804,7 +804,7 @@
       },
       {
         "title": "Affordable ops layer",
-        "description": "TeamFlow's free plan covers up to 3 contractors at zero cost — perfect for grassroots nonprofits scaling capacity carefully."
+        "description": "Axle's free plan covers up to 3 contractors at zero cost — perfect for grassroots nonprofits scaling capacity carefully."
       },
       {
         "title": "Funder-ready records",
@@ -813,20 +813,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for nonprofits?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how nonprofits actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for nonprofits?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how nonprofits actually engage and pay contractors."
       },
       {
-        "q": "Can nonprofits run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can nonprofits run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small nonprofits?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -836,9 +836,9 @@
     "name": "media companies",
     "shortName": "media teams",
     "heroTitle": "Contractor Management for Media Companies",
-    "metaTitle": "Contractor Management for Media Companies | TeamFlow",
+    "metaTitle": "Contractor Management for Media Companies | Axle",
     "metaDescription": "Manage freelance journalists, editors, photographers, and contributors across your publication with structured per-piece records.",
-    "intro": "Media companies run on freelance contributors — journalists, editors, photographers, illustrators. TeamFlow gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
+    "intro": "Media companies run on freelance contributors — journalists, editors, photographers, illustrators. Axle gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
     "painPoints": [
       "Freelance journalists with per-piece rates",
       "Photographers paid per assignment",
@@ -865,20 +865,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for media companies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how media companies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for media companies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how media companies actually engage and pay contractors."
       },
       {
-        "q": "Can media companies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can media companies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small media companies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -888,9 +888,9 @@
     "name": "advertising agencies",
     "shortName": "agencies",
     "heroTitle": "Contractor Management for Advertising Agencies",
-    "metaTitle": "Contractor Management for Advertising Agencies | TeamFlow",
-    "metaDescription": "Run a freelance-heavy advertising agency without spreadsheet chaos. TeamFlow handles per-campaign timesheets, approvals, and invoicing.",
-    "intro": "Advertising agencies stitch together creative directors, copywriters, art directors, and producers per campaign. TeamFlow is built for that exact pattern: structured per-campaign records, layered approvals, and clean utilization reporting that holds up against client scrutiny.",
+    "metaTitle": "Contractor Management for Advertising Agencies | Axle",
+    "metaDescription": "Run a freelance-heavy advertising agency without spreadsheet chaos. Axle handles per-campaign timesheets, approvals, and invoicing.",
+    "intro": "Advertising agencies stitch together creative directors, copywriters, art directors, and producers per campaign. Axle is built for that exact pattern: structured per-campaign records, layered approvals, and clean utilization reporting that holds up against client scrutiny.",
     "painPoints": [
       "Per-campaign rosters that change every quarter",
       "Creative director, copy, and art director rates differ",
@@ -917,20 +917,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for advertising agencies?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how advertising agencies actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for advertising agencies?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how advertising agencies actually engage and pay contractors."
       },
       {
-        "q": "Can advertising agencies run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can advertising agencies run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small advertising agencies?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -940,9 +940,9 @@
     "name": "public relations firms",
     "shortName": "PR firms",
     "heroTitle": "Contractor Management for PR Firms",
-    "metaTitle": "Contractor Management for PR Firms | TeamFlow",
+    "metaTitle": "Contractor Management for PR Firms | Axle",
     "metaDescription": "Manage freelance publicists, media relations specialists, and contributing writers with structured per-client records.",
-    "intro": "PR firms scale through a network of freelance publicists, contributing writers, and media relations specialists. TeamFlow gives account directors a clean way to manage that contractor network with structured per-client retainers and clean approval workflows.",
+    "intro": "PR firms scale through a network of freelance publicists, contributing writers, and media relations specialists. Axle gives account directors a clean way to manage that contractor network with structured per-client retainers and clean approval workflows.",
     "painPoints": [
       "Per-client retainers across many freelancers",
       "Media relations specialists with deliverable-based billing",
@@ -969,20 +969,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for public relations firms?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how public relations firms actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for public relations firms?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how public relations firms actually engage and pay contractors."
       },
       {
-        "q": "Can public relations firms run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can public relations firms run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small public relations firms?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -992,9 +992,9 @@
     "name": "photography studios",
     "shortName": "studios",
     "heroTitle": "Contractor Management for Photography Studios",
-    "metaTitle": "Contractor Management for Photography Studios | TeamFlow",
+    "metaTitle": "Contractor Management for Photography Studios | Axle",
     "metaDescription": "Manage second shooters, retouchers, and assistants with day-rate billing and per-shoot records — built for photography studios.",
-    "intro": "Photography studios scale capacity through second shooters, retouchers, and assistants — usually on day rates or per-shoot fees. TeamFlow handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
+    "intro": "Photography studios scale capacity through second shooters, retouchers, and assistants — usually on day rates or per-shoot fees. Axle handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
     "painPoints": [
       "Day rates and per-shoot fees mixed",
       "Retouchers billing hourly in post",
@@ -1021,20 +1021,20 @@
     ],
     "faqs": [
       {
-        "q": "How is TeamFlow different from generic timesheet apps for photography studios?",
-        "a": "TeamFlow is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how photography studios actually engage and pay contractors."
+        "q": "How is Axle different from generic timesheet apps for photography studios?",
+        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how photography studios actually engage and pay contractors."
       },
       {
-        "q": "Can photography studios run a global contractor team on TeamFlow?",
-        "a": "Yes. TeamFlow records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "q": "Can photography studios run a global contractor team on Axle?",
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
       },
       {
-        "q": "Does TeamFlow handle leave and OOO for contractors?",
+        "q": "Does Axle handle leave and OOO for contractors?",
         "a": "Yes. Contractors submit OOO requests, supervisors approve them, and approved OOO appears on a shared availability calendar. Hourly contractors don't bill for OOO days, and timesheet validation accounts for it automatically."
       },
       {
         "q": "Is there a free plan that fits small photography studios?",
-        "a": "Yes. TeamFlow's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"

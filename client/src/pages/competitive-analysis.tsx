@@ -36,7 +36,7 @@ function PageShell({
       <div className="absolute inset-0 flex flex-col" style={{ padding: 48 }}>
         <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-sm bg-indigo-500" />
+            <span className="w-2 h-2 rounded-sm bg-emerald-500" />
             {REPORT_TITLE}
           </div>
           <span>{REPORT_SUBTITLE}</span>
@@ -58,12 +58,12 @@ function CoverPage() {
     <div className="h-full flex flex-col justify-between">
       <div>
         <div className="flex items-center gap-3 mb-12">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-[#111827] flex items-center justify-center">
             <Layers className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-semibold tracking-tight">Mentalyc</span>
         </div>
-        <div className="text-xs uppercase tracking-[0.25em] text-indigo-600 font-semibold mb-4">
+        <div className="text-xs uppercase tracking-[0.25em] text-emerald-700 font-semibold mb-4">
           Strategy Report
         </div>
         <h1 className="text-5xl font-bold tracking-tight leading-tight mb-4">
@@ -87,7 +87,7 @@ function CoverPage() {
           </div>
         </div>
       </div>
-      <div className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-2xl p-8">
+      <div className="bg-[#111827] text-white rounded-2xl p-8">
         <div className="text-xs uppercase tracking-[0.2em] opacity-70 mb-2">Bottom line</div>
         <p className="text-xl leading-relaxed">
           The contractor management market is bifurcating: high-ASP EOR platforms (Deel, Remote,
@@ -128,7 +128,7 @@ function ExecutiveSummaryPage() {
             b: "Only Rippling bundles performance reviews — and only inside its $8/user platform. Mentalyc can own this in the 5-200 contractor band before anyone else moves.",
           },
         ].map((row) => (
-          <div key={row.t} className="border-l-4 border-indigo-500 pl-4 py-1">
+          <div key={row.t} className="border-l-4 border-emerald-500 pl-4 py-1">
             <div className="font-semibold text-slate-900 mb-1">{row.t}</div>
             <div className="text-slate-600">{row.b}</div>
           </div>
@@ -175,7 +175,7 @@ function CompetitorPage({ index }: { index: number }) {
   const c = competitors[index];
   return (
     <div className="text-sm">
-      <div className="text-[10px] uppercase tracking-widest text-indigo-600 font-semibold mb-1">
+      <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-semibold mb-1">
         Dossier {index + 1} of {competitors.length}
       </div>
       <h1 className="text-3xl font-bold mb-2">{c.name}</h1>
@@ -234,7 +234,7 @@ function CompetitorPage({ index }: { index: number }) {
 
       <div className="border-t border-slate-200 pt-3">
         <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Citations</div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-indigo-600">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-emerald-700">
           {c.citations.map((cit) => (
             <span key={cit.url}>
               {cit.label} — <span className="text-slate-500">{cit.url}</span>
@@ -264,7 +264,7 @@ function MatrixPage() {
                 <th
                   key={n}
                   className={`text-center px-1 py-2 font-semibold ${
-                    n === "Mentalyc" ? "bg-indigo-50 text-indigo-700" : ""
+                    n === "Mentalyc" ? "bg-emerald-50 text-emerald-800" : ""
                   }`}
                 >
                   {n}
@@ -284,7 +284,7 @@ function MatrixPage() {
                     <td
                       key={n}
                       className={`text-center px-1 py-1.5 font-medium ${
-                        n === "Mentalyc" ? "bg-indigo-50/60" : ""
+                        n === "Mentalyc" ? "bg-emerald-50/60" : ""
                       }`}
                       style={{
                         background:
@@ -312,7 +312,7 @@ function MatrixPage() {
                 return (
                   <td
                     key={n}
-                    className={`text-center px-1 py-2 ${n === "Mentalyc" ? "text-indigo-700" : ""}`}
+                    className={`text-center px-1 py-2 ${n === "Mentalyc" ? "text-emerald-800" : ""}`}
                   >
                     {total}
                   </td>
@@ -358,8 +358,8 @@ function PositioningMapPage() {
           className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
           style={{ left: `${0.18 * 620}px`, top: `${(1 - 0.4) * 480}px` }}
         >
-          <div className="w-4 h-4 rounded-full bg-indigo-600 ring-4 ring-indigo-200" />
-          <div className="text-xs font-bold text-indigo-700 mt-1 whitespace-nowrap">Mentalyc</div>
+          <div className="w-4 h-4 rounded-full bg-emerald-700 ring-4 ring-emerald-200" />
+          <div className="text-xs font-bold text-emerald-800 mt-1 whitespace-nowrap">Mentalyc</div>
         </div>
         {competitors.map((c) => (
           <div
@@ -408,7 +408,7 @@ function KanoWhiteSpacePage() {
             {kanoAnalysis.map((row, i) => (
               <tr key={row.feature} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                 <td className="px-3 py-2 font-medium text-slate-800">{row.feature}</td>
-                <td className="px-3 py-2 text-indigo-700">{row.category}</td>
+                <td className="px-3 py-2 text-emerald-800">{row.category}</td>
                 <td className="px-3 py-2 text-slate-600">{row.notes}</td>
               </tr>
             ))}
@@ -437,15 +437,15 @@ function PositioningPage() {
           { k: "We alone", v: positioningStatement.weAlone },
         ].map((row) => (
           <div key={row.k} className="grid grid-cols-[110px_1fr] gap-4 items-start">
-            <div className="text-[10px] uppercase tracking-widest text-indigo-600 font-semibold pt-1">
+            <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-semibold pt-1">
               {row.k}
             </div>
             <div className="text-slate-800 leading-relaxed">{row.v}</div>
           </div>
         ))}
       </div>
-      <div className="mt-8 p-5 bg-indigo-50 border border-indigo-200 rounded-xl">
-        <div className="text-[10px] uppercase tracking-widest text-indigo-700 font-semibold mb-2">
+      <div className="mt-8 p-5 bg-emerald-50 border border-emerald-200 rounded-xl">
+        <div className="text-[10px] uppercase tracking-widest text-emerald-800 font-semibold mb-2">
           One-line version (use everywhere)
         </div>
         <div className="text-base font-semibold text-slate-900 leading-snug">
@@ -469,7 +469,7 @@ function RecommendationsPage() {
         {recommendations.map((r, i) => (
           <div key={r.title} className="border border-slate-200 rounded-xl p-4">
             <div className="flex items-start gap-3 mb-2">
-              <div className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-emerald-700 text-white font-bold text-sm flex items-center justify-center shrink-0">
                 {i + 1}
               </div>
               <div className="font-semibold text-base text-slate-900">{r.title}</div>
@@ -1152,10 +1152,10 @@ export default function CompetitiveAnalysisPage() {
             onClick={handleDownload}
             disabled={generating}
             data-testid="button-download-pdf"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-[#111827] hover:bg-neutral-800 text-white"
           >
             <Download className="w-4 h-4 mr-2" />
-            {generating ? "Generating…" : "Download PDF"}
+            {generating ? "Generating..." : "Download PDF"}
           </Button>
         </div>
       </header>

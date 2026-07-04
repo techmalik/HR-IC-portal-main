@@ -1,13 +1,13 @@
 {
-  "name": "TeamFlow Contractor Portal",
-  "short_name": "TeamFlow",
+  "name": "Axle Contractor Portal",
+  "short_name": "Axle",
   "description": "Log hours, submit invoices, and request time off from your phone.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0b1437",
-  "theme_color": "#1c2a52",
+  "background_color": "#0F1117",
+  "theme_color": "#0F1117",
   "categories": ["productivity", "business"],
   "icons": [
     {

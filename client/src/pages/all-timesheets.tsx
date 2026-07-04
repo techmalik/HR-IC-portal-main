@@ -16,11 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Users,
-  Clock,
   ChevronRight,
   Search,
-  FileText,
   Filter,
   ArrowUpDown,
 } from "lucide-react";
@@ -173,66 +170,56 @@ export default function AllTimesheetsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Team Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalICs}</div>
-            <p className="text-xs text-muted-foreground">
-              Independent Contractors
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.withPending}</div>
-            <p className="text-xs text-muted-foreground">
-              ICs with submitted timesheets
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active This Month</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.withCurrentMonth}</div>
-            <p className="text-xs text-muted-foreground">
-              ICs with hours logged in {format(new Date(), "MMMM")}
-            </p>
-          </CardContent>
-        </Card>
+      <div>
+        <h1 className="font-serif text-[28px] font-normal text-neutral-900">All timesheets</h1>
+        <p className="text-muted-foreground mt-1">
+          Every contractor's timesheet activity in one place
+        </p>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search team members..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search-members"
-              />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total team members</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.totalICs}</div>
+          <div className="text-xs text-neutral-500">independent contractors</div>
+        </div>
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Pending review</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.withPending}</div>
+          <div className="text-xs text-neutral-500">with submitted timesheets</div>
+        </div>
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Active this month</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5">{stats.withCurrentMonth}</div>
+          <div className="text-xs text-neutral-500">hours logged in {format(new Date(), "MMMM")}</div>
+        </div>
+      </div>
+
+      {/* Team Members List */}
+      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Team members</CardTitle>
+              <CardDescription>
+                Click on a team member to view their detailed timesheet history
+              </CardDescription>
             </div>
             <div className="flex gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300" />
+                <Input
+                  placeholder="Search team members..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 w-56 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]"
+                  data-testid="input-search-members"
+                />
+              </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-[170px] h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-status-filter">
+                  <Filter className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -244,8 +231,8 @@ export default function AllTimesheetsPage() {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[160px]" data-testid="select-sort-by">
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-[150px] h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-sort-by">
+                  <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,21 +243,11 @@ export default function AllTimesheetsPage() {
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Team Members List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Members</CardTitle>
-          <CardDescription>
-            Click on a team member to view their detailed timesheet history
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {filteredUsers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchQuery || statusFilter !== "all" 
+              {searchQuery || statusFilter !== "all"
                 ? "No team members match your filters"
                 : "No team members found"}
             </div>
@@ -279,21 +256,21 @@ export default function AllTimesheetsPage() {
               {filteredUsers.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate cursor-pointer"
+                  className="flex items-center justify-between p-3.5 rounded-lg border border-[#F3F4F6] hover-elevate cursor-pointer"
                   onClick={() => handleUserClick(member.id)}
                   data-testid={`card-member-${member.id}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-[#111827] text-white text-xs font-bold">
                         {getInitials(member.firstName, member.lastName)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">
+                      <div className="text-[12.5px] font-medium text-[#111827]">
                         {member.firstName} {member.lastName}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-[11.5px] text-[#9CA3AF]">
                         {member.jobTitle || member.email}
                       </div>
                     </div>
@@ -302,10 +279,10 @@ export default function AllTimesheetsPage() {
                   <div className="flex items-center gap-6">
                     {/* Current month hours */}
                     <div className="text-right hidden md:block">
-                      <div className="text-sm font-medium">
+                      <div className="text-[12.5px] font-medium text-[#111827]">
                         {member.currentMonthHours}h
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-[11px] text-[#9CA3AF]">
                         This month
                       </div>
                     </div>
@@ -315,23 +292,23 @@ export default function AllTimesheetsPage() {
                       {member.latestTimesheet ? (
                         <div className="flex items-center gap-2">
                           <StatusBadge status={member.latestTimesheet.status} />
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[11.5px] text-[#9CA3AF]">
                             {format(new Date(member.latestTimesheet.year, member.latestTimesheet.month - 1), "MMM yyyy")}
                           </span>
                         </div>
                       ) : (
-                        <Badge variant="outline">No timesheets</Badge>
+                        <Badge variant="outline" className="text-[#9CA3AF]">No timesheets</Badge>
                       )}
                     </div>
 
                     {/* Pending indicator */}
                     {member.pendingTimesheets > 0 && (
-                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                      <span className="text-[11.5px] font-medium text-[#D97706] bg-[#FFFBEB] px-[9px] py-[3px] rounded-full whitespace-nowrap">
                         {member.pendingTimesheets} pending
-                      </Badge>
+                      </span>
                     )}
 
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 text-[#D1D5DB]" />
                   </div>
                 </div>
               ))}

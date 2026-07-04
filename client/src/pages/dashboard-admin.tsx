@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
@@ -55,22 +54,22 @@ export default function DashboardAdmin() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
+          <h1 className="font-serif text-[28px] font-normal text-neutral-900">Admin dashboard</h1>
           <p className="text-muted-foreground mt-1">
             Full visibility across all organizational data
           </p>
         </div>
-        <Button asChild data-testid="button-add-user">
+        <Button asChild size="sm" className="bg-[#111827] hover:bg-neutral-800 text-white" data-testid="button-add-user">
           <Link href="/users/new">
             <UserPlus className="w-4 h-4 mr-2" />
-            Add User
+            Add user
           </Link>
         </Button>
       </div>
 
       {expiringContracts && expiringContracts.length > 0 && (
         <div
-          className="flex items-start gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]"
           data-testid="banner-contracts-expiring"
         >
           <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
@@ -90,7 +89,7 @@ export default function DashboardAdmin() {
                     >
                       {c.title}
                     </Link>
-                    {" "}— expires in {days} day{days === 1 ? "" : "s"}
+                    {" "}, expires in {days} day{days === 1 ? "" : "s"}
                   </li>
                 );
               })}
@@ -99,85 +98,63 @@ export default function DashboardAdmin() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {pendingExpensesData && pendingExpensesData.count > 0 && (
-          <Link
-            href="/expenses"
-            className="md:col-span-4 flex items-center justify-between gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover-elevate"
-            data-testid="banner-expenses-pending"
-          >
-            <div className="flex items-center gap-3">
-              <Receipt className="w-5 h-5 shrink-0" />
-              <div>
-                <p className="font-medium text-sm">
-                  {pendingExpensesData.count} expense{pendingExpensesData.count === 1 ? "" : "s"} awaiting review
-                </p>
-                <p className="text-xs">
-                  Review and approve reimbursement requests across the organization.
-                </p>
-              </div>
+      {pendingExpensesData && pendingExpensesData.count > 0 && (
+        <Link
+          href="/expenses"
+          className="flex items-center justify-between gap-3 p-4 rounded-xl border-[1.5px] border-[#FDE68A] bg-[#FFFBEB] text-[#92400E] hover-elevate"
+          data-testid="banner-expenses-pending"
+        >
+          <div className="flex items-center gap-3">
+            <Receipt className="w-5 h-5 shrink-0" />
+            <div>
+              <p className="font-medium text-sm">
+                {pendingExpensesData.count} expense{pendingExpensesData.count === 1 ? "" : "s"} awaiting review
+              </p>
+              <p className="text-xs text-[#B45309]">
+                Review and approve reimbursement requests across the organization.
+              </p>
             </div>
-            <ArrowRight className="w-4 h-4 shrink-0" />
-          </Link>
-        )}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Users
-            </CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {usersLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold" data-testid="text-total-users">
-                {allUsers?.length || 0}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {activeUsers?.length || 0} active
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <ArrowRight className="w-4 h-4 shrink-0" />
+        </Link>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Independent Contractors
-            </CardTitle>
-            <Clock className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {usersLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold" data-testid="text-ic-count">
-                {icCount}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total users</div>
+          {usersLoading ? (
+            <Skeleton className="h-7 w-14" />
+          ) : (
+            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-total-users">
+              {allUsers?.length || 0}
+            </div>
+          )}
+          <div className="text-xs text-neutral-500">{activeUsers?.length || 0} active</div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Admins
-            </CardTitle>
-            <Activity className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {usersLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold" data-testid="text-admin-count">
-                {adminCount}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Independent contractors</div>
+          {usersLoading ? (
+            <Skeleton className="h-7 w-14" />
+          ) : (
+            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-ic-count">
+              {icCount}
+            </div>
+          )}
+          <div className="text-xs text-neutral-500">across the organization</div>
+        </div>
+
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Admins</div>
+          {usersLoading ? (
+            <Skeleton className="h-7 w-14" />
+          ) : (
+            <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-admin-count">
+              {adminCount}
+            </div>
+          )}
+          <div className="text-xs text-neutral-500">with full access</div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -210,7 +187,7 @@ export default function DashboardAdmin() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        <AvatarFallback className="bg-[#111827] text-white text-sm font-semibold">
                           {u.firstName?.[0]}
                           {u.lastName?.[0]}
                         </AvatarFallback>
@@ -222,7 +199,15 @@ export default function DashboardAdmin() {
                         <p className="text-xs text-muted-foreground">{u.email}</p>
                       </div>
                     </div>
-                    <StatusBadge status={u.role} />
+                    <span
+                      className={
+                        u.role === UserRole.ADMIN || u.role === UserRole.OWNER
+                          ? "text-[11.5px] font-medium bg-[#111827] text-white px-[9px] py-[3px] rounded-full whitespace-nowrap"
+                          : "text-[11.5px] font-medium bg-[#F3F4F6] text-[#374151] px-[9px] py-[3px] rounded-full whitespace-nowrap"
+                      }
+                    >
+                      {u.role === UserRole.ADMIN ? "Admin" : u.role === UserRole.OWNER ? "Owner" : "Contractor"}
+                    </span>
                   </div>
                 ))}
               </div>

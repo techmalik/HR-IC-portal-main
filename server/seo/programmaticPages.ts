@@ -7,12 +7,12 @@ import {
 } from "./programmaticStorage";
 import type { IndustryPage, CompetitorPage } from "./programmaticData";
 
-const BASE_URL = "https://teamflow.app";
+const BASE_URL = "https://axlehq.app";
 
 function organizationJsonLd() {
   return {
     "@type": "Organization",
-    name: "TeamFlow",
+    name: "Axle",
     url: BASE_URL,
     logo: `${BASE_URL}/favicon.png`,
     description:
@@ -23,7 +23,7 @@ function organizationJsonLd() {
 function softwareApplicationJsonLd() {
   return {
     "@type": "SoftwareApplication",
-    name: "TeamFlow",
+    name: "Axle",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     offers: {
@@ -121,7 +121,7 @@ function internalLinksHtml(currentSlug: string, kind: "industry" | "competitor")
     <h3>Explore more</h3>
     <div class="ssr-related-grid">
       <div class="ssr-related-card"><strong>By industry</strong><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">${indLinks}</div></div>
-      <div class="ssr-related-card"><strong>Compare TeamFlow vs.</strong><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">${compLinks}</div></div>
+      <div class="ssr-related-card"><strong>Compare Axle vs.</strong><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">${compLinks}</div></div>
       <div class="ssr-related-card"><strong>More resources</strong><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"><a href="/blog">Blog</a><a href="/faq">FAQ</a><a href="/">Home</a></div></div>
     </div>
   </section>`;
@@ -162,7 +162,7 @@ function renderIndustry(page: IndustryPage): string {
       <h2>What ${escHtml(page.name)} struggle with</h2>
       <ul>${painPointsHtml}</ul>
 
-      <h2>How TeamFlow fits ${escHtml(page.name)}</h2>
+      <h2>How Axle fits ${escHtml(page.name)}</h2>
       <div class="ssr-related-grid" style="margin-top:16px;">${useCasesHtml}</div>
 
       ${ctaHtml(`Run your ${page.name} contractor team without spreadsheets`, "Most teams are fully set up in under a day. Free for up to 3 contractors.")}
@@ -229,18 +229,18 @@ function renderCompetitor(page: CompetitorPage): string {
       <div class="ssr-meta"><span class="ssr-tag">vs. ${escHtml(page.competitorName)}</span><span>Updated ${escHtml(page.updatedDate)}</span></div>
       <p style="font-size:1.0625rem;">${escHtml(page.intro)}</p>
 
-      <div class="ssr-callout"><strong>How TeamFlow positions:</strong> ${escHtml(page.positioning)}</div>
+      <div class="ssr-callout"><strong>How Axle positions:</strong> ${escHtml(page.positioning)}</div>
 
       <h2>Where ${escHtml(page.competitorName)} can fall short</h2>
       <ul>${weaknessesHtml}</ul>
 
-      <h2>Where TeamFlow stands out</h2>
+      <h2>Where Axle stands out</h2>
       <ul>${strengthsHtml}</ul>
 
-      <h2>TeamFlow vs. ${escHtml(page.competitorName)}: feature comparison</h2>
+      <h2>Axle vs. ${escHtml(page.competitorName)}: feature comparison</h2>
       <div class="ssr-table-wrap">
         <table>
-          <thead><tr><th>Feature</th><th>TeamFlow</th><th>${escHtml(page.competitorName)}</th></tr></thead>
+          <thead><tr><th>Feature</th><th>Axle</th><th>${escHtml(page.competitorName)}</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
@@ -291,11 +291,11 @@ export function getIndustriesIndexHtml(): string {
     .join("\n");
 
   const bodyHtml = `
-    <div class="ssr-hero"><h1>Contractor Management by Industry</h1><p>Industry-specific guides for managing independent contractors with TeamFlow.</p></div>
+    <div class="ssr-hero"><h1>Contractor Management by Industry</h1><p>Industry-specific guides for managing independent contractors with Axle.</p></div>
     <main class="ssr-main"><div class="ssr-blog-grid">${cardsHtml}</div></main>`;
 
   return ssrHtmlShell({
-    title: "Contractor Management by Industry | TeamFlow",
+    title: "Contractor Management by Industry | Axle",
     metaDescription: "Industry-specific guides for managing independent contractors — agencies, dev shops, studios, accounting, law, fintech, and more.",
     canonicalPath: "/industries",
     jsonLd: combinedJsonLd([organizationJsonLd()]),
@@ -316,12 +316,12 @@ export function getCompetitorsIndexHtml(): string {
     .join("\n");
 
   const bodyHtml = `
-    <div class="ssr-hero"><h1>TeamFlow vs. Other Contractor Tools</h1><p>How TeamFlow compares to other contractor management and adjacent tools.</p></div>
+    <div class="ssr-hero"><h1>Axle vs. Other Contractor Tools</h1><p>How Axle compares to other contractor management and adjacent tools.</p></div>
     <main class="ssr-main"><div class="ssr-blog-grid">${cardsHtml}</div></main>`;
 
   return ssrHtmlShell({
-    title: "Compare TeamFlow vs. Contractor Management Tools",
-    metaDescription: "Compare TeamFlow against Deel, Remote, Rippling, Bonsai, Worksuite, and more contractor management tools.",
+    title: "Compare Axle vs. Contractor Management Tools",
+    metaDescription: "Compare Axle against Deel, Remote, Rippling, Bonsai, Worksuite, and more contractor management tools.",
     canonicalPath: "/compare",
     jsonLd: combinedJsonLd([organizationJsonLd()]),
     bodyHtml,

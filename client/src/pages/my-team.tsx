@@ -1,18 +1,18 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
-import { Users, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { Users, ChevronRight } from "lucide-react";
 import type { User } from "@shared/schema";
+
+function getInitials(firstName?: string | null, lastName?: string | null) {
+  return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "?";
+}
 
 export default function MyTeamPage() {
   const { user } = useAuth();
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: teamMembers, isLoading } = useQuery<User[]>({
     queryKey: ["/api/team/members"],
@@ -20,136 +20,66 @@ export default function MyTeamPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 flex flex-col gap-[18px]">
       <div>
-        <h1 className="text-2xl font-semibold">Team Members</h1>
-        <p className="text-muted-foreground mt-1">
-          View your direct reports
+        <h1 className="text-xl font-normal text-neutral-900 dark:text-neutral-50 font-serif mb-0.5">Team members</h1>
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+          {isLoading ? "Loading..." : `${teamMembers?.length ?? 0} contractors assigned to you`}
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">Direct Reports</CardTitle>
-              <CardDescription>
-                {teamMembers?.length || 0} team members assigned to you
-              </CardDescription>
-            </div>
-            <div className="flex items-center border rounded-md overflow-hidden">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                className="rounded-none h-8 px-2"
-                onClick={() => setViewMode("grid")}
-                data-testid="button-grid-view"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                className="rounded-none h-8 px-2"
-                onClick={() => setViewMode("list")}
-                data-testid="button-list-view"
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
+      <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden flex flex-col">
+        <div className="grid grid-cols-[1fr_1fr_140px_36px] px-[18px] py-2.5 bg-[#F9FAFB] dark:bg-white/5 border-b border-neutral-200 dark:border-white/10 text-[10px] font-bold text-neutral-400 tracking-[0.08em] uppercase">
+          <span>Name</span>
+          <span>Email</span>
+          <span>Role</span>
+          <span />
+        </div>
+
+        {isLoading ? (
+          <div className="p-[18px] space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-2"}>
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : teamMembers && teamMembers.length > 0 ? (
-            viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teamMembers.map((member) => (
-                  <Link
-                    key={member.id}
-                    href={`/team/${member.id}`}
-                    className="flex items-center gap-4 p-4 rounded-md bg-muted/50 hover-elevate cursor-pointer"
-                    data-testid={`team-member-${member.id}`}
-                  >
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {member.firstName?.[0]}
-                        {member.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">
-                        {member.firstName} {member.lastName}
-                      </p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {member.email}
-                      </p>
-                      {member.jobTitle && (
-                        <p className="text-xs text-muted-foreground truncate mt-1">
-                          {member.jobTitle}
-                        </p>
-                      )}
-                    </div>
-                    <StatusBadge status={member.role} />
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="grid grid-cols-[auto_1fr_1fr_auto_auto] items-center gap-4 px-3 py-2 text-xs text-muted-foreground font-medium uppercase tracking-wider border-b">
-                  <span className="w-8" />
-                  <span>Name</span>
-                  <span>Email</span>
-                  <span>Role</span>
-                  <span className="w-5" />
+        ) : teamMembers && teamMembers.length > 0 ? (
+          teamMembers.map((member, i) => (
+            <Link
+              key={member.id}
+              href={`/team/${member.id}`}
+              className={`grid grid-cols-[1fr_1fr_140px_36px] px-[18px] py-3 items-center gap-3 border-b border-neutral-50 dark:border-white/5 last:border-b-0 hover-elevate ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+              data-testid={`team-member-${member.id}`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-[#111827] text-white text-[10px] font-bold">
+                    {getInitials(member.firstName, member.lastName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">
+                    {member.firstName} {member.lastName}
+                  </div>
+                  {member.jobTitle && (
+                    <div className="text-[11.5px] text-neutral-400 truncate">{member.jobTitle}</div>
+                  )}
                 </div>
-                {teamMembers.map((member) => (
-                  <Link
-                    key={member.id}
-                    href={`/team/${member.id}`}
-                    className="grid grid-cols-[auto_1fr_1fr_auto_auto] items-center gap-4 px-3 py-3 rounded-md hover-elevate cursor-pointer"
-                    data-testid={`team-member-${member.id}`}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {member.firstName?.[0]}
-                        {member.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-medium truncate text-sm">
-                        {member.firstName} {member.lastName}
-                      </p>
-                      {member.jobTitle && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {member.jobTitle}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">{member.email}</p>
-                    <StatusBadge status={member.role} />
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </Link>
-                ))}
               </div>
-            )
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No direct reports assigned</p>
-              <p className="text-sm mt-1">
-                Team members will appear here once they are assigned to you by an administrator.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              <span className="text-[12.5px] text-neutral-500 dark:text-neutral-400 truncate">{member.email}</span>
+              <StatusBadge status={member.role} />
+              <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-neutral-600 justify-self-end" />
+            </Link>
+          ))
+        ) : (
+          <div className="px-[18px] py-16 text-center">
+            <Users className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">No direct reports assigned</p>
+            <p className="text-[12px] text-neutral-400 mt-1">
+              Team members will appear here once they are assigned to you by an administrator.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

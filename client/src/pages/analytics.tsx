@@ -151,14 +151,13 @@ function ymLabel(year: number, month: number) {
 }
 
 const CHART_COLORS = [
-  "hsl(217, 91%, 60%)",
-  "hsl(142, 71%, 45%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(0, 84%, 60%)",
-  "hsl(280, 74%, 56%)",
-  "hsl(190, 90%, 50%)",
-  "hsl(340, 82%, 52%)",
-  "hsl(50, 90%, 50%)",
+  "#2a78d6",
+  "#059669",
+  "#e34948",
+  "#eda100",
+  "#0891b2",
+  "#eb6834",
+  "#e87ba4",
 ];
 
 function downloadFromUrl(url: string) {
@@ -262,14 +261,14 @@ export default function AnalyticsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <h1 className="font-serif text-[28px] font-normal text-neutral-900">Analytics</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Operating metrics across spend, hours, overtime, OOO, approvals, and headcount.
         </p>
       </div>
 
       {/* Global filters */}
-      <Card>
+      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
@@ -803,16 +802,14 @@ function KPI({
   testId?: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <Icon className="w-4 h-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold" data-testid={testId}>{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase">{label}</div>
+        <Icon className="w-3.5 h-3.5 text-neutral-300" />
+      </div>
+      <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid={testId}>{value}</div>
+      {sub && <p className="text-xs text-neutral-500">{sub}</p>}
+    </div>
   );
 }
 
@@ -834,11 +831,11 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card>
+    <Card className="border-[1.5px] border-neutral-200 rounded-xl">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Icon className="w-4 h-4" /> {title}
+          <CardTitle className="text-[13.5px] font-semibold text-neutral-900 flex items-center gap-2">
+            <Icon className="w-4 h-4 text-neutral-400" /> {title}
           </CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>

@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/status-badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
-import { Calendar, Clock, Star, Users, CheckCircle, XCircle, FileText, Briefcase, ClipboardList, Palmtree, Receipt } from "lucide-react";
 import type { OOORequest, Timesheet, User, Invoice } from "@shared/schema";
-import { format, differenceInDays, isWithinInterval, parseISO, startOfDay } from "date-fns";
+import { isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { OnboardingTour, supervisorApprovalsTourConfig, useTour } from "@/components/onboarding-tour";
-import { Badge } from "@/components/ui/badge";
 
 interface OOORequestWithUser extends OOORequest {
   userName: string;
@@ -26,6 +21,23 @@ interface TimesheetWithUser extends Timesheet {
 interface InvoiceWithUser extends Invoice {
   userName: string;
   userEmail: string;
+}
+
+type ApprovalItem = {
+  id: string;
+  name: string;
+  detail: string;
+  href: string;
+  kind: "leave" | "timesheet";
+};
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase() || "?";
 }
 
 export default function DashboardSupervisor() {
@@ -77,8 +89,8 @@ export default function DashboardSupervisor() {
   });
   const evaluationsDueCount = evaluationsDueData?.count ?? 0;
 
-  const pendingTimesheets = teamTimesheets?.filter((t) => t.status === "submitted");
-  const pendingInvoices = teamInvoices?.filter((i) => i.status === "submitted");
+  const pendingTimesheets = teamTimesheets?.filter((t) => t.status === "submitted") || [];
+  const pendingInvoices = teamInvoices?.filter((i) => i.status === "pending_review") || [];
   const pendingOoo = myOooRequests?.filter((r) => r.status === "pending") || [];
   const currentMonthTimesheet = myTimesheets?.find(
     (t) => t.month === new Date().getMonth() + 1 && t.year === new Date().getFullYear()
@@ -97,444 +109,179 @@ export default function DashboardSupervisor() {
     }
   });
 
+  const activePendingRequests = (pendingRequests || []).filter((r) => r.status === "pending");
+
+  const approvalItems: ApprovalItem[] = [
+    ...activePendingRequests.map((r) => ({
+      id: `leave-${r.id}`,
+      name: r.userName || "Unknown",
+      detail: `Leave · ${formatDateRange(r.startDate, r.endDate)}`,
+      href: "/leave-requests",
+      kind: "leave" as const,
+    })),
+    ...pendingTimesheets.map((t) => ({
+      id: `timesheet-${t.id}`,
+      name: t.userName || "Unknown",
+      detail: `Timesheet · ${formatMonthYear(t.month, t.year)}`,
+      href: "/team-timesheets",
+      kind: "timesheet" as const,
+    })),
+  ];
+
+  const isLoadingApprovals = requestsLoading || timesheetsLoading;
+  const totalPendingReview = activePendingRequests.length + pendingTimesheets.length;
+
+  const firstName = user?.firstName || "there";
+  const greeting = getGreeting();
+
   return (
-    <div className="p-6 space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" data-testid="tour-target-supervisor-welcome">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Your personal work and team management overview
-          </p>
-        </div>
+    <div className="p-6 flex flex-col gap-[18px]">
+      <div data-testid="tour-target-supervisor-welcome">
+        <h1 className="text-xl font-normal text-neutral-900 dark:text-neutral-50 font-serif mb-0.5">
+          {greeting}, {firstName}.
+        </h1>
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+          You have {totalPendingReview} item{totalPendingReview === 1 ? "" : "s"} pending your review.
+        </p>
       </div>
 
-      {/* MY WORK SECTION */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Briefcase className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">My Work</h2>
-        </div>
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-4 rounded-md bg-background">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">My OOO Requests</p>
-                    <p className="text-xs text-muted-foreground">
-                      {myOooLoading ? "..." : `${pendingOoo.length} pending`}
-                    </p>
-                  </div>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/ooo-requests" data-testid="link-my-ooo">View</Link>
-                </Button>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-md bg-background">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">My Timesheets</p>
-                    <p className="text-xs text-muted-foreground">
-                      {myTimesheetsLoading ? "..." : currentMonthTimesheet ? 
-                        `${format(new Date(), "MMMM")}: ${currentMonthTimesheet.status}` : 
-                        `${format(new Date(), "MMMM")}: Not started`}
-                    </p>
-                  </div>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/timesheets-overview" data-testid="link-my-timesheets">View</Link>
-                </Button>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-md bg-background">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">My Invoices</p>
-                    <p className="text-xs text-muted-foreground">
-                      {myInvoicesLoading ? "..." : `${myInvoices?.length || 0} uploaded`}
-                    </p>
-                  </div>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/invoices" data-testid="link-my-invoices">View</Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* TEAM APPROVALS SECTION */}
-      <section>
-        <div className="flex items-center gap-2 mb-4" data-testid="tour-target-team-approvals">
-          <ClipboardList className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Team Approvals</h2>
-          <span className="text-sm text-muted-foreground ml-2">Items requiring your review</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Leave Requests
-              </CardTitle>
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {requestsLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-leaves">
-                  {pendingRequests?.length || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Timesheets to Review
-              </CardTitle>
-              <Clock className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {timesheetsLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-timesheets">
-                  {pendingTimesheets?.length || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Invoices to Review
-              </CardTitle>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {teamInvoicesLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-invoices">
-                  {pendingInvoices?.length || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Link href="/expenses" data-testid="card-pending-expenses">
-            <Card className="cursor-pointer hover-elevate active-elevate-2">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Expenses to Review
-                </CardTitle>
-                <Receipt className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {expensesLoading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-pending-expenses">
-                    {pendingExpensesData?.count || 0}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Direct Reports
-              </CardTitle>
-              <Users className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {reportsLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-3xl font-bold" data-testid="text-direct-reports">
-                  {directReports?.length || 0}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Evaluations Due
-              </CardTitle>
-              <Star className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {evaluationsLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-3xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-evaluations-due">
-                  {evaluationsDueCount}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* OOO Today Widget */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-base">Out of Office Today</CardTitle>
-                <CardDescription>{format(today, "MMMM d, yyyy")}</CardDescription>
-              </div>
-              <Palmtree className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {teamOooToday.length > 0 ? (
-                <div className="space-y-2">
-                  {teamOooToday.map((req) => (
-                    <div
-                      key={req.id}
-                      className="flex items-center gap-3 p-3 rounded-md bg-muted/50"
-                      data-testid={`ooo-today-${req.id}`}
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {req.userName?.split(" ").map((n) => n[0]).join("").toUpperCase() || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm truncate">{req.userName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Back {format(parseISO(req.endDate), "MMM d")}
-                          {req.oooType === "half_day" && (
-                            <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1">Half Day</Badge>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Everyone is in today</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-        <Card data-testid="tour-target-pending-leaves-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Pending Leave Requests</CardTitle>
-              <CardDescription>Requires your approval</CardDescription>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/leave-requests" data-testid="link-all-leave-requests">
-                View All
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {requestsLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : pendingRequests && pendingRequests.length > 0 ? (
-              <div className="space-y-3">
-                {pendingRequests.slice(0, 3).map((request) => {
-                  const durationDays = request.oooType === "half_day" ? 0.5 : 
-                    differenceInDays(new Date(request.endDate), new Date(request.startDate)) + 1;
-                  return (
-                    <div
-                      key={request.id}
-                      className="p-4 rounded-md bg-muted/50 space-y-3"
-                      data-testid={`leave-request-${request.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                              {request.userName?.split(" ").map((n) => n[0]).join("") || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">{request.userName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(request.startDate), "MMM d")} -{" "}
-                              {format(new Date(request.endDate), "MMM d, yyyy")}
-                              <span className="ml-2 text-foreground">({durationDays} {durationDays === 1 ? "day" : "days"})</span>
-                            </p>
-                          </div>
-                        </div>
-                        <StatusBadge status={request.status} />
-                      </div>
-                      {request.reason && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 pl-12">
-                          {request.reason}
-                        </p>
-                      )}
-                      <div className="flex gap-2 pl-12" data-testid="tour-target-approval-actions">
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          data-testid={`button-approve-${request.id}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          data-testid={`button-reject-${request.id}`}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No pending leave requests</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card data-testid="tour-target-pending-timesheets-card">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Timesheets to Review</CardTitle>
-              <CardDescription>Submitted by your team</CardDescription>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/team-timesheets" data-testid="link-all-timesheets">
-                View All
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {timesheetsLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : pendingTimesheets && pendingTimesheets.length > 0 ? (
-              <div className="space-y-3">
-                {pendingTimesheets.slice(0, 4).map((timesheet) => (
-                  <div
-                    key={timesheet.id}
-                    className="flex items-center justify-between p-3 rounded-md bg-muted/50"
-                    data-testid={`timesheet-${timesheet.id}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {timesheet.userName?.split(" ").map((n) => n[0]).join("") || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-sm">{timesheet.userName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(timesheet.year, timesheet.month - 1), "MMMM yyyy")} - {timesheet.totalHours} hrs
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" data-testid={`button-review-${timesheet.id}`}>
-                      Review
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No timesheets pending review</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Your Team</CardTitle>
-              <CardDescription>Direct reports under your supervision</CardDescription>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/my-team" data-testid="link-my-team">
-                View All
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {reportsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : directReports && directReports.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {directReports.slice(0, 6).map((member) => {
-                  const isOooToday = teamOooToday.some((r) => r.userId === member.id);
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-3 p-4 rounded-md bg-muted/50"
-                      data-testid={`team-member-${member.id}`}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {member.firstName?.[0]}
-                            {member.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        {isOooToday && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-400 rounded-full border-2 border-background" title="OOO today" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {member.firstName} {member.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {isOooToday ? (
-                            <span className="text-amber-600 dark:text-amber-400">Out of office</span>
-                          ) : (
-                            member.email
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No direct reports assigned</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="grid grid-cols-5 gap-3" data-testid="tour-target-team-approvals">
+        <StatCard label="Team size" value={reportsLoading ? "..." : String(directReports?.length ?? 0)} hint="contractors" />
+        <StatCard
+          label="Pending sheets"
+          value={timesheetsLoading ? "..." : String(pendingTimesheets.length)}
+          hint="need approval"
+          tone="warning"
+        />
+        <StatCard
+          label="Leave requests"
+          value={requestsLoading ? "..." : String(activePendingRequests.length)}
+          hint="need approval"
+          tone="warning"
+        />
+        <StatCard label="OOO today" value={String(teamOooToday.length)} hint={teamOooToday.length === 1 ? "team member" : "team members"} />
+        <StatCard label="Evals due" value={evaluationsLoading ? "..." : String(evaluationsDueCount)} hint="this cycle" />
       </div>
-      </section>
+
+      {/* Content grid */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Pending approvals */}
+        <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden flex flex-col" data-testid="tour-target-pending-leaves-card">
+          <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10 flex justify-between items-center">
+            <span className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Pending approvals</span>
+            <span className="text-[11px] font-semibold bg-[#FFFBEB] dark:bg-[#D97706]/15 text-[#D97706] dark:text-[#FBBF24] px-2.5 py-1 rounded-full">
+              {approvalItems.length} item{approvalItems.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div>
+            {isLoadingApprovals ? (
+              <div className="px-[18px] py-6 text-[12.5px] text-neutral-400">Loading...</div>
+            ) : approvalItems.length > 0 ? (
+              approvalItems.map((item, i) => (
+                <div
+                  key={item.id}
+                  className={`px-[18px] py-3 grid grid-cols-[1fr_80px_130px] items-center gap-3 border-b border-neutral-50 dark:border-white/5 last:border-b-0 ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+                  data-testid={i === 0 ? "tour-target-approval-actions" : undefined}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="bg-[#1C2230] border border-[#2A3545] text-[#8DAFC8] text-[9px] font-bold">
+                        {getInitials(item.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">{item.name}</div>
+                      <div className="text-[11.5px] text-neutral-400 truncate">{item.detail}</div>
+                    </div>
+                  </div>
+                  <StatusBadge status="pending" />
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="flex-1 text-[11.5px] font-semibold text-[#059669] dark:text-[#34D399] bg-[#ECFDF5] dark:bg-[#059669]/15 border-none py-[5px] rounded-md"
+                      data-testid={`button-approve-${item.id}`}
+                    >
+                      Approve
+                    </button>
+                    {item.kind === "leave" ? (
+                      <button
+                        type="button"
+                        className="flex-1 text-[11.5px] font-medium text-[#DC2626] dark:text-[#F87171] bg-[#FEF2F2] dark:bg-[#DC2626]/15 border-none py-[5px] rounded-md"
+                        data-testid={`button-decline-${item.id}`}
+                      >
+                        Decline
+                      </button>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className="flex-1 text-center text-[11.5px] font-medium text-neutral-500 dark:text-neutral-300 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 py-[5px] rounded-md"
+                        data-testid={`link-view-${item.id}`}
+                      >
+                        View
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="px-[18px] py-10 text-center text-[12.5px] text-neutral-400">
+                Nothing pending your review right now.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Team status */}
+        <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden flex flex-col" data-testid="tour-target-pending-timesheets-card">
+          <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10 flex justify-between items-center">
+            <span className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Team status</span>
+            <span className="text-[11.5px] text-[#059669] dark:text-[#34D399] font-medium">
+              {reportsLoading ? "..." : `${directReports?.length ?? 0} active`}
+            </span>
+          </div>
+          <div className="grid grid-cols-[1fr_90px_90px_110px] px-[18px] py-2.5 bg-[#F9FAFB] dark:bg-white/5 border-b border-neutral-200 dark:border-white/10 text-[10px] font-bold text-neutral-400 tracking-[0.08em] uppercase">
+            <span>Contractor</span>
+            <span>Hours</span>
+            <span>Invoice</span>
+            <span>Status</span>
+          </div>
+          {reportsLoading ? (
+            <div className="px-[18px] py-6 text-[12.5px] text-neutral-400">Loading...</div>
+          ) : directReports && directReports.length > 0 ? (
+            directReports.map((member, i) => {
+              const memberName = `${member.firstName || ""} ${member.lastName || ""}`.trim() || member.email;
+              const memberTimesheet = teamTimesheets?.find((t) => t.userId === member.id);
+              const memberInvoice = teamInvoices?.find((inv) => inv.userId === member.id);
+              const isOooToday = teamOooToday.some((r) => r.userId === member.id);
+              return (
+                <div
+                  key={member.id}
+                  className={`grid grid-cols-[1fr_90px_90px_110px] px-[18px] py-3.5 items-center border-b border-neutral-50 dark:border-white/5 last:border-b-0 ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOooToday ? "bg-[#D97706]" : "bg-[#059669]"}`} />
+                    <span className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">{memberName}</span>
+                  </div>
+                  <span className="text-[12.5px] text-neutral-500 dark:text-neutral-400 tabular-nums">
+                    {memberTimesheet ? `${memberTimesheet.totalHours}h` : "N/A"}
+                  </span>
+                  {memberInvoice ? (
+                    <StatusBadge status={memberInvoice.status === "pending_review" ? "pending" : memberInvoice.status} />
+                  ) : (
+                    <span className="text-[11px] text-neutral-300 dark:text-neutral-600">N/A</span>
+                  )}
+                  <span className={`text-[11.5px] ${isOooToday ? "text-[#D97706] dark:text-[#FBBF24]" : "text-neutral-500 dark:text-neutral-400"}`}>
+                    {isOooToday ? "OOO today" : "On track"}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="px-[18px] py-10 text-center text-[12.5px] text-neutral-400">No direct reports assigned</div>
+          )}
+        </div>
+      </div>
 
       {/* Supervisor Onboarding Tour */}
       {shouldShowTour && showTour && (
@@ -553,4 +300,65 @@ export default function DashboardSupervisor() {
       )}
     </div>
   );
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "default" | "warning";
+}) {
+  return (
+    <div
+      className={`rounded-xl px-4 py-3.5 border-[1.5px] ${
+        tone === "warning"
+          ? "bg-[#FFFBEB] dark:bg-[#D97706]/10 border-[#FDE68A] dark:border-[#D97706]/30"
+          : "bg-white dark:bg-card border-neutral-200 dark:border-white/10"
+      }`}
+    >
+      <div
+        className={`text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 ${
+          tone === "warning" ? "text-[#92400E] dark:text-[#FBBF24]" : "text-neutral-400"
+        }`}
+      >
+        {label}
+      </div>
+      <div className={`text-2xl font-bold mb-0.5 ${tone === "warning" ? "text-[#92400E] dark:text-[#FBBF24]" : "text-neutral-900 dark:text-neutral-50"}`}>
+        {value}
+      </div>
+      <div className={`text-[11.5px] ${tone === "warning" ? "text-[#B45309] dark:text-[#FBBF24]/80" : "text-neutral-500 dark:text-neutral-400"}`}>
+        {hint}
+      </div>
+    </div>
+  );
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatMonthYear(month: number, year: number) {
+  const date = new Date(year, month - 1);
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function formatDateRange(startDate: string, endDate: string) {
+  try {
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (startDate === endDate) return startLabel;
+    const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `${startLabel}, ${endLabel}`;
+  } catch {
+    return "";
+  }
 }
