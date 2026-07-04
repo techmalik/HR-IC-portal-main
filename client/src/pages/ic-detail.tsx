@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, getDaysInMonth, startOfMonth, getDay, addMonths, subMonths } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -325,26 +324,28 @@ export default function ICDetailPage() {
     );
   }
 
+  const yearTotalHours = yearSummary.reduce((sum, m) => sum + m.totalHours, 0);
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 flex flex-col gap-[18px]">
       <div className="flex items-center gap-4">
         <Button asChild variant="ghost" size="icon">
           <Link href="/my-team" data-testid="button-back-to-team">
             <ArrowLeft className="w-5 h-5" />
           </Link>
         </Button>
-        <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12">
-            <AvatarFallback className="bg-primary/10 text-primary">
+        <div className="flex items-center gap-3.5">
+          <Avatar className="h-11 w-11">
+            <AvatarFallback className="bg-[#111827] text-white text-[13px] font-bold">
               {icUser.firstName?.[0]}
               {icUser.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-semibold" data-testid="text-ic-name">
+            <h1 className="text-xl font-normal text-neutral-900 dark:text-neutral-50 font-serif" data-testid="text-ic-name">
               {icUser.firstName} {icUser.lastName}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
               {icUser.jobTitle || icUser.email}
             </p>
           </div>
@@ -353,20 +354,20 @@ export default function ICDetailPage() {
 
       {expiringContracts.length > 0 && (
         <div
-          className="flex items-start gap-3 p-4 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          className="flex items-start gap-2.5 px-4 py-3 rounded-xl border-[1.5px] border-[#FDE68A] bg-[#FFFBEB] dark:bg-[#D97706]/10 dark:border-[#D97706]/30 text-[#92400E] dark:text-[#FBBF24]"
           data-testid="banner-ic-contract-expiring"
         >
-          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="flex-1 text-sm">
-            <p className="font-medium">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="flex-1 text-[12.5px]">
+            <p className="font-semibold">
               {expiringContracts.length} contract{expiringContracts.length === 1 ? "" : "s"} approaching renewal
             </p>
-            <ul className="mt-1 text-xs space-y-0.5">
+            <ul className="mt-1 text-[11.5px] space-y-0.5">
               {expiringContracts.map((c) => {
                 const days = differenceInDays(new Date(c.endDate), new Date());
                 return (
                   <li key={c.id}>
-                    <span className="font-medium">{c.title}</span> — expires in {days} day{days === 1 ? "" : "s"}
+                    <span className="font-medium">{c.title}</span>, expires in {days} day{days === 1 ? "" : "s"}
                   </li>
                 );
               })}
@@ -374,6 +375,29 @@ export default function ICDetailPage() {
           </div>
         </div>
       )}
+
+      <div className="grid grid-cols-4 gap-3">
+        <div className="rounded-xl px-4 py-3.5 border-[1.5px] bg-white dark:bg-card border-neutral-200 dark:border-white/10">
+          <div className="text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 text-neutral-400">Hours this year</div>
+          <div className="text-2xl font-bold mb-0.5 text-neutral-900 dark:text-neutral-50">{yearTotalHours}</div>
+          <div className="text-[11.5px] text-neutral-500 dark:text-neutral-400">{selectedDate.getFullYear()}</div>
+        </div>
+        <div className="rounded-xl px-4 py-3.5 border-[1.5px] bg-white dark:bg-card border-neutral-200 dark:border-white/10">
+          <div className="text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 text-neutral-400">Timesheets</div>
+          <div className="text-2xl font-bold mb-0.5 text-neutral-900 dark:text-neutral-50">{timesheetsLoading ? "..." : timesheets?.length ?? 0}</div>
+          <div className="text-[11.5px] text-neutral-500 dark:text-neutral-400">on record</div>
+        </div>
+        <div className="rounded-xl px-4 py-3.5 border-[1.5px] bg-white dark:bg-card border-neutral-200 dark:border-white/10">
+          <div className="text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 text-neutral-400">Invoices</div>
+          <div className="text-2xl font-bold mb-0.5 text-neutral-900 dark:text-neutral-50">{invoicesLoading ? "..." : invoices?.length ?? 0}</div>
+          <div className="text-[11.5px] text-neutral-500 dark:text-neutral-400">submitted</div>
+        </div>
+        <div className="rounded-xl px-4 py-3.5 border-[1.5px] bg-white dark:bg-card border-neutral-200 dark:border-white/10">
+          <div className="text-[9.5px] font-semibold tracking-[0.1em] uppercase mb-2 text-neutral-400">Evaluations</div>
+          <div className="text-2xl font-bold mb-0.5 text-neutral-900 dark:text-neutral-50">{evaluationsLoading ? "..." : evaluations?.length ?? 0}</div>
+          <div className="text-[11.5px] text-neutral-500 dark:text-neutral-400">on record</div>
+        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
@@ -400,77 +424,82 @@ export default function ICDetailPage() {
         </TabsList>
 
         {/* TIMESHEETS TAB */}
-        <TabsContent value="timesheets" className="mt-6 space-y-6">
+        <TabsContent value="timesheets" className="mt-4 flex flex-col gap-4">
           {/* Year at a Glance */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{selectedDate.getFullYear()} Overview</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedDate(subMonths(selectedDate, 12))}
-                    data-testid="button-prev-year"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm font-medium w-16 text-center">
-                    {selectedDate.getFullYear()}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedDate(addMonths(selectedDate, 12))}
-                    data-testid="button-next-year"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
+          <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10 flex items-center justify-between">
+              <div>
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">{selectedDate.getFullYear()} overview</div>
+                <div className="text-[11.5px] text-neutral-400">Total hours per month</div>
               </div>
-              <CardDescription>Total hours per month</CardDescription>
-            </CardHeader>
-            <CardContent>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(subMonths(selectedDate, 12))}
+                  data-testid="button-prev-year"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-[12.5px] font-medium w-14 text-center text-neutral-700 dark:text-neutral-300">
+                  {selectedDate.getFullYear()}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(addMonths(selectedDate, 12))}
+                  data-testid="button-next-year"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-[18px]">
               <div className="grid grid-cols-6 lg:grid-cols-12 gap-2">
-                {yearSummary.map((m) => (
-                  <Button
-                    key={m.month}
-                    variant={selectedDate.getMonth() + 1 === m.month ? "default" : "outline"}
-                    className="flex flex-col h-auto py-2 px-1"
-                    onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), m.month - 1))}
-                    data-testid={`button-month-${m.month}`}
-                  >
-                    <span className="text-xs">{m.monthName}</span>
-                    <span className="text-lg font-bold">{m.totalHours}</span>
-                    <span className="text-[10px] opacity-70">hrs</span>
-                  </Button>
-                ))}
+                {yearSummary.map((m) => {
+                  const isSelected = selectedDate.getMonth() + 1 === m.month;
+                  return (
+                    <button
+                      key={m.month}
+                      type="button"
+                      onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), m.month - 1))}
+                      className={`flex flex-col items-center rounded-lg py-2 px-1 border-[1.5px] transition-colors ${
+                        isSelected
+                          ? "bg-[#059669] border-[#059669] text-white"
+                          : "bg-white dark:bg-transparent border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover-elevate"
+                      }`}
+                      data-testid={`button-month-${m.month}`}
+                    >
+                      <span className="text-[10.5px]">{m.monthName}</span>
+                      <span className="text-[15px] font-bold">{m.totalHours}</span>
+                      <span className={`text-[9px] ${isSelected ? "text-white/80" : "text-neutral-400"}`}>hrs</span>
+                    </button>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Monthly Timesheet Details */}
-          <Card className="overflow-hidden">
-            <CardHeader>
+          <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base">
-                    {format(selectedDate, "MMMM yyyy")} Timesheet
-                  </CardTitle>
-                  <CardDescription>
-                    {selectedTimesheet ? (
-                      <div className="flex items-center gap-2 mt-1">
-                        <StatusBadge status={selectedTimesheet.status} />
-                        <span className="text-sm">
-                          {selectedTimesheet.totalHours} total hours
-                        </span>
-                      </div>
-                    ) : (
-                      "No timesheet for this month"
-                    )}
-                  </CardDescription>
+                  <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">
+                    {format(selectedDate, "MMMM yyyy")} timesheet
+                  </div>
+                  {selectedTimesheet ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <StatusBadge status={selectedTimesheet.status} />
+                      <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                        {selectedTimesheet.totalHours} total hours
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-[11.5px] text-neutral-400 mt-0.5">No timesheet for this month</div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -493,25 +522,25 @@ export default function ICDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-2"
+                  className="mt-2.5"
                   onClick={() => handleUnlockClick(selectedTimesheet)}
                   data-testid="button-unlock-timesheet"
                 >
                   <Unlock className="w-4 h-4 mr-2" />
-                  Unlock for Revision
+                  Unlock for revision
                 </Button>
               )}
-            </CardHeader>
-            <CardContent className="overflow-hidden">
+            </div>
+            <div className="p-[18px] overflow-hidden">
               {timesheetsLoading ? (
                 <Skeleton className="h-64 w-full" />
               ) : (
                 <div className="space-y-4 w-full overflow-hidden">
                   {/* Calendar Grid */}
                   <div className="flex justify-end mb-2">
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">View Only</span>
+                    <span className="text-[10.5px] text-neutral-400 bg-[#F9FAFB] dark:bg-white/5 px-2 py-0.5 rounded">View only</span>
                   </div>
-                  <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground mb-2 w-full">
+                  <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-neutral-400 mb-2 w-full">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                       <div key={d} className="py-1 min-w-0">{d}</div>
                     ))}
@@ -520,41 +549,45 @@ export default function ICDetailPage() {
                     {calendarDays.map((day, idx) => {
                       const isWeekend = idx % 7 === 0 || idx % 7 === 6;
                       const hasContent = day.hours > 0 || day.activities.length > 0;
+                      const isToday = day.isCurrentMonth && day.date === format(new Date(), "yyyy-MM-dd");
+                      const cellClass = !day.isCurrentMonth
+                        ? "bg-[#F9FAFB] dark:bg-white/[0.02] border-transparent opacity-40"
+                        : isToday
+                        ? "bg-[#059669] border-[#059669]"
+                        : hasContent
+                        ? "bg-[#F0FDF4] dark:bg-[#059669]/10 border-[#D1FAE5] dark:border-[#059669]/30"
+                        : isWeekend
+                        ? "bg-[#F9FAFB] dark:bg-white/[0.02] border-transparent"
+                        : "bg-white dark:bg-transparent border-dashed border-neutral-200 dark:border-white/10";
                       return (
                         <div
                           key={day.date}
-                          className={`min-h-[60px] min-w-0 overflow-hidden rounded border ${
-                            day.isCurrentMonth
-                              ? isWeekend
-                                ? "bg-muted/30 border-muted"
-                                : "bg-background border-border"
-                              : "bg-muted/10 border-muted/30 opacity-40"
-                          }`}
+                          className={`min-h-[60px] min-w-0 overflow-hidden rounded-md border ${cellClass}`}
                         >
                           {hasContent && day.isCurrentMonth ? (
                             <Button
                               variant="ghost"
                               onClick={() => handleDayClick(day)}
-                              className="w-full h-full flex flex-col items-start justify-start text-left p-1 min-w-0 overflow-hidden"
+                              className="w-full h-full flex flex-col items-start justify-start text-left p-1 min-w-0 overflow-hidden hover:bg-transparent"
                               data-testid={`day-${day.date}`}
                             >
-                              <div className="font-medium text-xs">{day.day}</div>
+                              <div className={`font-medium text-[11px] ${isToday ? "text-white" : "text-[#065F46] dark:text-[#34D399]"}`}>{day.day}</div>
                               {day.hours > 0 && (
-                                <div className="mt-1">
-                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                    {day.hours}h
-                                  </Badge>
+                                <div className={`mt-1 text-[10px] font-semibold ${isToday ? "text-white" : "text-[#34D399]"}`}>
+                                  {day.hours}h
                                 </div>
                               )}
                               {day.activities.length > 0 && (
-                                <div className="mt-1 text-[10px] text-muted-foreground truncate max-w-full overflow-hidden">
+                                <div className={`mt-1 text-[9.5px] truncate max-w-full overflow-hidden ${isToday ? "text-white/80" : "text-neutral-400"}`}>
                                   {day.activities[0]}
                                 </div>
                               )}
                             </Button>
                           ) : (
-                            <div className="p-1 text-xs min-w-0" data-testid={`day-${day.date}`}>
-                              <div className="font-medium">{day.day}</div>
+                            <div className="p-1 text-[11px] min-w-0" data-testid={`day-${day.date}`}>
+                              <div className={`font-medium ${isToday ? "text-white" : day.isCurrentMonth ? "text-neutral-500 dark:text-neutral-400" : "text-neutral-300 dark:text-neutral-600"}`}>
+                                {day.day}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -566,9 +599,9 @@ export default function ICDetailPage() {
                   {selectedTimesheet && Object.keys(monthEntries).length > 0 && (
                     <div className="mt-6">
                       <Separator className="mb-4" />
-                      <h4 className="font-medium mb-3">Daily Activity Breakdown</h4>
+                      <h4 className="text-[12.5px] font-semibold text-neutral-900 dark:text-neutral-50 mb-3">Daily activity breakdown</h4>
                       <ScrollArea className="h-64">
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {Object.entries(monthEntries)
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([date, entries]) => {
@@ -577,25 +610,25 @@ export default function ICDetailPage() {
                               return (
                                 <div
                                   key={date}
-                                  className="flex items-start gap-4 p-2 rounded bg-muted/30"
+                                  className="flex items-start gap-4 px-3 py-2.5 rounded-md bg-[#F9FAFB] dark:bg-white/[0.02]"
                                   data-testid={`entry-${date}`}
                                 >
-                                  <div className="w-24 shrink-0 font-medium text-sm">
+                                  <div className="w-24 shrink-0 text-[12px] font-medium text-neutral-900 dark:text-neutral-50">
                                     {format(new Date(date), "MMM d, EEE")}
                                   </div>
                                   <div className="flex-1 space-y-1">
                                     {entries.map((entry, idx) => (
-                                      <div key={idx} className="flex items-center gap-2 text-sm">
-                                        <Badge variant="outline" className="text-xs shrink-0">
+                                      <div key={idx} className="flex items-center gap-2 text-[12px]">
+                                        <Badge variant="outline" className="text-[10.5px] shrink-0">
                                           {entry.hours}h
                                         </Badge>
-                                        <span className="text-muted-foreground truncate">
+                                        <span className="text-neutral-500 dark:text-neutral-400 truncate">
                                           {entry.activityLog || "No activity recorded"}
                                         </span>
                                       </div>
                                     ))}
                                   </div>
-                                  <div className="w-16 text-right font-medium text-sm">
+                                  <div className="w-20 text-right text-[12px] font-medium text-neutral-900 dark:text-neutral-50 shrink-0">
                                     {dayTotal}h total
                                   </div>
                                 </div>
@@ -607,184 +640,171 @@ export default function ICDetailPage() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* EVALUATIONS TAB */}
-        <TabsContent value="evaluations" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Performance Evaluations</CardTitle>
-              <CardDescription>
-                {evaluations?.length || 0} evaluations on record
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {evaluationsLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              ) : evaluations && evaluations.length > 0 ? (
-                <div className="space-y-4">
-                  {evaluations.map((evaluation) => (
-                    <div
-                      key={evaluation.id}
-                      className="p-4 rounded-md bg-muted/50"
-                      data-testid={`evaluation-${evaluation.id}`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          <span className="font-medium">
-                            {format(new Date(evaluation.periodStart), "MMMM yyyy")}
-                          </span>
-                        </div>
-                        <StatusBadge status={evaluation.status} />
+        <TabsContent value="evaluations" className="mt-4">
+          <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+              <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Performance evaluations</div>
+              <div className="text-[11.5px] text-neutral-400">{evaluations?.length || 0} evaluations on record</div>
+            </div>
+            {evaluationsLoading ? (
+              <div className="p-[18px] space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : evaluations && evaluations.length > 0 ? (
+              <div>
+                {evaluations.map((evaluation, i) => (
+                  <div
+                    key={evaluation.id}
+                    className={`px-[18px] py-3.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0 ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+                    data-testid={`evaluation-${evaluation.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-[#D97706]" />
+                        <span className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">
+                          {format(new Date(evaluation.periodStart), "MMMM yyyy")}
+                        </span>
                       </div>
-                      {evaluation.managerSummary && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          {evaluation.managerSummary}
-                        </p>
-                      )}
+                      <StatusBadge status={evaluation.status} />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Star className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No evaluations on record</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    {evaluation.managerSummary && (
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-1.5 pl-6">
+                        {evaluation.managerSummary}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-[18px] py-14 text-center">
+                <Star className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">No evaluations on record</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* INVOICES TAB */}
-        <TabsContent value="invoices" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Submitted Invoices</CardTitle>
-              <CardDescription>
-                {invoices?.length || 0} invoices on record
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {invoicesLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ) : invoices && invoices.length > 0 ? (
-                <div className="space-y-3">
-                  {invoices.map((invoice) => (
-                    <div
-                      key={invoice.id}
-                      className="flex items-center justify-between p-4 rounded-md bg-muted/50"
-                      data-testid={`invoice-${invoice.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">{invoice.fileName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")}
-                            {invoice.amount && ` - ${formatMoney(invoice.amount, invoice.currency)}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={invoice.status || "pending_review"} />
-                        {invoice.fileUrl && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                              data-testid={`button-view-invoice-${invoice.id}`}
-                            >
-                              <a href={invoice.fileUrl} target="_blank" rel="noopener noreferrer" title="View invoice">
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                              data-testid={`button-download-invoice-${invoice.id}`}
-                            >
-                              <a href={invoice.fileUrl} download={invoice.fileName} title="Download invoice">
-                                <Download className="w-4 h-4" />
-                              </a>
-                            </Button>
-                          </>
-                        )}
+        <TabsContent value="invoices" className="mt-4">
+          <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+              <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Submitted invoices</div>
+              <div className="text-[11.5px] text-neutral-400">{invoices?.length || 0} invoices on record</div>
+            </div>
+            {invoicesLoading ? (
+              <div className="p-[18px] space-y-3">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : invoices && invoices.length > 0 ? (
+              <div>
+                {invoices.map((invoice, i) => (
+                  <div
+                    key={invoice.id}
+                    className={`flex items-center justify-between gap-3 px-[18px] py-3 border-b border-neutral-50 dark:border-white/5 last:border-b-0 ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+                    data-testid={`invoice-${invoice.id}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">{invoice.fileName}</p>
+                        <p className="text-[11.5px] text-neutral-400">
+                          {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")}
+                          {invoice.amount && `, ${formatMoney(invoice.amount, invoice.currency)}`}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No invoices on record</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <StatusBadge status={invoice.status || "pending_review"} />
+                      {invoice.fileUrl && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            data-testid={`button-view-invoice-${invoice.id}`}
+                          >
+                            <a href={invoice.fileUrl} target="_blank" rel="noopener noreferrer" title="View invoice">
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            data-testid={`button-download-invoice-${invoice.id}`}
+                          >
+                            <a href={invoice.fileUrl} download={invoice.fileName} title="Download invoice">
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-[18px] py-14 text-center">
+                <FileText className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">No invoices on record</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* TIME-OFFS TAB */}
-        <TabsContent value="time-offs" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Time-Off Requests</CardTitle>
-              <CardDescription>
-                {oooRequests?.length || 0} requests on record
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {oooLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ) : oooRequests && oooRequests.length > 0 ? (
-                <div className="space-y-3">
-                  {oooRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-center justify-between p-4 rounded-md bg-muted/50"
-                      data-testid={`ooo-${request.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">
-                            {format(new Date(request.startDate), "MMM d")} -{" "}
-                            {format(new Date(request.endDate), "MMM d, yyyy")}
-                          </p>
-                          <p className="text-xs text-muted-foreground capitalize">
-                            {request.oooType.replace("_", " ")}
-                            {request.reason && ` - ${request.reason}`}
-                          </p>
-                        </div>
+        <TabsContent value="time-offs" className="mt-4">
+          <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+              <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Time-off requests</div>
+              <div className="text-[11.5px] text-neutral-400">{oooRequests?.length || 0} requests on record</div>
+            </div>
+            {oooLoading ? (
+              <div className="p-[18px] space-y-3">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : oooRequests && oooRequests.length > 0 ? (
+              <div>
+                {oooRequests.map((request, i) => (
+                  <div
+                    key={request.id}
+                    className={`flex items-center justify-between gap-3 px-[18px] py-3 border-b border-neutral-50 dark:border-white/5 last:border-b-0 ${i % 2 ? "bg-neutral-50/50 dark:bg-white/[0.02]" : ""}`}
+                    data-testid={`ooo-${request.id}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Calendar className="w-4 h-4 text-neutral-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">
+                          {format(new Date(request.startDate), "MMM d")}, {format(new Date(request.endDate), "MMM d, yyyy")}
+                        </p>
+                        <p className="text-[11.5px] text-neutral-400 capitalize">
+                          {request.oooType.replace("_", " ")}
+                          {request.reason && `, ${request.reason}`}
+                        </p>
                       </div>
-                      <StatusBadge status={request.status} />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No time-off requests on record</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <StatusBadge status={request.status} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-[18px] py-14 text-center">
+                <Calendar className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">No time-off requests on record</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
         {/* CONTRACTS TAB */}
-        <TabsContent value="contracts" className="mt-6">
+        <TabsContent value="contracts" className="mt-4">
           <ContractsSection userId={icUser.id} canManage={currentUser?.role === "admin" || currentUser?.role === "owner"} />
         </TabsContent>
       </Tabs>

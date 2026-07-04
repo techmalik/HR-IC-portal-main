@@ -92,7 +92,7 @@ export function InstallPwaHint() {
   return (
     <div
       role="dialog"
-      aria-label="Install TeamFlow"
+      aria-label="Install Axle"
       data-testid="install-pwa-hint"
       className="fixed bottom-[72px] inset-x-3 z-50 md:hidden rounded-lg border bg-card text-card-foreground shadow-lg p-3 flex items-start gap-3"
     >
@@ -100,7 +100,7 @@ export function InstallPwaHint() {
         <Download className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">Install TeamFlow</p>
+        <p className="text-sm font-semibold">Install Axle</p>
         {iosHint ? (
           <p className="text-xs text-muted-foreground mt-0.5">
             Tap <Share className="inline w-3 h-3 mx-0.5" /> Share, then "Add to Home Screen".

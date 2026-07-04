@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { StatusBadge } from "@/components/status-badge";
 import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
 
@@ -153,88 +154,72 @@ export default function BillingPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</Badge>;
       case "canceled":
-        return <Badge variant="destructive">Canceled</Badge>;
+        return <StatusBadge status="declined" />;
       case "past_due":
-        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Past Due</Badge>;
-      case "trialing":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Trial</Badge>;
+        return <StatusBadge status="pending" />;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusBadge status={status} />;
     }
   };
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Current Plan</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-primary" />
-              {planInfo?.name || "Free"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {getStatusBadge(billing?.subscription?.status || "active")}
-              {planInfo?.price > 0 && (
-                <span className="text-sm text-muted-foreground">
-                  ${planInfo.price}/mo
-                </span>
-              )}
-              {planInfo?.price === 0 && currentPlan !== "enterprise" && (
-                <span className="text-sm text-muted-foreground">Free</span>
-              )}
-              {currentPlan === "enterprise" && (
-                <span className="text-sm text-muted-foreground">Custom pricing</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Seat Usage</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              {seatCount} / {maxSeats}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={percentUsed} className="h-2 mb-1" />
-            <p className="text-sm text-muted-foreground">
-              {percentUsed}% of seats used
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Billing Period</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Current
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Started {formatDate(billing?.subscription?.currentPeriodStart)}
-            </p>
-            {billing?.subscription?.currentPeriodEnd && (
-              <p className="text-sm text-muted-foreground">
-                Renews {formatDate(billing.subscription.currentPeriodEnd)}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <div>
+        <h1 className="font-serif text-[28px] font-normal text-neutral-900">Billing</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your subscription plan and seat usage
+        </p>
       </div>
 
-      <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+            <CreditCard className="w-3 h-3" /> Current plan
+          </div>
+          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">{planInfo?.name || "Free"}</div>
+          <div className="flex items-center gap-2">
+            {getStatusBadge(billing?.subscription?.status || "active")}
+            {planInfo?.price > 0 && (
+              <span className="text-xs text-neutral-500">${planInfo.price}/mo</span>
+            )}
+            {planInfo?.price === 0 && currentPlan !== "enterprise" && (
+              <span className="text-xs text-neutral-500">Free</span>
+            )}
+            {currentPlan === "enterprise" && (
+              <span className="text-xs text-neutral-500">Custom pricing</span>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+            <Users className="w-3 h-3" /> Seat usage
+          </div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-1.5">{seatCount} / {maxSeats}</div>
+          <Progress value={percentUsed} className="h-1.5 mb-1" />
+          <p className="text-xs text-neutral-500">{percentUsed}% of seats used</p>
+        </div>
+
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
+            <Calendar className="w-3 h-3" /> Billing period
+          </div>
+          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">Current</div>
+          <p className="text-xs text-neutral-500">
+            Started {formatDate(billing?.subscription?.currentPeriodStart)}
+          </p>
+          {billing?.subscription?.currentPeriodEnd && (
+            <p className="text-xs text-neutral-500">
+              Renews {formatDate(billing.subscription.currentPeriodEnd)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
         <CardHeader>
-          <CardTitle>Choose Your Plan</CardTitle>
+          <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
           <CardDescription>
             Select the plan that best fits your team's needs
           </CardDescription>
@@ -313,9 +298,9 @@ export default function BillingPage() {
       </Card>
 
       {billing?.organization && (
-        <Card>
+        <Card className="border-[1.5px] border-neutral-200 rounded-xl">
           <CardHeader>
-            <CardTitle>Organization Details</CardTitle>
+            <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Organization details</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

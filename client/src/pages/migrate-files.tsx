@@ -145,18 +145,18 @@ export default function MigrateFilesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+    <div className="min-h-screen bg-[#F7F8FA] dark:bg-gray-950 p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">File Migration Tool</h1>
+          <h1 className="font-serif text-2xl font-normal text-neutral-900 dark:text-gray-100">File migration tool</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Upload files to Object Storage. Files will be stored under .private/uploads/ with their original filenames.
           </p>
         </div>
 
-        <Card>
+        <Card className="border-[1.5px] border-neutral-200 rounded-xl">
           <CardHeader>
-            <CardTitle className="text-lg">Upload Files</CardTitle>
+            <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Upload files</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div

@@ -165,18 +165,18 @@ export default function ProfilePage() {
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
       <div>
-        <h1 className="text-2xl font-semibold">Profile Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your account information</p>
+        <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Profile Settings</h1>
+        <p className="text-[13px] text-muted-foreground">Manage your account information</p>
       </div>
 
-      <div className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+      <div className="flex items-center gap-4 px-5 py-4 rounded-xl border-[1.5px] border-card-border bg-card">
         <Avatar className="h-16 w-16">
-          <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
+          <AvatarFallback className="bg-[#111827] text-white text-xl font-semibold">
             {getInitials()}
           </AvatarFallback>
         </Avatar>
         <div>
-          <p className="font-semibold text-lg">{user?.firstName} {user?.lastName}</p>
+          <p className="font-semibold text-lg text-foreground">{user?.firstName} {user?.lastName}</p>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
           <p className="text-xs text-muted-foreground capitalize">{user?.role === "ic" ? "Independent Contractor" : "Administrator"}</p>
         </div>
@@ -374,7 +374,7 @@ export default function ProfilePage() {
                           <SelectContent>
                             {SUPPORTED_CURRENCIES.map((c) => (
                               <SelectItem key={c.code} value={c.code} data-testid={`option-currency-${c.code}`}>
-                                {c.code} — {c.name} ({c.symbol})
+                                {c.code}, {c.name} ({c.symbol})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -518,7 +518,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-muted-foreground">Account Status</span>
-                <span className={`font-medium ${user?.isActive ? "text-emerald-600" : "text-red-600"}`} data-testid="text-status">
+                <span className={`font-medium ${user?.isActive ? "text-[#059669]" : "text-[#DC2626]"}`} data-testid="text-status">
                   {user?.isActive ? "Active" : "Inactive"}
                 </span>
               </div>

@@ -1,19 +1,4 @@
-import fs from "fs";
-import path from "path";
-
-let _logoBase64: string | null = null;
-
-export function getLogoBase64(): string {
-  if (_logoBase64) return _logoBase64;
-  try {
-    const logoPath = path.join(process.cwd(), "attached_assets", "image_1767366582234.png");
-    const data = fs.readFileSync(logoPath);
-    _logoBase64 = `data:image/png;base64,${data.toString("base64")}`;
-  } catch {
-    _logoBase64 = "";
-  }
-  return _logoBase64;
-}
+const AXLE_LOGO_SVG = `<svg width="26" height="26" viewBox="0 0 28 28" fill="none" style="display:block;"><circle cx="14" cy="14" r="11.5" stroke="#111827" stroke-width="2"/><circle cx="14" cy="14" r="4" fill="#111827"/></svg>`;
 
 interface SsrShellOptions {
   title: string;
@@ -36,16 +21,13 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     bodyHtml,
   } = opts;
 
-  const logoSrc = getLogoBase64();
-  const logoImg = logoSrc
-    ? `<img src="${logoSrc}" alt="TeamFlow" style="height:32px;width:auto;">`
-    : `<span style="font-weight:700;font-size:1.2rem;color:#6366f1;">TeamFlow</span>`;
+  const logoImg = `${AXLE_LOGO_SVG}<span style="font-weight:700;font-size:1rem;letter-spacing:-0.02em;color:#111827;">Axle</span>`;
 
   const jsonLdScript = jsonLd
     ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/<\/script/gi, "<\\/script")}</script>`
     : "";
 
-  const baseUrl = "https://teamflow.app";
+  const baseUrl = "https://axlehq.app";
   const canonical = `${baseUrl}${canonicalPath}`;
 
   return `<!DOCTYPE html>
@@ -60,29 +42,31 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
   <meta property="og:description" content="${escAttr(ogDescription || metaDescription)}">
   <meta property="og:url" content="${escAttr(canonical)}">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="TeamFlow">
+  <meta property="og:site_name" content="Axle">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escAttr(ogTitle || title)}">
   <meta name="twitter:description" content="${escAttr(ogDescription || metaDescription)}">
   ${jsonLdScript}
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --primary: #6366f1;
-      --primary-dark: #4f46e5;
+      --primary: #059669;
+      --primary-dark: #047857;
       --bg: #ffffff;
-      --bg-muted: #f8fafc;
-      --border: #e2e8f0;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --text-light: #94a3b8;
+      --bg-muted: #F9FAFB;
+      --border: #E5E7EB;
+      --text: #111827;
+      --text-muted: #6B7280;
+      --text-light: #9CA3AF;
       --radius: 8px;
       --max-w: 860px;
     }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'DM Sans', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.7;
@@ -145,7 +129,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     .ssr-breadcrumb .sep { color: var(--text-light); }
 
     /* ── Typography ── */
-    h1 { font-size: 2.25rem; font-weight: 700; line-height: 1.25; margin-bottom: 16px; color: var(--text); }
+    h1 { font-family: 'DM Serif Display', Georgia, serif; font-weight: 400; font-size: 2.5rem; line-height: 1.2; margin-bottom: 16px; color: var(--text); }
     h2 { font-size: 1.5rem; font-weight: 600; margin-top: 40px; margin-bottom: 12px; color: var(--text); }
     h3 { font-size: 1.2rem; font-weight: 600; margin-top: 28px; margin-bottom: 8px; color: var(--text); }
     p { margin-bottom: 16px; }
@@ -166,7 +150,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
       border-bottom: 1px solid var(--border);
     }
     .ssr-tag {
-      background: #eef2ff;
+      background: #ECFDF5;
       color: var(--primary);
       padding: 2px 10px;
       border-radius: 999px;
@@ -182,7 +166,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
 
     /* ── Callout ── */
     .ssr-callout {
-      background: #eef2ff;
+      background: #ECFDF5;
       border-left: 4px solid var(--primary);
       border-radius: 0 var(--radius) var(--radius) 0;
       padding: 16px 20px;
@@ -190,14 +174,14 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
       font-size: 0.9375rem;
     }
     .ssr-callout-warn {
-      background: #fff7ed;
-      border-left-color: #f97316;
+      background: #FFFBEB;
+      border-left-color: #D97706;
     }
 
     /* ── CTA block ── */
     .ssr-cta-block {
-      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-      border: 1px solid #c7d2fe;
+      background: #F0FDF4;
+      border: 1px solid #A7F3D0;
       border-radius: 12px;
       padding: 32px 36px;
       margin: 48px 0 32px;
@@ -230,7 +214,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
       padding: 24px 28px;
       transition: box-shadow 0.15s;
     }
-    .ssr-blog-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,0.1); }
+    .ssr-blog-card:hover { box-shadow: 0 4px 20px rgba(5,150,105,0.1); }
     .ssr-blog-card h2 { margin-top: 0; font-size: 1.2rem; margin-bottom: 8px; }
     .ssr-blog-card h2 a { color: var(--text); }
     .ssr-blog-card h2 a:hover { color: var(--primary); text-decoration: none; }
@@ -264,8 +248,8 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
 
     /* ── Email capture ── */
     .ssr-email-capture {
-      background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
-      border: 1px solid #c7d2fe;
+      background: #F0FDF4;
+      border: 1px solid #A7F3D0;
       border-radius: 12px;
       padding: 28px 32px;
       margin: 40px 0;
@@ -357,13 +341,13 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
 
     /* ── Hero ── */
     .ssr-hero {
-      background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+      background: #F9FAFB;
       border-bottom: 1px solid var(--border);
       padding: 60px 24px 48px;
       text-align: center;
       margin-bottom: 0;
     }
-    .ssr-hero h1 { font-size: 2.5rem; margin-bottom: 12px; }
+    .ssr-hero h1 { font-size: 2.75rem; margin-bottom: 12px; }
     .ssr-hero p { color: var(--text-muted); font-size: 1.125rem; max-width: 580px; margin: 0 auto; }
 
     @media (max-width: 640px) {
@@ -401,7 +385,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
         <a href="/login">Login</a>
         <a href="/signup">Sign Up Free</a>
       </div>
-      <p class="ssr-footer-copy">&copy; ${new Date().getFullYear()} TeamFlow. All rights reserved.</p>
+      <p class="ssr-footer-copy">&copy; ${new Date().getFullYear()} Axle. All rights reserved.</p>
     </div>
   </footer>
 </body>

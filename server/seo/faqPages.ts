@@ -1,7 +1,7 @@
 import { faqItems } from "./faqData";
 import { ssrHtmlShell, escHtml } from "../ssrShared";
 
-const BASE_URL = "https://teamflow.app";
+const BASE_URL = "https://axlehq.app";
 
 export function getFaqHtml(): string {
   const sections = Array.from(new Set(faqItems.map((f) => f.section)));
@@ -30,13 +30,13 @@ export function getFaqHtml(): string {
   const bodyHtml = `
     <div class="ssr-hero">
       <h1>Frequently Asked Questions</h1>
-      <p>Everything you need to know about managing contractors with TeamFlow — from timesheets and invoices to compliance and roles.</p>
+      <p>Everything you need to know about managing contractors with Axle — from timesheets and invoices to compliance and roles.</p>
     </div>
     <main class="ssr-main">
       ${sectionsHtml}
       <div class="ssr-cta-block">
         <h3>Still have questions?</h3>
-        <p>Try TeamFlow free and see how it fits your contractor workflow. No credit card required.</p>
+        <p>Try Axle free and see how it fits your contractor workflow. No credit card required.</p>
         <a href="/signup" class="ssr-cta-btn">Get started free</a>
       </div>
     </main>`;
@@ -55,9 +55,9 @@ export function getFaqHtml(): string {
   };
 
   return ssrHtmlShell({
-    title: "FAQ — TeamFlow Contractor Management Platform",
+    title: "FAQ — Axle Contractor Management Platform",
     metaDescription:
-      "Answers to the most common questions about TeamFlow: timesheets, invoice approvals, OOO management, contractor compliance, roles, and pricing.",
+      "Answers to the most common questions about Axle: timesheets, invoice approvals, OOO management, contractor compliance, roles, and pricing.",
     canonicalPath: "/faq",
     jsonLd: faqJsonLd,
     bodyHtml,

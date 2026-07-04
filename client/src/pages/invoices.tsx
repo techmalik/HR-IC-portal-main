@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { jsPDF } from "jspdf";
@@ -45,6 +45,7 @@ import { StatusBadge } from "@/components/status-badge";
 import type { Invoice, Timesheet, IcPaymentDetails, OvertimeRequest, DailyEntry, Organization } from "@shared/schema";
 import { formatMoney, getCurrencySymbol, normalizeCurrency } from "@/lib/currency";
 import { OnboardingTour, invoicesTourConfig } from "@/components/onboarding-tour";
+import { cn } from "@/lib/utils";
 
 interface LineItem {
   description: string;
@@ -897,13 +898,22 @@ export default function InvoicesPage() {
 
   const subtotalDisplay = formatCurrency(calculateSubtotal() / 100);
 
+  // Stat row derived entirely from the invoices already fetched above.
+  const pendingCount = invoices?.filter((i) => i.status === "pending_review").length || 0;
+  const paidInvoices = invoices?.filter((i) => i.status === "paid" || i.status === "approved") || [];
+  const outstandingTotal = (invoices || [])
+    .filter((i) => i.status === "pending_review")
+    .reduce((sum, i) => sum + (i.amount || 0), 0);
+  const paidTotal = paidInvoices.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const invoiceCurrency = invoices?.[0]?.currency || userCurrency;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Invoices</h1>
-          <p className="text-muted-foreground mt-1">
-            Upload and manage your monthly invoices
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Invoices</h1>
+          <p className="text-[13px] text-muted-foreground">
+            Manage and track all your invoices
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1488,6 +1498,29 @@ export default function InvoicesPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Total outstanding</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{formatMoney(outstandingTotal, invoiceCurrency)}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#D97706]">{pendingCount} invoice{pendingCount === 1 ? "" : "s"} pending</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Paid this year</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{formatMoney(paidTotal, invoiceCurrency)}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#059669]">{paidInvoices.length} invoice{paidInvoices.length === 1 ? "" : "s"}</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Total invoices</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{invoices?.length ?? 0}</div>
+          <div className="text-xs mt-1.5 font-medium text-muted-foreground">all time</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Pending review</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{pendingCount}</div>
+          <div className="text-xs mt-1.5 font-medium text-muted-foreground">awaiting approval</div>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-24 w-full" />
@@ -1495,130 +1528,150 @@ export default function InvoicesPage() {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : invoices && invoices.length > 0 ? (
-        <Card data-testid="tour-target-invoice-list">
-          <CardHeader>
-            <CardTitle className="text-base">All Invoices</CardTitle>
-            <CardDescription>Your uploaded invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {invoices.map((invoice, index) => (
-                <div
-                  key={invoice.id}
-                  className="flex flex-col p-4 rounded-md bg-muted/50 gap-2"
-                  data-testid={`invoice-${invoice.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{invoice.fileName}</p>
-                          <StatusBadge status={invoice.status || "pending_review"} />
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl overflow-hidden" data-testid="tour-target-invoice-list">
+          <div className="px-5 py-3.5 border-b border-border">
+            <span className="text-[13.5px] font-semibold text-foreground">All invoices</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#F9FAFB] border-b border-border">
+                  <th className="px-5 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">#</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Description</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Period</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Amount</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Submitted</th>
+                  <th className="px-2 py-2.5 text-left text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Status</th>
+                  <th className="px-5 py-2.5 text-right text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((invoice, index) => (
+                  <Fragment key={invoice.id}>
+                    <tr
+                      key={invoice.id}
+                      className={cn(
+                        "border-b border-border last:border-b-0",
+                        index % 2 === 1 && "bg-[#FAFAFA]"
+                      )}
+                      data-testid={`invoice-${invoice.id}`}
+                    >
+                      <td className="px-5 py-3.5 text-[13px] text-muted-foreground font-medium">{index + 1}</td>
+                      <td className="px-2 py-3.5 text-[13px] font-medium text-foreground max-w-[240px] truncate">{invoice.fileName}</td>
+                      <td className="px-2 py-3.5 text-[12.5px] text-muted-foreground whitespace-nowrap">
+                        {format(new Date(invoice.year, invoice.month - 1), "MMM yyyy")}
+                      </td>
+                      <td className="px-2 py-3.5 text-[13px] font-semibold text-foreground whitespace-nowrap" data-testid={`amount-${invoice.id}`}>
+                        {invoice.amount ? formatMoney(invoice.amount, invoice.currency) : "-"}
+                      </td>
+                      <td className="px-2 py-3.5 text-[12.5px] text-muted-foreground whitespace-nowrap">
+                        {invoice.uploadedAt ? format(new Date(invoice.uploadedAt), "MMM d, yyyy") : "-"}
+                      </td>
+                      <td className="px-2 py-3.5" data-testid={index === 0 ? "tour-target-invoice-status" : undefined}>
+                        <StatusBadge status={invoice.status || "pending_review"} />
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex gap-1.5 justify-end">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              if (invoice.fileUrl) {
+                                const filename = invoice.fileName || "invoice.pdf";
+                                // Handle both relative and absolute URLs
+                                let urlStr = invoice.fileUrl;
+                                if (!invoice.fileUrl.startsWith("http")) {
+                                  const url = new URL(invoice.fileUrl, window.location.origin);
+                                  url.searchParams.set("filename", filename);
+                                  urlStr = url.toString();
+                                }
+                                window.open(urlStr, "_blank");
+                              }
+                            }}
+                            data-testid={`button-view-${invoice.id}`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              if (invoice.fileUrl) {
+                                const filename = invoice.fileName || "invoice.pdf";
+                                // Handle both relative and absolute URLs
+                                let urlStr = invoice.fileUrl;
+                                if (!invoice.fileUrl.startsWith("http")) {
+                                  const url = new URL(invoice.fileUrl, window.location.origin);
+                                  url.searchParams.set("filename", filename);
+                                  url.searchParams.set("download", "true");
+                                  urlStr = url.toString();
+                                }
+                                const link = document.createElement("a");
+                                link.href = urlStr;
+                                link.download = filename;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }
+                            }}
+                            data-testid={`button-download-${invoice.id}`}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                          {(invoice.status !== "approved" && invoice.status !== "paid") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[#DC2626] border-[#FECACA] bg-[#FEF2F2]"
+                              onClick={() => setInvoiceToDelete(invoice)}
+                              data-testid={`button-delete-${invoice.id}`}
+                              title={invoice.status === "revision_requested" ? "Delete to upload revised invoice" : "Delete invoice"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {invoice.invoiceNumber && `${invoice.invoiceNumber} - `}
-                          {format(new Date(invoice.year, invoice.month - 1), "MMMM yyyy")} -{" "}
-                          {format(new Date(invoice.uploadedAt!), "MMM d, yyyy")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3" data-testid={index === 0 ? "tour-target-invoice-status" : undefined}>
-                      {invoice.amount && (
-                        <span className="font-semibold text-lg" data-testid={`amount-${invoice.id}`}>
-                          {formatMoney(invoice.amount, invoice.currency)}
-                        </span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (invoice.fileUrl) {
-                            const filename = invoice.fileName || "invoice.pdf";
-                            // Handle both relative and absolute URLs
-                            let urlStr = invoice.fileUrl;
-                            if (!invoice.fileUrl.startsWith("http")) {
-                              const url = new URL(invoice.fileUrl, window.location.origin);
-                              url.searchParams.set("filename", filename);
-                              urlStr = url.toString();
-                            }
-                            window.open(urlStr, "_blank");
-                          }
-                        }}
-                        data-testid={`button-view-${invoice.id}`}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (invoice.fileUrl) {
-                            const filename = invoice.fileName || "invoice.pdf";
-                            // Handle both relative and absolute URLs
-                            let urlStr = invoice.fileUrl;
-                            if (!invoice.fileUrl.startsWith("http")) {
-                              const url = new URL(invoice.fileUrl, window.location.origin);
-                              url.searchParams.set("filename", filename);
-                              url.searchParams.set("download", "true");
-                              urlStr = url.toString();
-                            }
-                            const link = document.createElement("a");
-                            link.href = urlStr;
-                            link.download = filename;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }
-                        }}
-                        data-testid={`button-download-${invoice.id}`}
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      {(invoice.status !== "approved" && invoice.status !== "paid") && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setInvoiceToDelete(invoice)}
-                          data-testid={`button-delete-${invoice.id}`}
-                          title={invoice.status === "revision_requested" ? "Delete to upload revised invoice" : "Delete invoice"}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {invoice.status === "rejected" && invoice.reviewNote && (
-                    <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                      <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-destructive">Rejection Reason</p>
-                        <p className="text-sm text-destructive/80" data-testid={`rejection-note-${invoice.id}`}>{invoice.reviewNote}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          You can delete this invoice and resubmit with corrections.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {invoice.status === "revision_requested" && invoice.reviewNote && (
-                    <div className="flex items-start gap-2 p-3 rounded-md bg-orange-500/10 border border-orange-500/20">
-                      <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Revision Requested</p>
-                        <p className="text-sm text-orange-600/80 dark:text-orange-400/80" data-testid={`revision-note-${invoice.id}`}>{invoice.reviewNote}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Please delete this invoice and upload an updated version with the requested changes.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                      </td>
+                    </tr>
+                    {invoice.status === "rejected" && invoice.reviewNote && (
+                      <tr className="border-b border-border last:border-b-0">
+                        <td colSpan={7} className="px-5 pb-3.5">
+                          <div className="flex items-start gap-2 p-3 rounded-md bg-[#FEF2F2] border border-[#FECACA]">
+                            <AlertCircle className="w-4 h-4 text-[#DC2626] mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-[#DC2626]">Rejection reason</p>
+                              <p className="text-sm text-[#DC2626]/80" data-testid={`rejection-note-${invoice.id}`}>{invoice.reviewNote}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                You can delete this invoice and resubmit with corrections.
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {invoice.status === "revision_requested" && invoice.reviewNote && (
+                      <tr className="border-b border-border last:border-b-0">
+                        <td colSpan={7} className="px-5 pb-3.5">
+                          <div className="flex items-start gap-2 p-3 rounded-md bg-[#FFFBEB] border border-[#FDE68A]">
+                            <AlertCircle className="w-4 h-4 text-[#D97706] mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-[#D97706]">Revision requested</p>
+                              <p className="text-sm text-[#D97706]/80" data-testid={`revision-note-${invoice.id}`}>{invoice.reviewNote}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Please delete this invoice and upload an updated version with the requested changes.
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <Card data-testid="tour-target-invoice-list">
           <CardContent className="py-12">

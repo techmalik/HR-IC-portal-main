@@ -409,14 +409,14 @@ export default function TimesheetsPage() {
         );
       case "saved":
         return (
-          <div className="flex items-center gap-1.5 text-emerald-600" data-testid="status-saved">
+          <div className="flex items-center gap-1.5 text-[#059669]" data-testid="status-saved">
             <Check className="w-3.5 h-3.5" />
             <span className="text-xs">Saved</span>
           </div>
         );
       case "unsaved":
         return (
-          <div className="flex items-center gap-1.5 text-amber-600" data-testid="status-unsaved">
+          <div className="flex items-center gap-1.5 text-[#D97706]" data-testid="status-unsaved">
             <Clock className="w-3.5 h-3.5" />
             <span className="text-xs">Draft</span>
           </div>
@@ -436,13 +436,33 @@ export default function TimesheetsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Timesheets</h1>
-          <p className="text-muted-foreground mt-1">
-            Log your daily hours and activities
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            className="w-8 h-8 bg-card border-[1.5px] border-card-border rounded-md flex items-center justify-center hover-elevate"
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+            data-testid="button-prev-month"
+          >
+            <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+          <h1 className="font-serif text-[22px] font-normal text-foreground">
+            {format(currentDate, "MMMM yyyy")}
+          </h1>
+          <button
+            className="w-8 h-8 bg-card border-[1.5px] border-card-border rounded-md flex items-center justify-center hover-elevate"
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            data-testid="button-next-month"
+          >
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
         </div>
         <div className="flex items-center gap-3">
+          {timesheet && <StatusBadge status={timesheet.status} />}
+          {isApproved && (
+            <Badge variant="outline" className="text-[#059669] border-[#A7F3D0] bg-[#ECFDF5]">
+              <Lock className="w-3 h-3 mr-1" />
+              Locked
+            </Badge>
+          )}
           {isEditable && entriesArray.length > 0 && getAutosaveStatusDisplay()}
           <Button
             variant="outline"
@@ -462,63 +482,31 @@ export default function TimesheetsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-                  data-testid="button-prev-month"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </Button>
-                <CardTitle className="text-lg">
-                  {format(currentDate, "MMMM yyyy")}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-                  data-testid="button-next-month"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                {timesheet && <StatusBadge status={timesheet.status} />}
-                {isApproved && (
-                  <Badge variant="outline" className="text-emerald-600 border-emerald-500">
-                    <Lock className="w-3 h-3 mr-1" />
-                    Locked
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
+          <Card className="rounded-2xl">
+            <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-96 w-full" />
               ) : (
                 <>
                   <div className="flex gap-4 mb-4 text-xs flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-red-500/30 border border-red-500/50" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF2F2] border border-[#FECACA]" />
                       <span className="text-muted-foreground">Full-day leave</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-amber-500/30 border border-amber-500/50" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] border border-[#FDE68A]" />
                       <span className="text-muted-foreground">Half-day leave (4h max)</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm bg-amber-500/30 border border-amber-500/50" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-sm bg-[#FEF3C7] border border-[#FDE68A]" />
                       <span className="text-muted-foreground">Overtime pending</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-1.5 mb-1">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                       <div
                         key={day}
-                        className="text-center text-xs font-medium text-muted-foreground py-2"
+                        className="text-center text-[11px] font-semibold text-muted-foreground py-1.5"
                       >
                         {day}
                       </div>
@@ -538,6 +526,8 @@ export default function TimesheetsPage() {
                       const isHalfDayOOO = ooo?.oooType === "half_day";
                       const hasOvertimePending = overtime?.status === "pending";
                       const hasOvertimeApproved = overtime?.status === "approved";
+                      const isToday = dateStr === format(new Date(), "yyyy-MM-dd");
+                      const isFutureWorkday = !hasEntry && !isWeekend && !isFullDayOOO && !isHalfDayOOO && new Date(dateStr) > new Date();
 
                       return (
                         <button
@@ -553,39 +543,51 @@ export default function TimesheetsPage() {
                           className={cn(
                             "aspect-square min-h-[44px] rounded-md border text-sm font-medium transition-colors relative",
                             "flex flex-col items-center justify-center gap-1 active:scale-95",
-                            isWeekend && "bg-muted/30",
-                            isFullDayOOO && "bg-red-500/20 border-red-500/50 cursor-not-allowed",
-                            isHalfDayOOO && "bg-amber-500/20 border-amber-500/50",
-                            hasOvertimePending && "bg-amber-500/20 border-amber-500/50",
-                            hasOvertimeApproved && "bg-emerald-500/10 border-emerald-500/50",
-                            hasEntry && !isFullDayOOO && !isHalfDayOOO && !hasOvertimePending && "border-primary bg-primary/5",
-                            (isEditable && !isFullDayOOO) && "hover:bg-muted cursor-pointer",
-                            (!isEditable && hasEntry) && "hover:bg-muted cursor-pointer",
+                            isToday && "bg-[#059669] border-[#059669] shadow-[0_2px_8px_rgba(5,150,105,0.3)]",
+                            !isToday && isWeekend && "bg-[#F9FAFB] border-transparent",
+                            !isToday && isFullDayOOO && "bg-[#FEF3C7] border-[#FDE68A] cursor-not-allowed",
+                            !isToday && isHalfDayOOO && "bg-[#FEF3C7] border-[#FDE68A]",
+                            !isToday && hasOvertimePending && "bg-[#FEF3C7] border-[#FDE68A]",
+                            !isToday && hasOvertimeApproved && "bg-[#F0FDF4] border-[#D1FAE5]",
+                            !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && !hasOvertimePending && "bg-[#F0FDF4] border-[#D1FAE5]",
+                            !isToday && isFutureWorkday && "bg-[#F9FAFB] border-dashed border-[1.5px] border-[#E5E7EB]",
+                            (isEditable && !isFullDayOOO) && "hover-elevate cursor-pointer",
+                            (!isEditable && hasEntry) && "hover-elevate cursor-pointer",
                             (!isEditable && !hasEntry) && "cursor-default opacity-75"
                           )}
                           data-testid={`day-${day}`}
                         >
-                          <span className={cn(isFullDayOOO && "line-through text-muted-foreground")}>
+                          <span
+                            className={cn(
+                              isToday && "text-white font-bold",
+                              !isToday && isFullDayOOO && "line-through text-[#92400E]",
+                              !isToday && isHalfDayOOO && "text-[#92400E]",
+                              !isToday && hasEntry && !isFullDayOOO && !isHalfDayOOO && "text-[#065F46]",
+                              !isToday && isFutureWorkday && "text-[#D1D5DB]",
+                              !isToday && isWeekend && !hasEntry && "text-[#E5E7EB]"
+                            )}
+                          >
                             {day}
                           </span>
                           {hasEntry && (
                             <span className={cn(
-                              "text-xs font-semibold",
-                              hasOvertimePending && "text-amber-600",
-                              hasOvertimeApproved && "text-emerald-600",
-                              !hasOvertimePending && !hasOvertimeApproved && "text-primary"
+                              "text-[11px] font-semibold",
+                              isToday && "text-white/80",
+                              !isToday && hasOvertimePending && "text-[#92400E]",
+                              !isToday && hasOvertimeApproved && "text-[#34D399]",
+                              !isToday && !hasOvertimePending && !hasOvertimeApproved && "text-[#34D399]"
                             )}>
                               {entry.hours}h
                             </span>
                           )}
                           {isFullDayOOO && (
-                            <span className="text-[10px] text-red-600">OOO</span>
+                            <span className="text-[10px] text-[#92400E]">OOO</span>
                           )}
                           {isHalfDayOOO && !hasEntry && (
-                            <span className="text-[10px] text-amber-600">4h</span>
+                            <span className="text-[10px] text-[#92400E]">4h</span>
                           )}
                           {hasOvertimePending && (
-                            <Clock className="absolute top-1 right-1 w-3 h-3 text-amber-600" />
+                            <Clock className="absolute top-1 right-1 w-3 h-3 text-[#92400E]" />
                           )}
                         </button>
                       );
@@ -597,46 +599,44 @@ export default function TimesheetsPage() {
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card>
+        <div className="space-y-3.5">
+          <Card className="rounded-xl">
             <CardHeader>
-              <CardTitle className="text-base">Summary</CardTitle>
+              <CardTitle className="text-[13px] font-semibold">Month summary</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total Hours</span>
-                <span className="text-2xl font-bold" data-testid="text-total-hours">
-                  {totalHours}
+            <CardContent className="space-y-2.5 pt-0">
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-muted-foreground">Total hours</span>
+                <span className="font-semibold text-foreground" data-testid="text-total-hours">
+                  {totalHours}h
                 </span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-[#F0FDF4] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all"
+                  className="h-full bg-[#059669] transition-all rounded-full"
                   style={{ width: `${Math.min((totalHours / 160) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                {totalHours} of 160 expected hours
+              <p className="text-xs text-muted-foreground text-right">
+                of 160 expected hours
               </p>
-              <div className="pt-4 border-t space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Days Logged</span>
-                  <span className="font-medium" data-testid="text-days-logged">
+              <div className="pt-3 border-t border-border space-y-2">
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="text-muted-foreground">Days logged</span>
+                  <span className="font-semibold text-foreground" data-testid="text-days-logged">
                     {entries.size}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Avg Hours/Day</span>
-                  <span className="font-medium" data-testid="text-avg-hours">
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="text-muted-foreground">Avg hours/day</span>
+                  <span className="font-semibold text-foreground" data-testid="text-avg-hours">
                     {entries.size > 0 ? (totalHours / entries.size).toFixed(1) : 0}
                   </span>
                 </div>
                 {overtimeRequests && overtimeRequests.filter(r => r.status === "pending").length > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Pending Overtime</span>
-                    <Badge variant="outline" className="text-amber-600 border-amber-500">
-                      {overtimeRequests.filter(r => r.status === "pending").length}
-                    </Badge>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-muted-foreground">Pending overtime</span>
+                    <StatusBadge status="pending" />
                   </div>
                 )}
               </div>
@@ -644,39 +644,33 @@ export default function TimesheetsPage() {
           </Card>
 
           {isApproved && (
-            <Card className="border-emerald-500/50 bg-emerald-500/5">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                  <Lock className="w-4 h-4" />
-                  <p>
-                    This timesheet has been approved and is now locked. No changes can be made.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-[#ECFDF5] border-[1.5px] border-[#A7F3D0] rounded-xl px-[18px] py-4">
+              <div className="flex items-center gap-2 text-sm text-[#065F46]">
+                <Lock className="w-4 h-4" />
+                <p>
+                  This timesheet has been approved and is now locked. No changes can be made.
+                </p>
+              </div>
+            </div>
           )}
 
           {isSubmitted && (
-            <Card className="border-amber-500/50 bg-amber-500/5">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                  <AlertCircle className="w-4 h-4" />
-                  <p>
-                    This timesheet is awaiting manager approval.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-4">
+              <div className="flex items-center gap-2 text-sm text-[#92400E]">
+                <AlertCircle className="w-4 h-4" />
+                <p>
+                  This timesheet is awaiting manager approval.
+                </p>
+              </div>
+            </div>
           )}
 
           {!isEditable && !isApproved && !isSubmitted && (
-            <Card className="border-amber-500/50 bg-amber-500/5">
-              <CardContent className="py-4">
-                <p className="text-sm text-amber-600 dark:text-amber-400">
-                  This timesheet has been {timesheet?.status}. You cannot make changes.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-4">
+              <p className="text-sm text-[#92400E]">
+                This timesheet has been {timesheet?.status}. You cannot make changes.
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -694,9 +688,9 @@ export default function TimesheetsPage() {
 
         const halfDayBanner =
           selectedDay && getOOOForDate(selectedDay.date)?.oooType === "half_day" && !viewOnly ? (
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md">
-              <Clock className="w-4 h-4 text-amber-600" />
-              <p className="text-sm text-amber-600">
+            <div className="flex items-center gap-2 p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md">
+              <Clock className="w-4 h-4 text-[#D97706]" />
+              <p className="text-sm text-[#D97706]">
                 Half-day leave: You can only log up to {HALF_DAY_HOURS} hours.
               </p>
             </div>
@@ -804,7 +798,7 @@ export default function TimesheetsPage() {
                 ))}
               </div>
               {selectedDay && selectedDay.hours > STANDARD_HOURS && (
-                <p className="text-xs text-amber-600">
+                <p className="text-xs text-[#D97706]">
                   <AlertCircle className="w-3 h-3 inline mr-1" />
                   Hours over {STANDARD_HOURS} will require manager approval.
                 </p>
@@ -812,7 +806,7 @@ export default function TimesheetsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="activity-log-input">
-                Activity Log <span className="text-red-500">*</span>
+                Activity Log <span className="text-[#DC2626]">*</span>
               </label>
               {recentActivities.length > 0 && (
                 <div

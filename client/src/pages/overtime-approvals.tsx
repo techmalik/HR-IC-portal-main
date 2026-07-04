@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,11 @@ type EnrichedOvertimeRequest = OvertimeRequest & { activityLog?: string | null }
 import { useState } from "react";
 
 const NOTE_MAX = 500;
+
+const TINTED_BTN =
+  "bg-[#ECFDF5] dark:bg-[#059669]/15 text-[#059669] dark:text-[#34D399] border-[1.5px] border-[#A7F3D0] dark:border-[#059669]/30 hover:bg-[#D1FAE5] dark:hover:bg-[#059669]/25 font-semibold";
+const DANGER_BTN =
+  "bg-[#FEF2F2] dark:bg-[#DC2626]/15 text-[#DC2626] dark:text-[#F87171] border-[1.5px] border-[#FECACA] dark:border-[#DC2626]/30 hover:bg-[#FEE2E2] dark:hover:bg-[#DC2626]/25";
 
 function getRequestTypeLabel(request: OvertimeRequest): string {
   if (request.isWeekendWork) {
@@ -138,99 +142,93 @@ export default function OvertimeApprovalsPage() {
     return (
       <div
         key={request.id}
-        className="p-4 rounded-md bg-muted/50 space-y-3"
+        className="px-[18px] py-3.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0"
         data-testid={`overtime-request-${request.id}`}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 min-w-0">
             {showActions && (
               <Checkbox
-                className="mt-1 h-5 w-5"
+                className="mt-1 h-4 w-4"
                 checked={bulk.isSelected(request.id)}
                 onCheckedChange={(c) => bulk.setSelected(request.id, c === true)}
                 data-testid={`select-overtime-${request.id}`}
                 aria-label="Select overtime request"
               />
             )}
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className={`${isWeekend ? "bg-orange-500/10 text-orange-600" : "bg-primary/10 text-primary"} text-sm`}>
-                {usersLoading ? (
-                  <span className="inline-block w-4 h-4 rounded-full bg-muted animate-pulse" />
-                ) : initials}
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-[#1C2230] border border-[#2A3545] text-[#8DAFC8] text-[10px] font-bold">
+                {usersLoading ? "..." : initials}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               {usersLoading ? (
                 <Skeleton className="h-4 w-28 mb-1" />
               ) : (
-                <p className="font-medium">{userName}</p>
+                <p className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50">{userName}</p>
               )}
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[11.5px] text-neutral-400">
                 {format(new Date(request.date), "EEEE, MMMM d, yyyy")}
               </p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 {isWeekend && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-500">
+                  <Badge variant="outline" className="text-[10.5px] text-neutral-500 border-neutral-200 dark:text-neutral-400 dark:border-white/15">
                     <Calendar className="w-3 h-3 mr-1" />
-                    Weekend Work
+                    Weekend work
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-blue-600 border-blue-500">
+                <Badge variant="outline" className="text-[10.5px] text-neutral-500 border-neutral-200 dark:text-neutral-400 dark:border-white/15">
                   <Clock className="w-3 h-3 mr-1" />
                   {request.requestedHours} hours total
                 </Badge>
                 {overtimeHours > 0 && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-[10.5px]">
                     +{overtimeHours}h overtime
                   </Badge>
                 )}
               </div>
             </div>
           </div>
-          <StatusBadge status={request.status} />
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <StatusBadge status={request.status} />
+            {showActions && (
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={TINTED_BTN}
+                  onClick={() => handleAction(request, "approve")}
+                  data-testid={`button-approve-overtime-${request.id}`}
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={DANGER_BTN}
+                  onClick={() => handleAction(request, "reject")}
+                  data-testid={`button-reject-overtime-${request.id}`}
+                >
+                  Reject
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
         {request.activityLog && (
-          <div className="pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Work performed:</span> {request.activityLog}
-            </p>
-          </div>
-        )}
-        {showActions && (
-          <div className="flex gap-2 pt-2">
-            <Button
-              size="sm"
-              onClick={() => handleAction(request, "approve")}
-              data-testid={`button-approve-overtime-${request.id}`}
-            >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleAction(request, "reject")}
-              data-testid={`button-reject-overtime-${request.id}`}
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              Reject
-            </Button>
-          </div>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-2 pl-11">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">Work performed:</span> {request.activityLog}
+          </p>
         )}
         {request.status === "approved" && request.approvedHours && (
-          <div className="pt-2 border-t">
-            <p className="text-sm text-emerald-600">
-              <CheckCircle className="w-3 h-3 inline mr-1" />
-              Approved: {request.approvedHours} hours
-            </p>
-          </div>
+          <p className="text-[12px] text-[#059669] dark:text-[#34D399] mt-2 pl-11">
+            Approved: {request.approvedHours} hours
+          </p>
         )}
         {request.reviewNote && (
-          <div className="pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Note:</span> {request.reviewNote}
-            </p>
-          </div>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-1 pl-11">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">Note:</span> {request.reviewNote}
+          </p>
         )}
       </div>
     );
@@ -239,11 +237,11 @@ export default function OvertimeApprovalsPage() {
   const selectedRequestWithLog = overtimeRequests?.find((r) => r.id === selectedRequest?.id) as EnrichedOvertimeRequest | undefined;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 flex flex-col gap-[18px]">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Overtime & Weekend Work Approvals</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-normal text-neutral-900 dark:text-neutral-50 font-serif mb-0.5">Overtime &amp; weekend approvals</h1>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
             Review and approve overtime and weekend work requests
           </p>
         </div>
@@ -259,16 +257,12 @@ export default function OvertimeApprovalsPage() {
         </Button>
       </div>
 
-      <Card className="border-blue-500/50 bg-blue-500/5">
-        <CardContent className="py-4">
-          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            <AlertCircle className="w-4 h-4" />
-            <p>
-              Contractors can log more than 8 hours per day or work on weekends, but both require your approval.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border-[1.5px] border-neutral-200 dark:border-white/10 bg-white dark:bg-card text-[12.5px] text-neutral-500 dark:text-neutral-400">
+        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-neutral-400" />
+        <p>
+          Contractors can log more than 8 hours per day or work on weekends, but both require your approval.
+        </p>
+      </div>
 
       <Tabs defaultValue="pending" className="w-full">
         <TabsList>
@@ -283,51 +277,46 @@ export default function OvertimeApprovalsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending" className="mt-6">
+        <TabsContent value="pending" className="mt-4">
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-32 w-full" />
             </div>
           ) : pendingRequests.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Pending Overtime Requests</CardTitle>
-                <CardDescription>
-                  Hours above 8 per day that need your approval
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 pb-3 mb-3 border-b">
-                  <Checkbox
-                    checked={
-                      bulk.allVisibleSelected
-                        ? true
-                        : bulk.someVisibleSelected
-                        ? "indeterminate"
-                        : false
-                    }
-                    onCheckedChange={(c) => bulk.toggleAll(c === true)}
-                    data-testid="select-all-overtime"
-                    aria-label="Select all"
-                  />
-                  <span className="text-sm text-muted-foreground">Select all on page</span>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10 flex justify-between items-center">
+                <div>
+                  <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Pending overtime requests</div>
+                  <div className="text-[11.5px] text-neutral-400">Hours above 8 per day that need your approval</div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {pendingRequests.map((request) => renderRequestCard(request, true))}
-                </div>
-              </CardContent>
-            </Card>
+                <span className="text-[11px] font-semibold bg-[#FFFBEB] dark:bg-[#D97706]/15 text-[#D97706] dark:text-[#FBBF24] px-2.5 py-1 rounded-full">
+                  {pendingRequests.length} items
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-[18px] py-2.5 border-b border-neutral-100 dark:border-white/10 bg-[#F9FAFB] dark:bg-white/5">
+                <Checkbox
+                  checked={
+                    bulk.allVisibleSelected
+                      ? true
+                      : bulk.someVisibleSelected
+                      ? "indeterminate"
+                      : false
+                  }
+                  onCheckedChange={(c) => bulk.toggleAll(c === true)}
+                  data-testid="select-all-overtime"
+                  aria-label="Select all"
+                />
+                <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">Select all on page</span>
+              </div>
+              <div>{pendingRequests.map((request) => renderRequestCard(request, true))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No pending overtime requests</p>
-                  <p className="mt-1">All overtime requests have been reviewed</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <Clock className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No pending overtime requests</p>
+              <p className="text-[12px] text-neutral-400 mt-1">All overtime requests have been reviewed</p>
+            </div>
           )}
           <BulkActionBar
             selectedIds={bulk.selectedArray}
@@ -343,65 +332,45 @@ export default function OvertimeApprovalsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="approved" className="mt-6">
+        <TabsContent value="approved" className="mt-4">
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
             </div>
           ) : approvedRequests.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Approved Overtime</CardTitle>
-                <CardDescription>
-                  Overtime requests that have been approved
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {approvedRequests.map((request) => renderRequestCard(request))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Approved overtime</div>
+                <div className="text-[11.5px] text-neutral-400">Overtime requests that have been approved</div>
+              </div>
+              <div>{approvedRequests.map((request) => renderRequestCard(request))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No approved overtime</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <CheckCircle className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No approved overtime</p>
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="rejected" className="mt-6">
+        <TabsContent value="rejected" className="mt-4">
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
             </div>
           ) : rejectedRequests.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Rejected Overtime</CardTitle>
-                <CardDescription>
-                  Overtime requests that were not approved
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {rejectedRequests.map((request) => renderRequestCard(request))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-[18px] py-3.5 border-b border-neutral-100 dark:border-white/10">
+                <div className="text-[13.5px] font-semibold text-neutral-900 dark:text-neutral-50">Rejected overtime</div>
+                <div className="text-[11.5px] text-neutral-400">Overtime requests that were not approved</div>
+              </div>
+              <div>{rejectedRequests.map((request) => renderRequestCard(request))}</div>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <XCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No rejected overtime</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card border-[1.5px] border-neutral-200 dark:border-white/10 rounded-xl py-14 text-center">
+              <XCircle className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-50">No rejected overtime</p>
+            </div>
           )}
         </TabsContent>
       </Tabs>

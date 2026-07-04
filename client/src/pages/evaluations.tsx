@@ -42,6 +42,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import { 
   Star, Plus, Loader2, Send, FileText, CheckCircle2, 
   ClipboardList, User, Calendar, ChevronRight, AlertCircle,
@@ -238,13 +239,14 @@ export default function EvaluationsPage() {
 
   const pendingICAction = myEvaluations.filter((e) => e.status === "draft");
   const pendingManagerAction = managedEvaluations.filter((e) => e.status === "ic_submitted");
+  const completedCount = allEvaluationsList.filter((e) => e.status === "completed").length;
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Performance Evaluations</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Evaluations</h1>
+          <p className="text-[13px] text-muted-foreground">
             {isManager ? "Create and manage performance reviews" : "View your performance evaluations"}
           </p>
         </div>
@@ -449,19 +451,40 @@ export default function EvaluationsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Total evaluations</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{allEvaluationsList.length}</div>
+          <div className="text-xs mt-1.5 font-medium text-muted-foreground">all time</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Completed</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{completedCount}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#059669]">finalized</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Awaiting your input</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{pendingICAction.length}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#D97706]">{pendingICAction.length > 0 ? "self-assessment due" : "all clear"}</div>
+        </div>
+        <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Awaiting your review</div>
+          <div className="text-[26px] font-bold text-foreground leading-none">{pendingManagerAction.length}</div>
+          <div className="text-xs mt-1.5 font-medium text-[#D97706]">{pendingManagerAction.length > 0 ? "manager review due" : "all clear"}</div>
+        </div>
+      </div>
+
       {(pendingICAction.length > 0 || pendingManagerAction.length > 0) && (
         <div className="grid gap-4 md:grid-cols-2">
           {pendingICAction.length > 0 && (
-            <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  Action Required
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl">
+              <div className="px-5 pt-4 pb-1 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#D97706]" />
+                <span className="text-[13.5px] font-semibold text-foreground">Action required</span>
+              </div>
+              <div className="px-5 pb-4">
                 <p className="text-sm text-muted-foreground mb-2">
-                  You have {pendingICAction.length} evaluation(s) awaiting your self-assessment
+                  You have {pendingICAction.length} evaluation(s) awaiting your self-assessment.
                 </p>
                 <Button
                   size="sm"
@@ -471,32 +494,30 @@ export default function EvaluationsPage() {
                 >
                   Complete Self-Evaluation
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
           {pendingManagerAction.length > 0 && isManager && (
-            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-blue-600" />
-                  Pending Review ({pendingManagerAction.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <div className="bg-card border-[1.5px] border-card-border rounded-xl">
+              <div className="px-5 pt-4 pb-1 flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                <span className="text-[13.5px] font-semibold text-foreground">Pending review ({pendingManagerAction.length})</span>
+              </div>
+              <div className="px-5 pb-4 space-y-2">
                 {pendingManagerAction.slice(0, 3).map((evalItem) => {
                   const icUser = getUserById(evalItem.icId);
                   return (
-                    <div key={evalItem.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-background/50">
+                    <div key={evalItem.id} className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                          <AvatarFallback className="bg-[#111827] text-white text-xs">
                             {icUser?.firstName?.[0]}{icUser?.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium">{icUser?.firstName} {icUser?.lastName}</p>
                           <p className="text-xs text-muted-foreground">
-                            {icUser?.jobTitle || "IC"} | {format(new Date(evalItem.periodStart), "MMM yyyy")} - {format(new Date(evalItem.periodEnd), "MMM yyyy")}
+                            {icUser?.jobTitle || "IC"}, {format(new Date(evalItem.periodStart), "MMM yyyy")} to {format(new Date(evalItem.periodEnd), "MMM yyyy")}
                           </p>
                         </div>
                       </div>
@@ -516,8 +537,8 @@ export default function EvaluationsPage() {
                     +{pendingManagerAction.length - 3} more pending
                   </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -535,38 +556,30 @@ export default function EvaluationsPage() {
           getUserById={getUserById}
         />
       ) : (viewParam === "my" || (isIC && !isManager)) ? (
-        <Card>
-          <CardContent className="pt-6">
-            <EvaluationList
-              evaluations={myEvaluations}
-              onSelect={setSelectedEvaluation}
-              getUserById={getUserById}
-              getStatusBadge={getStatusBadge}
-            />
-          </CardContent>
-        </Card>
+        <EvaluationList
+          evaluations={myEvaluations}
+          onSelect={setSelectedEvaluation}
+          getUserById={getUserById}
+          getStatusBadge={getStatusBadge}
+        />
       ) : (
-        <Card>
-          <CardHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="team">Team Evaluations</TabsTrigger>
-                <TabsTrigger value="all">All</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent>
-            <EvaluationList
-              evaluations={
-                activeTab === "team" ? managedEvaluations :
-                allEvaluationsList
-              }
-              onSelect={setSelectedEvaluation}
-              getUserById={getUserById}
-              getStatusBadge={getStatusBadge}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-3.5">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="team">Team Evaluations</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <EvaluationList
+            evaluations={
+              activeTab === "team" ? managedEvaluations :
+              allEvaluationsList
+            }
+            onSelect={setSelectedEvaluation}
+            getUserById={getUserById}
+            getStatusBadge={getStatusBadge}
+          />
+        </div>
       )}
     </div>
   );
@@ -585,7 +598,7 @@ function EvaluationList({
 }) {
   if (evaluations.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
+      <div className="rounded-xl border-[1.5px] border-card-border text-center py-12 text-muted-foreground">
         <Star className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <p className="text-lg font-medium">No evaluations yet</p>
         <p className="mt-1">Evaluations will appear here once created</p>
@@ -594,29 +607,32 @@ function EvaluationList({
   }
 
   return (
-    <div className="space-y-2">
-      {evaluations.map((evaluation) => {
+    <div className="rounded-xl border-[1.5px] border-card-border overflow-hidden">
+      {evaluations.map((evaluation, index) => {
         const ic = getUserById(evaluation.icId);
         const manager = getUserById(evaluation.managerId);
         return (
           <div
             key={evaluation.id}
-            className="p-4 rounded-md bg-muted/30 hover-elevate cursor-pointer flex items-center justify-between gap-4"
+            className={cn(
+              "px-5 py-3.5 hover-elevate cursor-pointer flex items-center justify-between gap-4 border-b border-border last:border-b-0",
+              index % 2 === 1 && "bg-[#FAFAFA]"
+            )}
             onClick={() => onSelect(evaluation)}
             data-testid={`evaluation-${evaluation.id}`}
           >
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-primary/10 text-primary">
+                <AvatarFallback className="bg-[#111827] text-white">
                   {ic?.firstName?.[0]}{ic?.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{ic?.firstName} {ic?.lastName}</p>
+                <p className="font-medium text-foreground">{ic?.firstName} {ic?.lastName}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-3 h-3" />
                   <span>
-                    {format(new Date(evaluation.periodStart), "MMM d, yyyy")} - {format(new Date(evaluation.periodEnd), "MMM d, yyyy")}
+                    {format(new Date(evaluation.periodStart), "MMM d, yyyy")} to {format(new Date(evaluation.periodEnd), "MMM d, yyyy")}
                   </span>
                 </div>
               </div>
@@ -919,7 +935,7 @@ function EvaluationDetailView({
         <div className="flex items-center gap-2 flex-wrap">
           {isCompleted && (
             <>
-              <Badge variant="default" className="gap-1 bg-green-600">
+              <Badge variant="default" className="gap-1 bg-[#059669]">
                 <CheckCircle2 className="w-3 h-3" />
                 Finalized
               </Badge>
@@ -952,7 +968,7 @@ function EvaluationDetailView({
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+                <AvatarFallback className="bg-[#111827] text-white">
                   {ic?.firstName?.[0]}{ic?.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>

@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatMoney, normalizeCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 import { trackFirst } from "@/lib/analytics";
 import type { Expense, User } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
@@ -265,26 +266,29 @@ export default function ExpensesPage() {
     });
   };
 
-  const renderMyExpenseRow = (e: Expense) => (
+  const renderMyExpenseRow = (e: Expense, index: number) => (
     <div
       key={e.id}
-      className="flex items-center justify-between gap-4 p-4 rounded-md bg-muted/50"
+      className={cn(
+        "flex items-center justify-between gap-4 px-5 py-3.5 border-b border-border last:border-b-0",
+        index % 2 === 1 && "bg-[#FAFAFA]"
+      )}
       data-testid={`my-expense-${e.id}`}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <p className="font-medium text-sm truncate">{e.description}</p>
+          <p className="font-medium text-[13px] text-foreground truncate">{e.description}</p>
           <StatusBadge status={e.status} />
         </div>
-        <p className="text-xs text-muted-foreground">
-          {categoryLabel(e.category)} • {format(new Date(e.expenseDate), "MMM d, yyyy")}
+        <p className="text-[11.5px] text-muted-foreground">
+          {categoryLabel(e.category)} &middot; {format(new Date(e.expenseDate), "MMM d, yyyy")}
           {e.reviewNote && (
-            <span className="ml-2 italic">— Note: {e.reviewNote}</span>
+            <span className="ml-2 italic">Note. {e.reviewNote}</span>
           )}
         </p>
       </div>
       <div className="text-right">
-        <p className="font-semibold text-sm">{formatMoney(e.amount, e.currency)}</p>
+        <p className="font-semibold text-[13px] text-foreground">{formatMoney(e.amount, e.currency)}</p>
         <div className="flex gap-1 justify-end mt-1">
           {e.receiptUrl && (
             <Button asChild variant="ghost" size="sm" data-testid={`view-receipt-${e.id}`}>
@@ -324,7 +328,7 @@ export default function ExpensesPage() {
     return (
       <div
         key={e.id}
-        className="flex items-center justify-between gap-4 p-4 rounded-md bg-muted/50"
+        className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-border last:border-b-0"
         data-testid={`team-expense-${e.id}`}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -338,19 +342,19 @@ export default function ExpensesPage() {
             />
           )}
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm">{initials || "?"}</AvatarFallback>
+            <AvatarFallback className="bg-[#111827] text-white text-sm">{initials || "?"}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="font-medium text-sm truncate">
-              {submitterName} <span className="text-muted-foreground font-normal">— {e.description}</span>
+            <p className="font-medium text-[13px] text-foreground truncate">
+              {submitterName} <span className="text-muted-foreground font-normal">, {e.description}</span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              {categoryLabel(e.category)} • {format(new Date(e.expenseDate), "MMM d, yyyy")}
+            <p className="text-[11.5px] text-muted-foreground">
+              {categoryLabel(e.category)} &middot; {format(new Date(e.expenseDate), "MMM d, yyyy")}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <p className="font-semibold text-sm">{formatMoney(e.amount, e.currency)}</p>
+          <p className="font-semibold text-[13px] text-foreground">{formatMoney(e.amount, e.currency)}</p>
           {e.status === "pending" ? (
             <>
               <Button
@@ -399,10 +403,8 @@ export default function ExpensesPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-primary" /> Expenses
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="font-serif text-[22px] font-normal text-foreground mb-1">Expenses</h1>
+          <p className="text-[13px] text-muted-foreground">
             Submit reimbursable expenses and review your team's requests.
           </p>
         </div>
@@ -537,7 +539,7 @@ export default function ExpensesPage() {
             <TabsTrigger value="team" data-testid="tab-team-expenses">
               Approval Queue
               {teamPending.length > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold rounded-full bg-[#FFFBEB] text-[#D97706]">
                   {teamPending.length}
                 </span>
               )}
@@ -615,30 +617,55 @@ export default function ExpensesPage() {
           </TabsContent>
         )}
 
-        <TabsContent value="mine" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">My Submitted Expenses</CardTitle>
-              <CardDescription>
+        <TabsContent value="mine" className="mt-4 space-y-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+              <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Total submitted</div>
+              <div className="text-[26px] font-bold text-foreground leading-none">
+                {formatMoney((myExpenses || []).reduce((s, e) => s + e.amount, 0), userCurrency)}
+              </div>
+              <div className="text-xs mt-1.5 font-medium text-muted-foreground">{(myExpenses || []).length} expenses</div>
+            </div>
+            <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+              <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Pending review</div>
+              <div className="text-[26px] font-bold text-foreground leading-none">
+                {(myExpenses || []).filter((e) => e.status === "pending").length}
+              </div>
+              <div className="text-xs mt-1.5 font-medium text-[#D97706]">awaiting manager</div>
+            </div>
+            <div className="bg-card border-[1.5px] border-card-border rounded-xl px-5 py-4">
+              <div className="text-[10px] font-bold text-muted-foreground tracking-[0.08em] uppercase mb-2">Approved</div>
+              <div className="text-[26px] font-bold text-foreground leading-none">
+                {formatMoney(
+                  (myExpenses || []).filter((e) => e.status === "approved").reduce((s, e) => s + e.amount, 0),
+                  userCurrency
+                )}
+              </div>
+              <div className="text-xs mt-1.5 font-medium text-[#059669]">ready to invoice</div>
+            </div>
+          </div>
+
+          <div className="bg-card border-[1.5px] border-card-border rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border">
+              <span className="text-[13.5px] font-semibold text-foreground">My submitted expenses</span>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Approved expenses can be auto-added as line items when generating an invoice for the same month.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {myLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ) : (myExpenses || []).length > 0 ? (
-                <div className="space-y-2">{(myExpenses || []).map(renderMyExpenseRow)}</div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Receipt className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p>You haven't submitted any expenses yet.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            {myLoading ? (
+              <div className="p-5 space-y-2">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : (myExpenses || []).length > 0 ? (
+              <div>{(myExpenses || []).map(renderMyExpenseRow)}</div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Receipt className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p>You haven't submitted any expenses yet.</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -660,7 +687,7 @@ export default function ExpensesPage() {
             <DialogDescription>
               {reviewExpense && (
                 <>
-                  {formatMoney(reviewExpense.amount, reviewExpense.currency)} —{" "}
+                  {formatMoney(reviewExpense.amount, reviewExpense.currency)},{" "}
                   {categoryLabel(reviewExpense.category)} on{" "}
                   {format(new Date(reviewExpense.expenseDate), "MMM d, yyyy")}
                 </>
@@ -684,7 +711,7 @@ export default function ExpensesPage() {
               />
             </div>
             {pendingAction === "reject" && (
-              <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-md p-2">
+              <div className="flex items-start gap-2 text-xs text-[#D97706] bg-[#FFFBEB] border border-[#FDE68A] rounded-md p-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>The contractor will be notified about the rejection.</span>
               </div>

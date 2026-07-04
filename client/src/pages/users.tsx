@@ -60,7 +60,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { UserPlus, MoreHorizontal, KeyRound, Trash2, Loader2, Search, Users, Upload, FileSpreadsheet, Pencil, Copy, Check, ShieldAlert, Ban, RotateCcw } from "lucide-react";
+import { MoreHorizontal, KeyRound, Loader2, Search, Users, Upload, FileSpreadsheet, Pencil, Copy, Check, ShieldAlert, Ban, Plus } from "lucide-react";
 import type { User } from "@shared/schema";
 import { UserRole } from "@shared/schema";
 import { useRef } from "react";
@@ -253,7 +253,7 @@ export default function UsersPage() {
     if (newFailedIds.size > 0) {
       toast({
         title: "Partial save",
-        description: `Updated ${successCount} user(s). ${newFailedIds.size} update(s) failed — rows highlighted in red.`,
+        description: `Updated ${successCount} user(s). ${newFailedIds.size} update(s) failed, rows highlighted in red.`,
         variant: "destructive",
       });
       return;
@@ -486,16 +486,53 @@ export default function UsersPage() {
     }
   };
 
+  // Users who show up as someone else's supervisor get the "Supervisor" role pill
+  // instead of "Contractor" (this app has no dedicated supervisor role, it's derived
+  // from having direct reports).
+  const supervisorIds = new Set(
+    (users || []).map((u) => u.supervisorId).filter((id): id is string => !!id)
+  );
+
+  const getRoleBadge = (u: User) => {
+    if (u.role === "admin" || u.role === UserRole.OWNER) {
+      return (
+        <span className="text-[11.5px] font-medium bg-[#111827] text-white px-[9px] py-[3px] rounded-full whitespace-nowrap">
+          {u.role === UserRole.OWNER ? "Owner" : "Admin"}
+        </span>
+      );
+    }
+    if (supervisorIds.has(u.id)) {
+      return (
+        <span className="text-[11.5px] font-medium bg-[#D1FAE5] text-[#065F46] px-[9px] py-[3px] rounded-full whitespace-nowrap">
+          Supervisor
+        </span>
+      );
+    }
+    return (
+      <span className="text-[11.5px] font-medium bg-[#F3F4F6] text-[#374151] px-[9px] py-[3px] rounded-full whitespace-nowrap">
+        Contractor
+      </span>
+    );
+  };
+
+  const totalUsersCount = users?.length || 0;
+  const contractorsCount = activeUsers.filter((u) => u.role === "ic" && !supervisorIds.has(u.id)).length;
+  const supervisorsCount = activeUsers.filter((u) => supervisorIds.has(u.id)).length;
+
   const renderUserRow = (u: User) => {
     const editData = editedUsers.get(u.id);
     const hasFailed = failedUserIds.has(u.id);
     return (
-      <TableRow key={u.id} data-testid={`user-row-${u.id}`} className={hasFailed ? "border-l-2 border-l-red-500 bg-red-500/5" : ""}>
+      <TableRow
+        key={u.id}
+        data-testid={`user-row-${u.id}`}
+        className={hasFailed ? "bg-[#FEF2F2]" : ""}
+      >
         <TableCell>
           {isEditMode && editData ? (
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                <AvatarFallback className="bg-[#111827] text-white text-xs font-semibold">
                   {editData.firstName?.[0]}{editData.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
@@ -548,21 +585,19 @@ export default function UsersPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+            <div className="flex items-center gap-2.5">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="bg-[#111827] text-white text-[9px] font-bold">
                   {u.firstName?.[0]}{u.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{u.firstName} {u.lastName}</p>
-                <p className="text-sm text-muted-foreground">{u.email}</p>
-                {u.jobTitle && <p className="text-xs text-muted-foreground">{u.jobTitle}</p>}
+                <p className="text-[12.5px] font-medium text-[#111827]">{u.firstName} {u.lastName}</p>
+                <p className="text-[11.5px] text-[#9CA3AF]">{u.email}</p>
               </div>
             </div>
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground">{u.username}</TableCell>
         <TableCell>
           {isEditMode && editData ? (
             <Select
@@ -578,7 +613,7 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           ) : (
-            <StatusBadge status={u.role} />
+            getRoleBadge(u)
           )}
         </TableCell>
         <TableCell>
@@ -600,56 +635,66 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           ) : (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-[12.5px] text-[#374151]">
               {u.supervisorId
                 ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
-                : "-"
+                : <span className="text-[#9CA3AF]">—</span>
               }
             </span>
           )}
         </TableCell>
         <TableCell>
-          <span className="text-sm text-emerald-600">Active</span>
+          <StatusBadge status="active" />
         </TableCell>
         <TableCell>
           {!isEditMode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid={`button-actions-${u.id}`}>
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setUserToResetPassword(u)}
-                  data-testid={`button-reset-password-${u.id}`}
+            <div className="flex gap-1.5 justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 gap-1 text-[11.5px] font-normal text-[#6B7280] bg-[#F9FAFB] border-[#E5E7EB] hover:bg-neutral-100"
+                    data-testid={`button-actions-${u.id}`}
+                  >
+                    Edit
+                    <MoreHorizontal className="w-3 h-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setUserToResetPassword(u)}
+                    data-testid={`button-reset-password-${u.id}`}
+                  >
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    Reset Password
+                  </DropdownMenuItem>
+                  {u.id !== currentUser?.id && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setUserToSuspend(u)}
+                        className="text-amber-600 focus:text-amber-600"
+                        data-testid={`button-suspend-${u.id}`}
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Suspend User
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {u.id !== currentUser?.id && (
+                <Button
+                  size="sm"
+                  className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] bg-[#FEF2F2] border-0 hover:bg-red-100"
+                  onClick={() => setUserToDelete(u)}
+                  data-testid={`button-delete-${u.id}`}
                 >
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  Reset Password
-                </DropdownMenuItem>
-                {u.id !== currentUser?.id && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setUserToSuspend(u)}
-                      className="text-amber-600 focus:text-amber-600"
-                      data-testid={`button-suspend-${u.id}`}
-                    >
-                      <Ban className="w-4 h-4 mr-2" />
-                      Suspend User
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setUserToDelete(u)}
-                      className="text-destructive focus:text-destructive"
-                      data-testid={`button-delete-${u.id}`}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Remove User
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  Remove
+                </Button>
+              )}
+            </div>
           )}
         </TableCell>
       </TableRow>
@@ -657,18 +702,11 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">User Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Add, edit, and manage system users
-          </p>
-        </div>
-        <div className="flex gap-3">
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-end gap-2">
           <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" data-testid="button-bulk-upload">
+              <Button variant="outline" size="sm" data-testid="button-bulk-upload">
                 <Upload className="w-4 h-4 mr-2" />
                 Bulk Import
               </Button>
@@ -721,9 +759,9 @@ export default function UsersPage() {
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-user">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add User
+              <Button size="sm" className="bg-[#111827] hover:bg-neutral-800 text-white" data-testid="button-add-user">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add user
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
@@ -884,7 +922,7 @@ export default function UsersPage() {
                           <SelectContent>
                             {SUPPORTED_CURRENCIES.map((c) => (
                               <SelectItem key={c.code} value={c.code}>
-                                {c.code} — {c.name}
+                                {c.code} ({c.name})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -922,15 +960,38 @@ export default function UsersPage() {
               </Form>
             </DialogContent>
           </Dialog>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Total users</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-total-users">{totalUsersCount}</div>
+          <div className="text-xs text-neutral-500">{activeUsers.length} active</div>
+        </div>
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Contractors</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-contractors">{contractorsCount}</div>
+          <div className="text-xs text-neutral-500">independent contributors</div>
+        </div>
+        <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2">Supervisors</div>
+          <div className="text-[26px] font-bold text-neutral-900 mb-0.5" data-testid="text-stat-supervisors">{supervisorsCount}</div>
+          <div className="text-xs text-neutral-500">active</div>
+        </div>
+        <div className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl px-[18px] py-3.5">
+          <div className="text-[9.5px] font-semibold text-[#92400E] tracking-[0.1em] uppercase mb-2">Suspended</div>
+          <div className="text-[26px] font-bold text-[#92400E] mb-0.5" data-testid="text-stat-suspended">{suspendedUsers.length}</div>
+          <div className="text-xs text-[#B45309]">cannot log in</div>
         </div>
       </div>
 
-      <Card>
+      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div>
-                <CardTitle className="text-base">All Users</CardTitle>
+                <CardTitle className="text-[13.5px] font-semibold text-neutral-900">All users</CardTitle>
                 <CardDescription>{activeUsers.length} active user{activeUsers.length !== 1 ? "s" : ""}</CardDescription>
               </div>
               {isEditMode ? (
@@ -973,20 +1034,20 @@ export default function UsersPage() {
                 </Button>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-neutral-300" />
                 <Input
                   placeholder="Search users..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-8 w-56 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]"
                   data-testid="input-search"
                   disabled={isEditMode}
                 />
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter} disabled={isEditMode}>
-                <SelectTrigger className="w-40" data-testid="select-role-filter">
+                <SelectTrigger className="w-36 h-8 text-[12.5px] bg-[#F9FAFB] border-[#E5E7EB]" data-testid="select-role-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1005,20 +1066,70 @@ export default function UsersPage() {
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
             </div>
-          ) : activeUsers.length > 0 ? (
+          ) : activeUsers.length > 0 || suspendedUsers.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Supervisor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB]">
+                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Role</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Supervisor</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {activeUsers.map(renderUserRow)}
+                {suspendedUsers.map((u) => (
+                  <TableRow key={u.id} data-testid={`suspended-user-row-${u.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="bg-[#F9FAFB] border-[1.5px] border-dashed border-neutral-200 text-[#9CA3AF] text-[9px] font-bold">
+                            {u.firstName?.[0]}{u.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-[12.5px] font-medium text-[#9CA3AF]">{u.firstName} {u.lastName}</p>
+                          <p className="text-[11.5px] text-[#D1D5DB]">{u.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getRoleBadge(u)}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[12.5px] text-[#9CA3AF]">
+                        {u.supervisorId
+                          ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
+                          : "—"
+                        }
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status="suspended" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1.5 justify-end">
+                        <Button
+                          size="sm"
+                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#059669] bg-[#ECFDF5] border-0 hover:bg-emerald-100"
+                          onClick={() => restoreMutation.mutate(u.id)}
+                          data-testid={`button-restore-${u.id}`}
+                        >
+                          Restore
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-2.5 text-[11.5px] font-normal text-[#DC2626] bg-[#FEF2F2] border-0 hover:bg-red-100"
+                          onClick={() => setUserToDelete(u)}
+                          data-testid={`button-delete-suspended-${u.id}`}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           ) : (
@@ -1034,98 +1145,6 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
-
-      {suspendedUsers.length > 0 && (
-        <Card className="border-amber-200 dark:border-amber-800">
-          <CardHeader>
-            <div>
-              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                <Ban className="w-4 h-4" />
-                Suspended Users
-              </CardTitle>
-              <CardDescription>
-                {suspendedUsers.length} suspended account{suspendedUsers.length !== 1 ? "s" : ""} — these users cannot log in
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Supervisor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {suspendedUsers.map((u) => (
-                  <TableRow key={u.id} data-testid={`suspended-user-row-${u.id}`} className="opacity-70">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-muted text-muted-foreground text-sm">
-                            {u.firstName?.[0]}{u.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{u.firstName} {u.lastName}</p>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
-                          {u.jobTitle && <p className="text-xs text-muted-foreground">{u.jobTitle}</p>}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{u.username}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={u.role} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {u.supervisorId
-                          ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
-                          : "-"
-                        }
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-amber-600 dark:text-amber-400">Suspended</span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-actions-suspended-${u.id}`}>
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => restoreMutation.mutate(u.id)}
-                            data-testid={`button-restore-${u.id}`}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-2" />
-                            Restore User
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setUserToDelete(u)}
-                            className="text-destructive focus:text-destructive"
-                            data-testid={`button-delete-suspended-${u.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Remove User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
       <AlertDialog open={!!userToSuspend} onOpenChange={() => setUserToSuspend(null)}>
         <AlertDialogContent>

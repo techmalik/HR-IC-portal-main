@@ -1,7 +1,7 @@
 import { getArticles, getArticleBySlug, type BlogArticle } from "./blogStorage";
 import { ssrHtmlShell, escHtml, escAttr } from "../ssrShared";
 
-const BASE_URL = "https://teamflow.app";
+const BASE_URL = "https://axlehq.app";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -75,7 +75,7 @@ export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
 
   const bodyHtml = `
     <div class="ssr-hero">
-      <h1>The TeamFlow Blog</h1>
+      <h1>The Axle Blog</h1>
       <p>Practical guides for SaaS teams managing independent contractors — timesheets, invoices, compliance, and remote ops.</p>
     </div>
     <main class="ssr-main">
@@ -88,19 +88,19 @@ export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: "TeamFlow Blog",
+    name: "Axle Blog",
     description:
       "Practical guides for SaaS teams managing independent contractors.",
     url: `${BASE_URL}/blog`,
     publisher: {
       "@type": "Organization",
-      name: "TeamFlow",
+      name: "Axle",
       url: BASE_URL,
     },
   };
 
   return ssrHtmlShell({
-    title: "TeamFlow Blog — Contractor Operations for SaaS Teams",
+    title: "Axle Blog — Contractor Operations for SaaS Teams",
     metaDescription:
       "Practical guides on managing independent contractors: timesheets, invoice compliance, misclassification, remote team communication, and more.",
     canonicalPath: "/blog",
@@ -143,7 +143,7 @@ export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): st
         <span class="ssr-tag">${article.readingMinutes} min read</span>
         <span>Published ${formatDate(article.publishedDate)}</span>
         <span>Updated ${formatDate(article.updatedDate)}</span>
-        <span>By TeamFlow Editorial Team</span>
+        <span>By Axle Editorial Team</span>
       </div>
 
       ${article.bodyHtml}
@@ -167,12 +167,12 @@ export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): st
     dateModified: article.updatedDate,
     author: {
       "@type": "Organization",
-      name: "TeamFlow Editorial Team",
+      name: "Axle Editorial Team",
       url: BASE_URL,
     },
     publisher: {
       "@type": "Organization",
-      name: "TeamFlow",
+      name: "Axle",
       url: BASE_URL,
       logo: {
         "@type": "ImageObject",
@@ -186,7 +186,7 @@ export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): st
   };
 
   return ssrHtmlShell({
-    title: `${article.title} | TeamFlow Blog`,
+    title: `${article.title} | Axle Blog`,
     metaDescription: article.metaDescription,
     canonicalPath: `/blog/${article.slug}`,
     ogTitle: article.title,

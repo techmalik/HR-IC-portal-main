@@ -86,7 +86,7 @@ export function PageHeader({ title, breadcrumbs, backHref, backLabel, onStartTou
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+    <header className="sticky top-0 z-50 flex h-[54px] items-center justify-between gap-4 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-6">
       <div className="flex items-center gap-3">
         {backHref && (
           <>

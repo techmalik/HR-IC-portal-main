@@ -64,7 +64,7 @@ export function registerObjectStorageRoutes(
   authMiddleware: RequestHandler,
   storage: IStorage,
 ): void {
-  const storageClient = new Client();
+  const getStorageClient = () => new Client();
 
   app.post("/api/uploads/request-url", async (req, res) => {
     try {
@@ -111,7 +111,7 @@ export function registerObjectStorageRoutes(
       let fileBuffer: Buffer | null = null;
       let resolvedPath = storagePath;
 
-      const result = await storageClient.downloadAsBytes(storagePath);
+      const result = await getStorageClient().downloadAsBytes(storagePath);
       if (result.ok && Array.isArray(result.value) && result.value.length > 0) {
         fileBuffer = Buffer.from(result.value[0]);
       }
@@ -119,14 +119,14 @@ export function registerObjectStorageRoutes(
       if (!fileBuffer) {
         const ext = path.extname(storagePath);
         if (!ext) {
-          const listing = await storageClient.list({ prefix: storagePath + "." });
+          const listing = await getStorageClient().list({ prefix: storagePath + "." });
           if (listing.ok && listing.value.length > 0) {
             const match = listing.value.find(
               (f) => f.name !== storagePath + "/" && f.name.startsWith(storagePath + ".")
             );
             if (match) {
               resolvedPath = match.name;
-              const retry = await storageClient.downloadAsBytes(match.name);
+              const retry = await getStorageClient().downloadAsBytes(match.name);
               if (retry.ok && Array.isArray(retry.value) && retry.value.length > 0) {
                 fileBuffer = Buffer.from(retry.value[0]);
               }

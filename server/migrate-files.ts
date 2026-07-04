@@ -9,7 +9,7 @@ const upload = multer({
 
 export function createMigrateFilesRouter(authMiddleware: RequestHandler, requireAdmin: RequestHandler): Router {
   const router = Router();
-  const storageClient = new Client();
+  const getStorageClient = () => new Client();
 
   router.post("/api/admin/migrate-files", authMiddleware, requireAdmin, upload.array("files", 50), async (req, res) => {
     try {
@@ -30,7 +30,7 @@ export function createMigrateFilesRouter(authMiddleware: RequestHandler, require
           const originalName = file.originalname;
           const storagePath = `.private/uploads/${originalName}`;
 
-          const uploadResult = await storageClient.uploadFromBytes(storagePath, file.buffer);
+          const uploadResult = await getStorageClient().uploadFromBytes(storagePath, file.buffer);
           if (!uploadResult.ok) {
             throw new Error(String(uploadResult.error) || "Upload failed");
           }
