@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -48,9 +48,9 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-FROM_EMAIL = "notifications@mentalyc.io"
-NOTION_API_KEY = "ntn_D59464807576YOhHmXKjFtX07wS35JZUiDXxwilyssb8Rh"
-RESEND_API_KEY = "re_UP9pe1oo_EWNRxgdVArnoxRosysyEpy7C"
+FROM_EMAIL = "notifications@axle.app"
+# NOTION_API_KEY and RESEND_API_KEY were previously committed here in plaintext
+# and have been rotated. Set them via Replit Secrets (Tools > Secrets), not here.
 
 [objectStorage]
 defaultBucketID = "replit-objstore-a574b5c8-816e-42ff-ad9b-932337729135"
