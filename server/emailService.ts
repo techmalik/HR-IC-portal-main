@@ -54,6 +54,18 @@ async function shouldSendEmail(userId: string, notificationType: string): Promis
   return true;
 }
 
+// User-controlled strings (review notes, reasons, names, expense descriptions)
+// flow into these emails via `message`/`actorName`/`additionalDetails` — escape
+// before interpolating into HTML so they can't inject markup/links.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getStatusColor(type: string): string {
   if (type.includes("approved")) return "#10B981";
   if (type.includes("rejected")) return "#EF4444";
@@ -142,7 +154,7 @@ function generateEmailHtml(payload: EmailPayload): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${payload.title}</title>
+  <title>${escapeHtml(payload.title)}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
@@ -168,21 +180,21 @@ function generateEmailHtml(payload: EmailPayload): string {
           <!-- Content -->
           <tr>
             <td style="padding: 24px 32px;">
-              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 24px; font-weight: 600;">${payload.title}</h2>
-              <p style="margin: 0 0 24px; color: #52525b; font-size: 16px; line-height: 1.6;">${payload.message}</p>
-              
+              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 24px; font-weight: 600;">${escapeHtml(payload.title)}</h2>
+              <p style="margin: 0 0 24px; color: #52525b; font-size: 16px; line-height: 1.6;">${escapeHtml(payload.message)}</p>
+
               ${payload.actorName ? `
               <p style="margin: 0 0 16px; color: #71717a; font-size: 14px;">
-                <strong>Action by:</strong> ${payload.actorName}
+                <strong>Action by:</strong> ${escapeHtml(payload.actorName)}
               </p>
               ` : ''}
-              
+
               ${payload.additionalDetails && Object.keys(payload.additionalDetails).length > 0 ? `
               <table style="margin: 16px 0; border-collapse: collapse;">
                 ${Object.entries(payload.additionalDetails).map(([key, value]) => `
                 <tr>
-                  <td style="padding: 4px 16px 4px 0; color: #71717a; font-size: 14px; font-weight: 500;">${key}:</td>
-                  <td style="padding: 4px 0; color: #52525b; font-size: 14px;">${value}</td>
+                  <td style="padding: 4px 16px 4px 0; color: #71717a; font-size: 14px; font-weight: 500;">${escapeHtml(key)}:</td>
+                  <td style="padding: 4px 0; color: #52525b; font-size: 14px;">${escapeHtml(String(value))}</td>
                 </tr>
                 `).join('')}
               </table>
@@ -287,4 +299,74 @@ export async function sendNotificationEmail(
 
 export function isEmailServiceConfigured(): boolean {
   return !!resend;
+}
+
+// Password-reset emails bypass the notification-preference system entirely —
+// this is a security-critical, user-initiated action, not something a user
+// can opt out of receiving.
+export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Email service not configured (RESEND_API_KEY missing)");
+    return false;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset your ${APP_NAME} password</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: ${BRAND_COLOR}; padding: 32px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.025em;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 32px;">
+              <h2 style="margin: 0 0 16px; color: #18181b; font-size: 24px; font-weight: 600;">Reset your password</h2>
+              <p style="margin: 0 0 24px; color: #52525b; font-size: 16px; line-height: 1.6;">
+                We received a request to reset your ${APP_NAME} password. Click the button below to choose a new one.
+                This link expires in 1 hour and can only be used once.
+              </p>
+              <a href="${resetUrl}"
+                 style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">
+                Reset Password
+              </a>
+              <p style="margin: 24px 0 0; color: #a1a1aa; font-size: 13px; line-height: 1.5;">
+                If you didn't request this, you can safely ignore this email — your password will not be changed.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `[${APP_NAME}] Reset your password`,
+      html,
+      text: `Reset your ${APP_NAME} password: ${resetUrl}\n\nThis link expires in 1 hour and can only be used once. If you didn't request this, you can ignore this email.`,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Failed to send password reset email:", result.error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[EMAIL] Error sending password reset email:", error);
+    return false;
+  }
 }

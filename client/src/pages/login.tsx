@@ -148,7 +148,9 @@ export default function LoginPage() {
                   <FormItem>
                     <div className="flex justify-between items-center">
                       <FormLabel className="text-[13px] font-medium text-gray-700">Password</FormLabel>
-                      <span className="text-[12.5px] text-primary font-medium">Forgot password?</span>
+                      <a href="/forgot-password" className="text-[12.5px] text-primary font-medium no-underline">
+                        Forgot password?
+                      </a>
                     </div>
                     <FormControl>
                       <Input
@@ -183,7 +185,6 @@ export default function LoginPage() {
                 Get started free
               </a>
             </p>
-            <p className="text-[12.5px] text-gray-400">Forgot password? Contact your administrator.</p>
           </div>
         </div>
       </div>

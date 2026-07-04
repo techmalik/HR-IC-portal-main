@@ -37,6 +37,8 @@ import {
   type InsertContract,
   type Expense,
   type InsertExpense,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   contracts,
   expenses,
   users,
@@ -56,6 +58,7 @@ import {
   notificationPreferences,
   organizations,
   subscriptions,
+  passwordResetTokens,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
@@ -135,6 +138,7 @@ export interface IStorage {
   createIcPaymentDetails(details: InsertIcPaymentDetails): Promise<IcPaymentDetails>;
   updateIcPaymentDetails(userId: string, updates: Partial<IcPaymentDetails>): Promise<IcPaymentDetails | undefined>;
 
+  getIcResponsibility(id: string): Promise<IcResponsibility | undefined>;
   getIcResponsibilities(icId: string): Promise<IcResponsibility[]>;
   createIcResponsibility(responsibility: InsertIcResponsibility): Promise<IcResponsibility>;
   updateIcResponsibility(id: string, updates: Partial<IcResponsibility>): Promise<IcResponsibility | undefined>;
@@ -148,6 +152,7 @@ export interface IStorage {
   updateEvaluation(id: string, updates: Partial<Evaluation>): Promise<Evaluation | undefined>;
   getLastCompletedEvaluation(icId: string): Promise<Evaluation | undefined>;
 
+  getEvaluationSection(id: string): Promise<EvaluationSection | undefined>;
   getEvaluationSections(evaluationId: string): Promise<EvaluationSection[]>;
   createEvaluationSection(section: InsertEvaluationSection): Promise<EvaluationSection>;
   updateEvaluationSection(id: string, updates: Partial<EvaluationSection>): Promise<EvaluationSection | undefined>;
@@ -184,6 +189,10 @@ export interface IStorage {
 
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserCountByOrganization(organizationId: string): Promise<number>;
+
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: string): Promise<void>;
 
   getContract(id: string): Promise<Contract | undefined>;
   getContractByFileUrl(fileUrl: string): Promise<Contract | undefined>;
@@ -520,6 +529,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getIcResponsibility(id: string): Promise<IcResponsibility | undefined> {
+    const result = await db.select().from(icResponsibilities).where(eq(icResponsibilities.id, id));
+    return result[0];
+  }
+
   async getIcResponsibilities(icId: string): Promise<IcResponsibility[]> {
     return db.select().from(icResponsibilities).where(eq(icResponsibilities.icId, icId));
   }
@@ -574,6 +588,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(evaluations.icId, icId), eq(evaluations.status, "completed")))
       .orderBy(desc(evaluations.completedAt))
       .limit(1);
+    return result[0];
+  }
+
+  async getEvaluationSection(id: string): Promise<EvaluationSection | undefined> {
+    const result = await db.select().from(evaluationSections).where(eq(evaluationSections.id, id));
     return result[0];
   }
 
@@ -713,6 +732,20 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.email, email));
     return result[0];
+  }
+
+  async createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const result = await db.insert(passwordResetTokens).values(token).returning();
+    return result[0];
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const result = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+    return result[0];
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<void> {
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, id));
   }
 
   async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization | undefined> {

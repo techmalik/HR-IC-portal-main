@@ -11,6 +11,10 @@ import { storage } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
 
 const app = express();
+// Trust the first hop's X-Forwarded-For (Replit's proxy) so req.ip reflects
+// the real client address — needed for the login rate limiter to key on
+// distinct clients rather than the proxy's own IP.
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
@@ -92,12 +96,19 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    // Log server-side for diagnostics, but never leak internal error details
+    // (stack traces, DB error text) to the client in production.
+    console.error(`[API Error] ${req.method} ${req.path}:`, err);
+    const message = status < 500 && err.message
+      ? err.message
+      : process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : (err.message || "Internal Server Error");
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   // importantly only setup vite in development and after

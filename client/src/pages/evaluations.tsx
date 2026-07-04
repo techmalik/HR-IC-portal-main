@@ -700,7 +700,7 @@ function EvaluationDetailView({
   const { data: responsibilities } = useQuery<IcResponsibility[]>({
     queryKey: ["/api/ic-responsibilities", { icId: evaluation.icId }],
     queryFn: async () => {
-      const res = await fetch(`/api/ic-responsibilities?icId=${evaluation.icId}`, {
+      const res = await fetch(`/api/ic-responsibilities/${evaluation.icId}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch responsibilities");

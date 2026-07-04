@@ -1,6 +1,8 @@
 import { Router, type RequestHandler } from "express";
 import multer from "multer";
 import { Client } from "@replit/object-storage";
+import { randomUUID } from "crypto";
+import path from "path";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,14 +30,19 @@ export function createMigrateFilesRouter(authMiddleware: RequestHandler, require
       for (const file of files) {
         try {
           const originalName = file.originalname;
-          const storagePath = `.private/uploads/${originalName}`;
+          // Use a server-generated key rather than the client-supplied
+          // filename — a raw filename could traverse paths (`../..`) or
+          // overwrite an existing object (e.g. another invoice's UUID key).
+          const ext = path.extname(originalName);
+          const objectId = randomUUID();
+          const storagePath = `.private/uploads/${objectId}${ext}`;
 
           const uploadResult = await getStorageClient().uploadFromBytes(storagePath, file.buffer);
           if (!uploadResult.ok) {
             throw new Error(String(uploadResult.error) || "Upload failed");
           }
 
-          const objectPath = `/objects/uploads/${originalName}`;
+          const objectPath = `/objects/uploads/${objectId}${ext}`;
 
           console.log(`[MigrateFiles] Uploaded ${originalName} -> ${objectPath}`);
           results.push({ originalName, objectPath, success: true });

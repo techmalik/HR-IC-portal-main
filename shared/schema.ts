@@ -458,6 +458,11 @@ export const invoices = pgTable("invoices", {
   index("invoices_status_idx").on(table.status),
   index("invoices_user_year_month_idx").on(table.userId, table.year, table.month),
   index("invoices_user_organization_idx").on(table.userId, table.organizationId),
+  // Prevents duplicate invoice numbers per org and double-invoicing the same
+  // period — `getNextInvoiceNumber` is a non-atomic count-based generator,
+  // so this constraint is the backstop against a lost race under concurrency.
+  uniqueIndex("invoices_org_invoice_number_unique").on(table.organizationId, table.invoiceNumber),
+  uniqueIndex("invoices_user_year_month_unique").on(table.userId, table.year, table.month),
 ]);
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
@@ -764,6 +769,28 @@ export const insertFeedbackInvitationSchema = createInsertSchema(feedbackInvitat
 
 export type InsertFeedbackInvitation = z.infer<typeof insertFeedbackInvitationSchema>;
 export type FeedbackInvitation = typeof feedbackInvitations.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Self-service password reset tokens (emailed link, single-use, short-lived)
+// ---------------------------------------------------------------------------
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("password_reset_tokens_user_id_idx").on(table.userId),
+]);
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Activity logs for admin/cofounder visibility

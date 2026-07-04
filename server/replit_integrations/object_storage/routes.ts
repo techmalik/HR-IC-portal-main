@@ -56,7 +56,10 @@ async function isAuthorizedForObject(
     );
   }
 
-  return isAdmin;
+  // Deny by default for objects not linked to any invoice/contract/expense —
+  // an unconditional `isAdmin` fallback here would let an admin of ANY
+  // organization read another org's untracked uploads.
+  return false;
 }
 
 export function registerObjectStorageRoutes(
@@ -66,7 +69,7 @@ export function registerObjectStorageRoutes(
 ): void {
   const getStorageClient = () => new Client();
 
-  app.post("/api/uploads/request-url", async (req, res) => {
+  app.post("/api/uploads/request-url", authMiddleware, async (req, res) => {
     try {
       const { name } = req.body;
 

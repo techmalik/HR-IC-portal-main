@@ -15,6 +15,8 @@ import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from
 import NotFound from "@/pages/not-found";
 import AccessDenied from "@/pages/access-denied";
 import LoginPage from "@/pages/login";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import DashboardIC from "@/pages/dashboard-ic";
 import DashboardSupervisor from "@/pages/dashboard-supervisor";
 import DashboardAdmin from "@/pages/dashboard-admin";
@@ -506,6 +508,8 @@ function PublicRoutes() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
       <Route component={LandingPage} />
     </Switch>
@@ -539,7 +543,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
+    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis", "/forgot-password", "/reset-password"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
       window.location.replace(`/login?redirect=${encodeURIComponent(location)}`);
