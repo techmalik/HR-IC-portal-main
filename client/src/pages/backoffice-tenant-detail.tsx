@@ -115,7 +115,7 @@ function DiscountModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#111827]">Manage discount — {tenant.name}</h2>
+          <h2 className="text-[15px] font-semibold text-[#111827]">Manage discount: {tenant.name}</h2>
           <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151]">
             <X className="w-4 h-4" />
           </button>
@@ -229,7 +229,7 @@ function PlanModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#111827]">Change plan — {tenant.name}</h2>
+          <h2 className="text-[15px] font-semibold text-[#111827]">Change plan: {tenant.name}</h2>
           <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151]">
             <X className="w-4 h-4" />
           </button>
@@ -246,10 +246,10 @@ function PlanModal({
                 setMaxSeats(String(PLAN_MAX_SEATS[e.target.value] ?? 3));
               }}
             >
-              <option value="free">Free — $0/mo</option>
-              <option value="starter">Starter — $29/mo</option>
-              <option value="pro">Pro — $79/mo</option>
-              <option value="enterprise">Enterprise — custom</option>
+              <option value="free">Free: $0/mo</option>
+              <option value="starter">Starter: $29/mo</option>
+              <option value="pro">Pro: $79/mo</option>
+              <option value="enterprise">Enterprise: custom</option>
             </select>
           </div>
 
@@ -264,7 +264,7 @@ function PlanModal({
               className="w-full h-9 rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#059669]"
             />
             <p className="text-[11px] text-[#9CA3AF] mt-1">
-              Default for {plan}: {PLAN_MAX_SEATS[plan] ?? "—"} seats
+              Default for {plan}: {PLAN_MAX_SEATS[plan] ?? "-"} seats
             </p>
           </div>
         </div>
@@ -329,7 +329,7 @@ function SuspendModal({
           </div>
           <div>
             <h2 className="text-[15px] font-semibold text-[#111827]">
-              {isSuspended ? "Reactivate" : "Suspend"} — {tenant.name}
+              {isSuspended ? "Reactivate" : "Suspend"}: {tenant.name}
             </h2>
             <p className="text-[12px] text-[#6B7280]">
               {isSuspended
@@ -457,7 +457,7 @@ export default function BackofficeTenantDetailPage() {
                   {t.userCount}
                 </span>
                 <span className="text-[12.5px] font-semibold text-[#111827] tabular-nums">
-                  {t.mrr > 0 ? `$${t.mrr}` : "—"}
+                  {t.mrr > 0 ? `$${t.mrr}` : "-"}
                 </span>
                 <div>
                   {summary ? (
@@ -468,7 +468,7 @@ export default function BackofficeTenantDetailPage() {
                       </span>
                     </div>
                   ) : (
-                    <span className="text-[12px] text-[#9CA3AF]">—</span>
+                    <span className="text-[12px] text-[#9CA3AF]">-</span>
                   )}
                 </div>
                 <div className="flex gap-1.5 justify-end">

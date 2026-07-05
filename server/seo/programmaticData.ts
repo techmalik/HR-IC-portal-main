@@ -566,7 +566,7 @@ const marketplaceFaqs = (name: string) => [
 const timeTrackingFaqs = (name: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} is fundamentally a time-tracking tool — it tracks hours and produces basic invoices. Axle extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, ${name} is fine; if you need the rest of the ops layer, Axle is built for it.`,
+    a: `${name} is fundamentally a time-tracking tool: it tracks hours and produces basic invoices. Axle extends past time tracking into the full contractor lifecycle: layered approval workflows, OOO management, supervisor permissions, and an audit trail logged per role and per action. If time tracking is the only thing you need, ${name} is fine; if you need the rest of the ops layer, Axle is built for it.`,
   },
   switchHistoryFaq(name),
   {
@@ -575,7 +575,7 @@ const timeTrackingFaqs = (name: string) => [
   },
   {
     q: `Can I use Axle alongside ${name}?`,
-    a: `Some teams do, especially during a transition. Long term, having two systems for the same hours creates reconciliation work — most teams consolidate onto one tool once they validate the new workflow.`,
+    a: `Some teams do, especially during a transition. Long term, having two systems for the same hours creates reconciliation work; most teams consolidate onto one tool once they validate the new workflow.`,
   },
 ];
 
@@ -586,7 +586,7 @@ const payrollFaqs = (name: string, focus: string) => [
   },
   {
     q: `Can Axle and ${name} be used together?`,
-    a: `Yes — that's the most common pattern for teams running both employees and contractors. ${name} handles ${focus}; Axle handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from Axle can be paid through ${name} or your bank.`,
+    a: `Yes, that's the most common pattern for teams running both employees and contractors. ${name} handles ${focus}; Axle handles contractor timesheet approvals, OOO, and audit records. Approved contractor invoices from Axle can be paid through ${name} or your bank.`,
   },
   {
     q: `Does Axle handle 1099 generation?`,
@@ -598,7 +598,7 @@ const payrollFaqs = (name: string, focus: string) => [
 const enterpriseContractorFaqs = (name: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} is enterprise contractor management — large workforces, complex compliance modules, custom integrations, sales-led procurement. Axle targets the SaaS and mid-market services teams that don't have a procurement team and don't need that depth. Setup is self-serve, pricing is transparent, and the workflows are scoped to what most teams actually use day to day.`,
+    a: `${name} is enterprise contractor management: large workforces, complex compliance modules, custom integrations, sales-led procurement. Axle targets the SaaS and mid-market services teams that don't have a procurement team and don't need that depth. Setup is self-serve, pricing is transparent, and the workflows are scoped to what most teams actually use day to day.`,
   },
   switchHistoryFaq(name),
   {
@@ -614,12 +614,12 @@ const enterpriseContractorFaqs = (name: string) => [
 const stafffingComplianceFaqs = (name: string, model: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} is built around ${model} — its core value is the service it provides on top of the platform. Axle is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, Axle is the focused alternative.`,
+    a: `${name} is built around ${model}: its core value is the service it provides on top of the platform. Axle is purely the ops layer: timesheets, approvals, invoices, OOO, and audit trail for contractors you've already engaged. If you've handled sourcing or compliance through another channel and just need the operational software, Axle is the focused alternative.`,
   },
   switchHistoryFaq(name),
   {
     q: `Does Axle handle contractor classification or compliance services?`,
-    a: `No. We assume you've validated classification through legal, HR, or a specialized provider. Axle focuses on what happens after that — the day-to-day operational workflow — and stays out of the services business.`,
+    a: `No. We assume you've validated classification through legal, HR, or a specialized provider. Axle focuses on what happens after that (the day-to-day operational workflow) and stays out of the services business.`,
   },
   {
     q: `Is Axle a fit if I'm not running an enterprise workforce?`,
@@ -632,11 +632,11 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "deel-alternative",
     competitorName: "Deel",
     metaTitle: "Deel Alternative for Contractor Management | Axle",
-    metaDescription: "Looking for a Deel alternative? Axle gives you contractor timesheets, invoice approvals, and audit-ready records — without payment-volume markup.",
-    intro: "Deel is a great fit for teams that need EOR (employer of record) and global payroll bundled with contractor management. But for many SaaS and services teams, that bundle is overkill — you already have a payment provider, and what you actually need is a clean ops layer for timesheets, approvals, and audit trail. That's where Axle shines.",
-    positioning: "Axle is the focused contractor ops platform. We don't process payments — we handle the approval workflow and record keeping. The result: clearer pricing, a tool that doesn't try to replace your finance stack, and a platform built end-to-end for the contractor model.",
+    metaDescription: "Looking for a Deel alternative? Axle gives you contractor timesheets, invoice approvals, and audit-ready records, without payment-volume markup.",
+    intro: "Deel is a great fit for teams that need EOR (employer of record) and global payroll bundled with contractor management. But for many SaaS and services teams, that bundle is overkill: you already have a payment provider, and what you actually need is a clean ops layer for timesheets, approvals, and audit trail. That's where Axle shines.",
+    positioning: "Axle is the focused contractor ops platform. We don't process payments; we handle the approval workflow and record keeping. The result: clearer pricing, a tool that doesn't try to replace your finance stack, and a platform built end-to-end for the contractor model.",
     competitorWeaknesses: [
-      "Pricing scales with payment volume, country, and currency conversion — hard to predict month-over-month",
+      "Pricing scales with payment volume, country, and currency conversion, hard to predict month-over-month",
       "Bundles features you may not need (EOR, payroll) into the contractor workflow",
       "Onboarding can take days for organizations with multiple country setups",
       "Heavy product means many features compete for attention with the core contractor ops workflow",
@@ -644,7 +644,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     axleStrengths: [
       "Single-purpose: contractor timesheets, invoices, OOO, and audit trail",
       "Most teams fully set up in under a day",
-      "Transparent per-seat pricing — no per-payment markup",
+      "Transparent per-seat pricing, no per-payment markup",
       "Free plan for up to 3 contractors covers all core features",
     ],
     comparison: competitorComparisonBase("Deel"),
@@ -655,8 +655,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "remote-alternative",
     competitorName: "Remote",
     metaTitle: "Remote.com Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is a leaner alternative to Remote.com — contractor timesheets, invoice approvals, and audit-ready records without EOR markup.",
-    intro: "Remote is a strong choice for companies that need full EOR services in many countries, but the platform's strength is also its overhead: you're paying for global payroll infrastructure even if you only need a contractor ops layer. Axle takes the opposite approach — narrow scope, transparent pricing, faster setup.",
+    metaDescription: "Axle is a leaner alternative to Remote.com: contractor timesheets, invoice approvals, and audit-ready records without EOR markup.",
+    intro: "Remote is a strong choice for companies that need full EOR services in many countries, but the platform's strength is also its overhead: you're paying for global payroll infrastructure even if you only need a contractor ops layer. Axle takes the opposite approach: narrow scope, transparent pricing, faster setup.",
     positioning: "Axle handles contractor operations without trying to be your global payroll provider. Use your existing payment provider; let Axle handle the approval workflow, records, and audit trail.",
     competitorWeaknesses: [
       "EOR-first product means contractor-only customers pay for capabilities they don't use",
@@ -665,7 +665,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "UI is optimized for HR/payroll teams more than for ops or founders",
     ],
     axleStrengths: [
-      "Focused exclusively on contractor ops — no EOR overhead",
+      "Focused exclusively on contractor ops, no EOR overhead",
       "Free plan covers small teams completely",
       "Clean separation between ops layer and payment processing",
       "Setup measured in hours, not days",
@@ -679,7 +679,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     competitorName: "Rippling",
     metaTitle: "Rippling Alternative for Contractor Management | Axle",
     metaDescription: "Looking for a Rippling alternative just for contractors? Axle handles timesheets, invoices, and OOO without the full HRIS overhead.",
-    intro: "Rippling is a powerful HRIS for companies that want one system for HR, IT, and finance. But if your team is contractor-heavy, you don't need an HRIS — you need a focused contractor ops layer. Axle is that layer, without the breadth and price tag of Rippling.",
+    intro: "Rippling is a powerful HRIS for companies that want one system for HR, IT, and finance. But if your team is contractor-heavy, you don't need an HRIS: you need a focused contractor ops layer. Axle is that layer, without the breadth and price tag of Rippling.",
     positioning: "Axle does one thing very well: manage independent contractors. We don't try to be your HRIS, your IT provisioning system, or your payroll engine. The benefit: less overhead, faster setup, lower cost.",
     competitorWeaknesses: [
       "Pricing assumes broad HRIS adoption; contractor-only customers overpay",
@@ -690,7 +690,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     axleStrengths: [
       "Built specifically for contractor ops, not as an HRIS module",
       "Setup in hours, not weeks",
-      "Per-seat pricing covers all features — no module-by-module pricing",
+      "Per-seat pricing covers all features, no module-by-module pricing",
       "Smaller surface area means less to learn for ops and contractors",
     ],
     comparison: competitorComparisonBase("Rippling"),
@@ -701,9 +701,9 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "bonsai-alternative",
     competitorName: "Bonsai",
     metaTitle: "Bonsai Alternative for Contractor-Heavy Teams | Axle",
-    metaDescription: "Axle is the team-first alternative to Bonsai — built for companies managing contractors, not for solo freelancers managing themselves.",
-    intro: "Bonsai is excellent if you're an individual freelancer running your own books. But if you're on the other side of the table — a company managing many contractors — Bonsai's freelancer-first design starts working against you. Axle flips the model: built from the ground up for the company managing contractors, not for the contractor managing themselves.",
-    positioning: "Axle is purpose-built for the company side of the contractor relationship. Layered approval workflows, supervisor permissions, multi-tenant role-based access — features that don't exist when the platform's primary user is a solo freelancer.",
+    metaDescription: "Axle is the team-first alternative to Bonsai, built for companies managing contractors, not for solo freelancers managing themselves.",
+    intro: "Bonsai is excellent if you're an individual freelancer running your own books. But if you're on the other side of the table (a company managing many contractors), Bonsai's freelancer-first design starts working against you. Axle flips the model: built from the ground up for the company managing contractors, not for the contractor managing themselves.",
+    positioning: "Axle is purpose-built for the company side of the contractor relationship. Layered approval workflows, supervisor permissions, multi-tenant role-based access: features that don't exist when the platform's primary user is a solo freelancer.",
     competitorWeaknesses: [
       "Designed for individual freelancers, not multi-contractor teams",
       "Approval workflows and supervisor roles aren't first-class concepts",
@@ -711,7 +711,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Reporting is contractor-centric, not company-centric",
     ],
     axleStrengths: [
-      "Multi-role workflow: contractors, supervisors, admins, owners — all native",
+      "Multi-role workflow: contractors, supervisors, admins, owners, all native",
       "Layered approval gates between timesheets and invoices",
       "Company-side reporting: utilization, spend, OOO across the team",
       "Built for org-wide audit trail, not personal freelancer records",
@@ -724,8 +724,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "worksuite-alternative",
     competitorName: "Worksuite",
     metaTitle: "Worksuite Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is a faster-to-deploy alternative to Worksuite for SaaS teams managing contractors — without the enterprise overhead.",
-    intro: "Worksuite (formerly Shortlist) is built for enterprise contractor management — large workforces, complex compliance, custom integrations. For SaaS startups and mid-market services firms, that depth often becomes overhead. Axle gives you the ops fundamentals without the enterprise procurement cycle.",
+    metaDescription: "Axle is a faster-to-deploy alternative to Worksuite for SaaS teams managing contractors, without the enterprise overhead.",
+    intro: "Worksuite (formerly Shortlist) is built for enterprise contractor management: large workforces, complex compliance, custom integrations. For SaaS startups and mid-market services firms, that depth often becomes overhead. Axle gives you the ops fundamentals without the enterprise procurement cycle.",
     positioning: "Axle is contractor ops for teams that don't have a procurement team. Setup measured in hours; pricing transparent and per-seat; functionality focused on the 90% of contractor workflows that actually move the needle.",
     competitorWeaknesses: [
       "Enterprise-first sales process; not self-serve",
@@ -734,7 +734,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Feature depth assumes mature ops team to operate it",
     ],
     axleStrengths: [
-      "Self-serve signup and setup — no sales call required",
+      "Self-serve signup and setup, no sales call required",
       "Operational in under a day",
       "Transparent per-seat pricing on the website",
       "Functionality scoped to the workflows most teams actually need",
@@ -747,17 +747,17 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "plane-alternative",
     competitorName: "Plane",
     metaTitle: "Plane Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is the ops-focused alternative to Plane — contractor timesheets, approvals, and audit trail without payment-rail markup.",
-    intro: "Plane (formerly Pilot) is built around international payment processing — they pay your contractors, you pay them. That's valuable if you don't have a global payment infrastructure already. If you do, you're effectively paying twice: once for your bank and again for Plane's rails. Axle handles the ops layer without touching payments.",
+    metaDescription: "Axle is the ops-focused alternative to Plane: contractor timesheets, approvals, and audit trail without payment-rail markup.",
+    intro: "Plane (formerly Pilot) is built around international payment processing: they pay your contractors, you pay them. That's valuable if you don't have a global payment infrastructure already. If you do, you're effectively paying twice: once for your bank and again for Plane's rails. Axle handles the ops layer without touching payments.",
     positioning: "Axle is contractor ops without payment processing. Approve timesheets, approve invoices, keep clean records. Pay through whatever financial infrastructure you already have.",
     competitorWeaknesses: [
-      "Pricing tied to payment processing — costs scale with payment volume",
+      "Pricing tied to payment processing, costs scale with payment volume",
       "Payment processing markup baked into the platform fee",
       "Forces a specific payment workflow that may duplicate your existing finance stack",
       "Less flexibility for teams that want to keep their existing payment provider",
     ],
     axleStrengths: [
-      "Clean separation between ops and payments — keep your existing financial stack",
+      "Clean separation between ops and payments, keep your existing financial stack",
       "Predictable per-seat pricing, no transaction markup",
       "Faster setup for teams that don't need a new payment rail",
       "Lighter integration footprint with finance",
@@ -770,7 +770,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "multiplier-alternative",
     competitorName: "Multiplier",
     metaTitle: "Multiplier Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is the focused contractor ops alternative to Multiplier — without EOR overhead or payment-volume pricing.",
+    metaDescription: "Axle is the focused contractor ops alternative to Multiplier, without EOR overhead or payment-volume pricing.",
     intro: "Multiplier focuses on global hiring, EOR services, and contractor payments. If you need EOR, that's a real value proposition. If you don't, the EOR-first design becomes friction: extra fields, extra workflows, extra cost. Axle is the contractor ops layer without the EOR overhead.",
     positioning: "Axle is contractor management without EOR. We assume you've already figured out how to engage contractors legally; we focus on the ongoing operational layer.",
     competitorWeaknesses: [
@@ -793,9 +793,9 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "hubstaff-alternative",
     competitorName: "Hubstaff",
     metaTitle: "Hubstaff Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is the trust-based alternative to Hubstaff — contractor timesheets and invoice approvals without screenshot surveillance.",
-    intro: "Hubstaff's core value proposition is automated time tracking with screenshots and activity monitoring. That works for some teams. For most modern contractor relationships — particularly with senior specialists — surveillance-based time tracking actively damages the relationship. Axle takes the opposite stance: structured self-reported timesheets with approval gates.",
-    positioning: "Axle trusts contractors to track their own time and gives supervisors clean approval workflows to verify it. No screenshots, no activity monitoring, no surveillance — just structured records and supervisor sign-off.",
+    metaDescription: "Axle is the trust-based alternative to Hubstaff: contractor timesheets and invoice approvals without screenshot surveillance.",
+    intro: "Hubstaff's core value proposition is automated time tracking with screenshots and activity monitoring. That works for some teams. For most modern contractor relationships, particularly with senior specialists, surveillance-based time tracking actively damages the relationship. Axle takes the opposite stance: structured self-reported timesheets with approval gates.",
+    positioning: "Axle trusts contractors to track their own time and gives supervisors clean approval workflows to verify it. No screenshots, no activity monitoring, no surveillance: just structured records and supervisor sign-off.",
     competitorWeaknesses: [
       "Screenshot and activity monitoring damages senior contractor relationships",
       "Surveillance approach incompatible with how most knowledge work is done",
@@ -817,8 +817,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     competitorName: "Harvest",
     metaTitle: "Harvest Alternative for Contractor Management | Axle",
     metaDescription: "Axle extends beyond Harvest's time-tracking focus with contractor invoicing, OOO, and audit-ready approval workflows.",
-    intro: "Harvest is a long-standing time-tracking and invoicing tool. It's good at what it does. But contractor management isn't just time tracking — it's the full lifecycle: timesheets, approval, invoicing, OOO, audit trail. Axle covers that full lifecycle in one tool, where Harvest stops at time and basic invoicing.",
-    positioning: "Axle is the full contractor ops platform. Time tracking is one component — alongside approval workflows, OOO management, audit trail, and supervisor permissions that don't exist in pure time-tracking tools.",
+    intro: "Harvest is a long-standing time-tracking and invoicing tool. It's good at what it does. But contractor management isn't just time tracking; it's the full lifecycle: timesheets, approval, invoicing, OOO, audit trail. Axle covers that full lifecycle in one tool, where Harvest stops at time and basic invoicing.",
+    positioning: "Axle is the full contractor ops platform. Time tracking is one component, alongside approval workflows, OOO management, audit trail, and supervisor permissions that don't exist in pure time-tracking tools.",
     competitorWeaknesses: [
       "Time-tracking-first product; contractor workflows are an afterthought",
       "OOO and supervisor approval not first-class features",
@@ -839,8 +839,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "gusto-alternative",
     competitorName: "Gusto",
     metaTitle: "Gusto Alternative for Contractor Management | Axle",
-    metaDescription: "Axle handles contractor ops the way Gusto handles employee payroll — focused, structured, and audit-grade.",
-    intro: "Gusto is the gold standard for SMB payroll. Their contractor support exists, but it's a side feature — focused on 1099 generation and basic payment, not on the operational layer of timesheet approval, OOO, and audit trail. Axle complements Gusto: keep Gusto for payroll and 1099 generation, add Axle for the ops layer.",
+    metaDescription: "Axle handles contractor ops the way Gusto handles employee payroll: focused, structured, and audit-grade.",
+    intro: "Gusto is the gold standard for SMB payroll. Their contractor support exists, but it's a side feature focused on 1099 generation and basic payment, not on the operational layer of timesheet approval, OOO, and audit trail. Axle complements Gusto: keep Gusto for payroll and 1099 generation, add Axle for the ops layer.",
     positioning: "Axle is the ops complement to Gusto. We track timesheets, approvals, OOO, and audit trail. Gusto handles the actual payment and 1099. The two work cleanly together.",
     competitorWeaknesses: [
       "Contractor management is a secondary feature behind employee payroll",
@@ -855,7 +855,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Complements Gusto rather than replacing it",
     ],
     comparison: competitorComparisonBase("Gusto"),
-    pricingNote: "Gusto's contractor-only plan starts at $35/month plus $6 per contractor. Axle's per-seat pricing covers contractor ops features specifically — and the two tools work cleanly side by side.",
+    pricingNote: "Gusto's contractor-only plan starts at $35/month plus $6 per contractor. Axle's per-seat pricing covers contractor ops features specifically, and the two tools work cleanly side by side.",
     faqs: payrollFaqs("Gusto", "SMB payroll"),
   },
   {
@@ -863,12 +863,12 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     competitorName: "Paychex",
     metaTitle: "Paychex Alternative for Modern Contractor Management | Axle",
     metaDescription: "Axle is the modern, self-serve alternative to Paychex for SaaS teams managing contractors at scale.",
-    intro: "Paychex is built for traditional payroll and HR — large workforces, established processes, dedicated HR teams. For modern SaaS and services teams that work primarily with independent contractors, that legacy infrastructure is overkill. Axle is the modern, self-serve contractor ops layer that fits how today's teams actually work.",
-    positioning: "Axle is contractor ops for the modern team — self-serve, fast to set up, transparent pricing, no enterprise sales motion.",
+    intro: "Paychex is built for traditional payroll and HR: large workforces, established processes, dedicated HR teams. For modern SaaS and services teams that work primarily with independent contractors, that legacy infrastructure is overkill. Axle is the modern, self-serve contractor ops layer that fits how today's teams actually work.",
+    positioning: "Axle is contractor ops for the modern team: self-serve, fast to set up, transparent pricing, no enterprise sales motion.",
     competitorWeaknesses: [
       "Enterprise-first product designed for traditional HR teams",
       "Setup involves sales conversations and lengthy onboarding",
-      "Pricing isn't transparent — quote-based",
+      "Pricing isn't transparent; it's quote-based",
       "Dated UI compared to modern SaaS tools",
     ],
     axleStrengths: [
@@ -885,8 +885,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "qwick-alternative",
     competitorName: "Qwick",
     metaTitle: "Qwick Alternative for Contractor Management | Axle",
-    metaDescription: "Axle handles ongoing contractor operations the way Qwick handles short-term staffing — focused tools for different problems.",
-    intro: "Qwick is built for hospitality on-demand staffing — booking workers for individual shifts. Axle is built for ongoing contractor relationships — recurring engagements with timesheet, invoice, and OOO management. Different problems, different tools.",
+    metaDescription: "Axle handles ongoing contractor operations the way Qwick handles short-term staffing: focused tools for different problems.",
+    intro: "Qwick is built for hospitality on-demand staffing: booking workers for individual shifts. Axle is built for ongoing contractor relationships, meaning recurring engagements with timesheet, invoice, and OOO management. Different problems, different tools.",
     positioning: "Axle is for ongoing contractor relationships, not on-demand shift booking. If your contractors come back week after week, project after project, Axle's ops layer fits cleanly.",
     competitorWeaknesses: [
       "Designed for one-off shifts, not ongoing engagements",
@@ -901,15 +901,15 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Long-term audit trail and historical records",
     ],
     comparison: competitorComparisonBase("Qwick"),
-    pricingNote: "Qwick charges per-shift booking fees for hospitality staffing. Axle charges per-seat for ongoing contractor relationship management — they're complementary tools for different needs.",
+    pricingNote: "Qwick charges per-shift booking fees for hospitality staffing. Axle charges per-seat for ongoing contractor relationship management; they're complementary tools for different needs.",
     faqs: stafffingComplianceFaqs("Qwick", "on-demand hospitality shift staffing"),
   },
   {
     slug: "oyster-alternative",
     competitorName: "Oyster",
     metaTitle: "Oyster Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is the focused contractor ops alternative to Oyster — without EOR overhead or payment-volume pricing.",
-    intro: "Oyster's strength is global EOR and compliance for distributed teams. If you need EOR, Oyster is a strong choice. If you don't — if your contractors are properly classified independent contractors — Axle gives you the ops layer without the EOR overhead.",
+    metaDescription: "Axle is the focused contractor ops alternative to Oyster, without EOR overhead or payment-volume pricing.",
+    intro: "Oyster's strength is global EOR and compliance for distributed teams. If you need EOR, Oyster is a strong choice. If you don't, meaning your contractors are properly classified independent contractors, Axle gives you the ops layer without the EOR overhead.",
     positioning: "Axle is contractor ops without EOR. We assume you've already validated contractor classification; we focus on the ongoing operational workflows.",
     competitorWeaknesses: [
       "EOR-first design imposes overhead on contractor-only customers",
@@ -932,11 +932,11 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     competitorName: "Papaya Global",
     metaTitle: "Papaya Global Alternative for Contractor Management | Axle",
     metaDescription: "Axle is the lean alternative to Papaya Global for SaaS teams that need contractor ops without enterprise payroll overhead.",
-    intro: "Papaya Global is built for enterprise global payroll and EOR — comprehensive, but heavy. For SaaS and mid-market services firms that need a contractor ops layer without the enterprise payroll engine, Axle is the lighter alternative.",
-    positioning: "Axle is contractor ops sized for SaaS and mid-market — not for Fortune 500 global payroll. The right tool when you need clean operational records without enterprise platform overhead.",
+    intro: "Papaya Global is built for enterprise global payroll and EOR: comprehensive, but heavy. For SaaS and mid-market services firms that need a contractor ops layer without the enterprise payroll engine, Axle is the lighter alternative.",
+    positioning: "Axle is contractor ops sized for SaaS and mid-market, not for Fortune 500 global payroll. The right tool when you need clean operational records without enterprise platform overhead.",
     competitorWeaknesses: [
       "Enterprise-grade product means enterprise-grade procurement cycle",
-      "Pricing not transparent — quote-based",
+      "Pricing not transparent; quote-based only",
       "Setup requires dedicated implementation team",
       "Feature breadth far exceeds what most contractor-only teams need",
     ],
@@ -954,8 +954,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "justworks-alternative",
     competitorName: "Justworks",
     metaTitle: "Justworks Alternative for Contractor Management | Axle",
-    metaDescription: "Axle is the contractor-focused alternative to Justworks — without PEO overhead, just clean ops workflows.",
-    intro: "Justworks is a PEO — they co-employ your team, handling payroll, benefits, and HR compliance. That's a strong fit for full-time employee teams. For contractor-heavy teams, the PEO model doesn't apply: contractors aren't employees. Axle is contractor management built for that distinction.",
+    metaDescription: "Axle is the contractor-focused alternative to Justworks, without PEO overhead, just clean ops workflows.",
+    intro: "Justworks is a PEO, meaning they co-employ your team, handling payroll, benefits, and HR compliance. That's a strong fit for full-time employee teams. For contractor-heavy teams, the PEO model doesn't apply: contractors aren't employees. Axle is contractor management built for that distinction.",
     positioning: "Axle is contractor ops separate from PEO services. We don't co-employ; we don't run benefits; we don't process payroll. We give you the operational layer for managing independent contractors as independent contractors.",
     competitorWeaknesses: [
       "PEO model doesn't apply to contractors",
@@ -964,7 +964,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Limited contractor-specific workflows",
     ],
     axleStrengths: [
-      "Built specifically for contractor — not employee — management",
+      "Built specifically for contractor management, not employee management",
       "Reinforces contractor classification model in workflow",
       "Per-seat pricing with no PEO overhead",
       "Native contractor lifecycle: timesheets, invoices, OOO, audit",
@@ -978,7 +978,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     competitorName: "WorkMarket",
     metaTitle: "WorkMarket Alternative for Contractor Management | Axle",
     metaDescription: "Axle is the modern, lighter alternative to WorkMarket for SaaS teams managing contractors at scale.",
-    intro: "WorkMarket is enterprise contractor management — built for large workforces with complex compliance. For SaaS and mid-market services firms, Axle gives you the operational fundamentals without the enterprise procurement and configuration cycle.",
+    intro: "WorkMarket is enterprise contractor management, built for large workforces with complex compliance. For SaaS and mid-market services firms, Axle gives you the operational fundamentals without the enterprise procurement and configuration cycle.",
     positioning: "Axle is contractor ops without the enterprise weight. Self-serve, fast to set up, focused on the workflows most teams actually use.",
     competitorWeaknesses: [
       "Enterprise sales motion and procurement cycle",
@@ -1010,7 +1010,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Less self-serve than modern SaaS tools",
     ],
     axleStrengths: [
-      "Pure ops layer — no compliance services markup",
+      "Pure ops layer with no compliance services markup",
       "Self-serve modern SaaS workflow",
       "Transparent per-seat pricing",
       "Operational in under a day",
@@ -1023,11 +1023,11 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "andela-alternative",
     competitorName: "Andela",
     metaTitle: "Andela Alternative: Manage Your Own Contractors | Axle",
-    metaDescription: "Already have your own contractor network? Axle is the ops platform — Andela is a marketplace. Different tools for different problems.",
-    intro: "Andela is a contractor marketplace — they source and place engineers for you. Axle is an ops platform — once you have your own contractor relationships (whether sourced through Andela or independently), Axle is where you manage the ongoing operations. The two complement each other.",
-    positioning: "Axle is contractor ops — not contractor sourcing. Bring your own contractors and manage them with structured timesheets, approvals, and audit trail.",
+    metaDescription: "Already have your own contractor network? Axle is the ops platform; Andela is a marketplace. Different tools for different problems.",
+    intro: "Andela is a contractor marketplace: they source and place engineers for you. Axle is an ops platform. Once you have your own contractor relationships (whether sourced through Andela or independently), Axle is where you manage the ongoing operations. The two complement each other.",
+    positioning: "Axle is contractor ops, not contractor sourcing. Bring your own contractors and manage them with structured timesheets, approvals, and audit trail.",
     competitorWeaknesses: [
-      "Marketplace model — sourcing, not ops management",
+      "Marketplace model focused on sourcing, not ops management",
       "No tooling for managing contractors you sourced elsewhere",
       "Pricing assumes a marketplace placement fee",
       "Doesn't address the full operational lifecycle",
@@ -1039,18 +1039,18 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Free plan for small teams",
     ],
     comparison: competitorComparisonBase("Andela"),
-    pricingNote: "Andela charges placement fees per engagement plus markup on contractor rates. Axle charges only for the ops layer — bring contractors from any source.",
+    pricingNote: "Andela charges placement fees per engagement plus markup on contractor rates. Axle charges only for the ops layer, so you can bring contractors from any source.",
     faqs: marketplaceFaqs("Andela"),
   },
   {
     slug: "toptal-alternative",
     competitorName: "Toptal",
     metaTitle: "Toptal Alternative: Manage Your Own Contractors | Axle",
-    metaDescription: "Axle is the ops layer for managing the contractors you already have — Toptal is a sourcing marketplace.",
-    intro: "Toptal is a curated talent marketplace — they screen and place freelance engineers, designers, and product managers. Axle is the ops platform that manages the ongoing relationship after the placement. If you've already sourced your contractors (through Toptal or otherwise), Axle is where you manage them.",
-    positioning: "Axle is contractor ops — not contractor sourcing. Manage timesheets, approvals, invoices, and audit trail across your existing contractor network.",
+    metaDescription: "Axle is the ops layer for managing the contractors you already have; Toptal is a sourcing marketplace.",
+    intro: "Toptal is a curated talent marketplace that screens and places freelance engineers, designers, and product managers. Axle is the ops platform that manages the ongoing relationship after the placement. If you've already sourced your contractors (through Toptal or otherwise), Axle is where you manage them.",
+    positioning: "Axle is contractor ops, not contractor sourcing. Manage timesheets, approvals, invoices, and audit trail across your existing contractor network.",
     competitorWeaknesses: [
-      "Marketplace model — sourcing, not ongoing ops",
+      "Marketplace model focused on sourcing, not ongoing ops",
       "Markup on contractor rates as part of the placement",
       "No tooling for managing contractors you sourced elsewhere",
       "Operational lifecycle not addressed",
@@ -1069,8 +1069,8 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
     slug: "upwork-alternative",
     competitorName: "Upwork",
     metaTitle: "Upwork Alternative for Managing Your Contractor Team | Axle",
-    metaDescription: "Axle is the ops platform for ongoing contractor relationships — Upwork is a marketplace for one-off freelance gigs.",
-    intro: "Upwork is a freelance marketplace — great for one-off gigs and discovery. But once you have a recurring contractor team, Upwork's marketplace fees, payment structure, and platform overhead become friction. Axle is the ops platform for managing that recurring contractor team directly.",
+    metaDescription: "Axle is the ops platform for ongoing contractor relationships; Upwork is a marketplace for one-off freelance gigs.",
+    intro: "Upwork is a freelance marketplace, great for one-off gigs and discovery. But once you have a recurring contractor team, Upwork's marketplace fees, payment structure, and platform overhead become friction. Axle is the ops platform for managing that recurring contractor team directly.",
     positioning: "Axle is for managing your established contractor team off-marketplace. Direct relationships, no marketplace markup, structured ops workflows.",
     competitorWeaknesses: [
       "Marketplace fees apply to every transaction",
