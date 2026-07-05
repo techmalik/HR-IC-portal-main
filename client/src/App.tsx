@@ -44,6 +44,7 @@ import BillingPage from "@/pages/billing";
 import AdminBlogPage from "@/pages/admin-blog";
 import AdminSeoPage from "@/pages/admin-seo";
 import ExpensesPage from "@/pages/expenses";
+import TeamExpensesPage from "@/pages/team-expenses";
 import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
 import BackofficeOverviewPage from "@/pages/backoffice-overview";
 import BackofficeTenantDetailPage from "@/pages/backoffice-tenant-detail";
@@ -596,6 +597,7 @@ function ProtectedRoutes() {
                 <Route path="/invoices" component={InvoicesPage} />
                 <Route path="/invoices/upload" component={InvoicesPage} />
                 <Route path="/expenses" component={ExpensesPage} />
+                <Route path="/team-expenses" component={TeamExpensesPage} />
                 <Route path="/leave-requests" component={LeaveRequestsPage} />
                 <Route path="/overtime-approvals" component={OvertimeApprovalsPage} />
                 <Route path="/team-timesheets" component={TeamTimesheetsPage} />

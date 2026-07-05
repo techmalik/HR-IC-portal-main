@@ -1935,17 +1935,42 @@ export async function registerRoutes(
   // Overtime request routes - protected
   app.get("/api/overtime-requests", authMiddleware, async (req, res) => {
     const { userId, timesheetId, status } = req.query;
-    
+    const currentUser = req.authenticatedUser!;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
     let requests: Awaited<ReturnType<typeof storage.getAllOvertimeRequests>> = [];
-    
+
     if (userId) {
+      // Validate access: own, direct report, or admin
+      if (!isAdmin && String(userId) !== currentUser.id) {
+        const teamMemberIds = new Set(await getTeamMemberIds(currentUser.id));
+        if (!teamMemberIds.has(String(userId))) {
+          return res.status(403).json({ error: "Not authorized" });
+        }
+      }
       requests = await storage.getOvertimeRequestsByUser(userId as string);
     } else if (timesheetId) {
       requests = await storage.getOvertimeRequestsByTimesheet(timesheetId as string);
-    } else if (status === "pending") {
-      requests = await storage.getPendingOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
     } else {
-      requests = await storage.getAllOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
+      // No userId filter — team approval queue, scoped to direct reports for non-admin supervisors
+      if (isAdmin) {
+        requests = status === "pending"
+          ? await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined)
+          : await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+      } else {
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (teamMemberIds.length > 0) {
+          // IC supervisor: show own + direct reports
+          const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+          const allowedIds = new Set([...teamMemberIds, currentUser.id]);
+          requests = status === "pending"
+            ? all.filter(r => allowedIds.has(r.userId) && r.status === "pending")
+            : all.filter(r => allowedIds.has(r.userId));
+        } else {
+          // Pure IC: own requests only
+          requests = await storage.getOvertimeRequestsByUser(currentUser.id);
+        }
+      }
     }
     
     // Enrich overtime requests with activity log from daily entries
@@ -1963,8 +1988,20 @@ export async function registerRoutes(
 
   app.get("/api/overtime-requests/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    const requests = await storage.getPendingOvertimeRequests(req.authenticatedUser!.organizationId ?? undefined);
-    res.json({ count: requests.length });
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    if (isAdmin) {
+      const requests = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+      return res.json({ count: requests.length });
+    }
+
+    // Non-admin: count only direct reports' pending requests
+    const teamMemberIds = await getTeamMemberIds(currentUser.id);
+    if (teamMemberIds.length === 0) {
+      return res.json({ count: 0 });
+    }
+    const all = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+    res.json({ count: all.filter(r => teamMemberIds.includes(r.userId)).length });
   });
 
   app.post("/api/overtime-requests", authMiddleware, async (req, res) => {
@@ -2007,15 +2044,35 @@ export async function registerRoutes(
   });
 
   app.patch("/api/overtime-requests/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const existingRequest = await storage.getOvertimeRequest(req.params.id);
-    
+
     if (!existingRequest) {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    if (req.body.reviewedBy && req.body.reviewedBy === existingRequest.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected")) {
-      return res.status(403).json({ error: "You cannot approve or reject your own overtime request" });
+    // Org boundary check
+    if (currentUser.organizationId && existingRequest.organizationId &&
+        currentUser.organizationId !== existingRequest.organizationId) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const isReviewAction = req.body.status === "approved" || req.body.status === "rejected";
+
+    if (isReviewAction) {
+      // Prevent self-approval using the authenticated user's identity
+      if (existingRequest.userId === currentUser.id) {
+        return res.status(403).json({ error: "You cannot approve or reject your own overtime request" });
+      }
+
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdmin) {
+        // Non-admin supervisors can only review their direct reports
+        const teamMemberIds = new Set(await getTeamMemberIds(currentUser.id));
+        if (!teamMemberIds.has(existingRequest.userId)) {
+          return res.status(403).json({ error: "Not authorized to review this overtime request" });
+        }
+      }
     }
 
     // Validate approvedHours if provided
@@ -2499,17 +2556,24 @@ export async function registerRoutes(
   app.get("/api/team/invoices", authMiddleware, async (req, res) => {
     const user = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(user.id);
-    
+
     if (!isSupervisor) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
-    // Get all pending invoices
-    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
-    
+    const isAdmin = user.role === "admin" || user.role === "owner";
+
+    // Get pending invoices — scoped to direct reports for non-admin supervisors
+    const allPending = await storage.getPendingInvoices(user.organizationId ?? undefined);
+    let scopedInvoices = allPending;
+    if (!isAdmin) {
+      const teamMemberIds = new Set(await getTeamMemberIds(user.id));
+      scopedInvoices = allPending.filter(inv => teamMemberIds.has(inv.userId));
+    }
+
     // Enrich with user data and normalize file URLs
     const enrichedInvoices = await Promise.all(
-      pendingInvoices.map(async (invoice) => {
+      scopedInvoices.map(async (invoice) => {
         const invoiceUser = await storage.getUser(invoice.userId);
         const timesheet = invoice.timesheetId 
           ? await storage.getTimesheet(invoice.timesheetId)
@@ -2535,13 +2599,21 @@ export async function registerRoutes(
   app.get("/api/invoices/pending-count", authMiddleware, async (req, res) => {
     const user = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(user.id);
-    
+
     if (!isSupervisor) {
       return res.json({ count: 0 });
     }
 
+    const isAdmin = user.role === "admin" || user.role === "owner";
     const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
-    res.json({ count: pendingInvoices.length });
+
+    if (isAdmin) {
+      return res.json({ count: pendingInvoices.length });
+    }
+
+    // Non-admin supervisor: count only direct reports' pending invoices
+    const teamMemberIds = new Set(await getTeamMemberIds(user.id));
+    res.json({ count: pendingInvoices.filter(inv => teamMemberIds.has(inv.userId)).length });
   });
 
   // Invoice Line Items routes - protected
@@ -3069,41 +3141,53 @@ export async function registerRoutes(
   // Evaluation routes - protected
   app.get("/api/evaluations", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
-    if (currentUser.role === "ic") {
-      const evaluations = await storage.getEvaluationsByIC(currentUser.id);
-      return res.json(evaluations);
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    if (isAdmin) {
+      const { managerId, icId } = req.query;
+      if (managerId) {
+        return res.json(await storage.getEvaluationsByManager(managerId as string));
+      } else if (icId) {
+        return res.json(await storage.getEvaluationsByIC(icId as string));
+      } else {
+        return res.json(await storage.getAllEvaluations(currentUser.organizationId ?? undefined));
+      }
     }
-    
-    const { managerId, icId } = req.query;
-    if (managerId) {
-      const evaluations = await storage.getEvaluationsByManager(managerId as string);
-      res.json(evaluations);
-    } else if (icId) {
-      const evaluations = await storage.getEvaluationsByIC(icId as string);
-      res.json(evaluations);
-    } else {
-      const evaluations = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
-      res.json(evaluations);
+
+    // IC role — may also be a supervisor (IC with direct reports)
+    // Always include the IC's own evaluations; if also a supervisor, add team evaluations
+    const myEvals = await storage.getEvaluationsByIC(currentUser.id);
+    const teamMemberIds = await getTeamMemberIds(currentUser.id);
+    if (teamMemberIds.length > 0) {
+      // IC supervisor: merge own + team evaluations (deduplicated by id)
+      const teamEvals = await storage.getEvaluationsByManager(currentUser.id);
+      const merged = new Map([...myEvals, ...teamEvals].map(e => [e.id, e]));
+      return res.json(Array.from(merged.values()));
     }
+    res.json(myEvals);
   });
 
   app.get("/api/evaluations/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
-    let count = 0;
-    
-    if (currentUser.role === "ic") {
-      // For ICs, count evaluations where they need to complete their self-evaluation
-      const evaluations = await storage.getEvaluationsByIC(currentUser.id);
-      count = evaluations.filter(e => e.status === "draft").length;
-    } else {
-      // For managers/admins, count evaluations pending their review
-      const evaluations = await storage.getEvaluationsByManager(currentUser.id);
-      count = evaluations.filter(e => e.status === "ic_submitted").length;
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+
+    if (!isAdmin && currentUser.role === "ic") {
+      // Self-evaluation drafts pending completion
+      const myEvals = await storage.getEvaluationsByIC(currentUser.id);
+      let count = myEvals.filter(e => e.status === "draft").length;
+
+      // If also a supervisor, add team evaluations pending manager review
+      const teamMemberIds = await getTeamMemberIds(currentUser.id);
+      if (teamMemberIds.length > 0) {
+        const teamEvals = await storage.getEvaluationsByManager(currentUser.id);
+        count += teamEvals.filter(e => e.status === "ic_submitted").length;
+      }
+      return res.json({ count });
     }
-    
-    res.json({ count });
+
+    // Admin/owner: count evaluations pending their review as manager
+    const evaluations = await storage.getEvaluationsByManager(currentUser.id);
+    res.json({ count: evaluations.filter(e => e.status === "ic_submitted").length });
   });
 
   app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {

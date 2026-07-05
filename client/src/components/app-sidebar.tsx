@@ -212,7 +212,7 @@ export function AppSidebar() {
         { title: "Overtime Approvals", url: "/overtime-approvals", icon: Timer, badgeKey: "overtime" },
         { title: "Timesheet Reviews", url: "/team-timesheets", icon: Clock, badgeKey: "timesheets" },
         { title: "Invoice Reviews", url: "/team-invoices", icon: FileText, badgeKey: "invoices" },
-        { title: "Expense Reviews", url: "/expenses", icon: Receipt, badgeKey: "expenses" },
+        { title: "Expense Reviews", url: "/team-expenses", icon: Receipt, badgeKey: "expenses" },
         { title: "Approved Timesheets", url: "/approved-timesheets", icon: ClipboardCheck },
       ];
 
