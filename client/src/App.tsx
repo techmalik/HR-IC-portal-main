@@ -453,6 +453,14 @@ function AdminOnlyRoute({ component: Component }: { component: () => JSX.Element
   return <Component />;
 }
 
+function PlatformAdminOnlyRoute({ component: Component }: { component: () => JSX.Element }) {
+  const { isPlatformAdmin } = useAuth();
+  if (!isPlatformAdmin) {
+    return <AccessDenied />;
+  }
+  return <Component />;
+}
+
 function PortalTourWrapper() {
   const { user } = useAuth();
   const { activeTour, completeTour } = useTourContext();
@@ -604,8 +612,8 @@ function ProtectedRoutes() {
                 <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
                 <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
-                <Route path="/admin/blog">{() => <AdminOnlyRoute component={AdminBlogPage} />}</Route>
-                <Route path="/admin/seo">{() => <AdminOnlyRoute component={AdminSeoPage} />}</Route>
+                <Route path="/admin/blog">{() => <PlatformAdminOnlyRoute component={AdminBlogPage} />}</Route>
+                <Route path="/admin/seo">{() => <PlatformAdminOnlyRoute component={AdminSeoPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />

@@ -62,7 +62,7 @@ interface MenuGroup {
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, logout, isSupervisor, isAdmin } = useAuth();
+  const { user, logout, isSupervisor, isAdmin, isPlatformAdmin } = useAuth();
 
   const isActive = (path: string) => {
     const [itemPathname, itemSearch] = path.split("?");
@@ -241,10 +241,19 @@ export function AppSidebar() {
           { title: "Analytics", url: "/analytics", icon: BarChart3 },
           { title: "Billing", url: "/billing", icon: CreditCard },
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
-          { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
-          { title: "SEO Content", url: "/admin/seo", icon: BookOpen },
         ],
       });
+
+      if (isPlatformAdmin) {
+        groups.push({
+          label: "Platform",
+          icon: BookOpen,
+          items: [
+            { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
+            { title: "SEO Content", url: "/admin/seo", icon: BookOpen },
+          ],
+        });
+      }
     }
 
     // Settings - for all users
