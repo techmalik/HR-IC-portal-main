@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/lib/use-page-meta";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,6 +35,12 @@ const signupSchema = z.object({
 type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  usePageMeta({
+    title: "Start your free trial — Axle",
+    description: "Create your Axle account and start managing independent contractors with timesheets, invoices, and performance reviews. Free plan available.",
+    canonical: "https://axle.run/signup",
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const [, setLocation] = useLocation();

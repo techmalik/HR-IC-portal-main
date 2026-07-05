@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, lazy, Suspense, type ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,49 +12,58 @@ import { PageHeader } from "@/components/page-header";
 import { MobileBottomTabs } from "@/components/mobile-bottom-tabs";
 import { InstallPwaHint } from "@/components/install-pwa-hint";
 import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from "@/components/onboarding-tour";
-import NotFound from "@/pages/not-found";
-import AccessDenied from "@/pages/access-denied";
-import LoginPage from "@/pages/login";
-import DashboardIC from "@/pages/dashboard-ic";
-import DashboardSupervisor from "@/pages/dashboard-supervisor";
-import DashboardAdmin from "@/pages/dashboard-admin";
-import OOORequestsPage from "@/pages/ooo-requests";
-import TimesheetsPage from "@/pages/timesheets";
-import InvoicesPage from "@/pages/invoices";
-import LeaveRequestsPage from "@/pages/leave-requests";
-import EvaluationsPage from "@/pages/evaluations";
-import UsersPage from "@/pages/users";
-import MyTeamPage from "@/pages/my-team";
-import ActivityLogsPage from "@/pages/activity-logs";
-import OvertimeApprovalsPage from "@/pages/overtime-approvals";
-import ProfilePage from "@/pages/profile";
-import TimesheetsOverviewPage from "@/pages/timesheets-overview";
-import ApprovedTimesheetsPage from "@/pages/approved-timesheets";
-import TeamTimesheetsPage from "@/pages/team-timesheets";
-import ICDetailPage from "@/pages/ic-detail";
-import TeamInvoicesPage from "@/pages/team-invoices";
-import AllTimesheetsPage from "@/pages/all-timesheets";
-import AnalyticsPage from "@/pages/analytics";
+import { BackofficeLayout } from "@/components/backoffice-layout";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
-import MigrateFilesPage from "@/pages/migrate-files";
-import SignupPage from "@/pages/signup";
-import LandingPage from "@/pages/landing";
-import BillingPage from "@/pages/billing";
-import AdminBlogPage from "@/pages/admin-blog";
-import AdminSeoPage from "@/pages/admin-seo";
-import ExpensesPage from "@/pages/expenses";
-import TeamExpensesPage from "@/pages/team-expenses";
-import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
-import BackofficeOverviewPage from "@/pages/backoffice-overview";
-import BackofficeTenantDetailPage from "@/pages/backoffice-tenant-detail";
-import BackofficeDiscountsPage from "@/pages/backoffice-discounts";
-import BackofficeLogsPage from "@/pages/backoffice-logs";
-import BackofficeFlagsPage from "@/pages/backoffice-flags";
-import BackofficeTicketsPage from "@/pages/backoffice-tickets";
-import BackofficeSupportPage from "@/pages/backoffice-support";
-import BackofficeAuditLogPage from "@/pages/backoffice-audit-log";
-import { BackofficeLayout } from "@/components/backoffice-layout";
+
+// Small shared pages loaded eagerly (no heavy deps, needed for error states)
+import NotFound from "@/pages/not-found";
+import AccessDenied from "@/pages/access-denied";
+
+// Public pages — lazy-loaded per route so each page ships only its own code.
+// competitive-analysis pulls jsPDF (~200 kB) and must not land on login/landing.
+const LandingPage = lazy(() => import("@/pages/landing"));
+const LoginPage = lazy(() => import("@/pages/login"));
+const SignupPage = lazy(() => import("@/pages/signup"));
+const CompetitiveAnalysisPage = lazy(() => import("@/pages/competitive-analysis"));
+
+// Authenticated pages — lazy-loaded so the public routes don't pay their cost
+const DashboardIC = lazy(() => import("@/pages/dashboard-ic"));
+const DashboardSupervisor = lazy(() => import("@/pages/dashboard-supervisor"));
+const DashboardAdmin = lazy(() => import("@/pages/dashboard-admin"));
+const OOORequestsPage = lazy(() => import("@/pages/ooo-requests"));
+const TimesheetsPage = lazy(() => import("@/pages/timesheets"));
+const InvoicesPage = lazy(() => import("@/pages/invoices"));
+const LeaveRequestsPage = lazy(() => import("@/pages/leave-requests"));
+const EvaluationsPage = lazy(() => import("@/pages/evaluations"));
+const UsersPage = lazy(() => import("@/pages/users"));
+const MyTeamPage = lazy(() => import("@/pages/my-team"));
+const ActivityLogsPage = lazy(() => import("@/pages/activity-logs"));
+const OvertimeApprovalsPage = lazy(() => import("@/pages/overtime-approvals"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
+const TimesheetsOverviewPage = lazy(() => import("@/pages/timesheets-overview"));
+const ApprovedTimesheetsPage = lazy(() => import("@/pages/approved-timesheets"));
+const TeamTimesheetsPage = lazy(() => import("@/pages/team-timesheets"));
+const ICDetailPage = lazy(() => import("@/pages/ic-detail"));
+const TeamInvoicesPage = lazy(() => import("@/pages/team-invoices"));
+const AllTimesheetsPage = lazy(() => import("@/pages/all-timesheets"));
+const AnalyticsPage = lazy(() => import("@/pages/analytics"));
+const ExpensesPage = lazy(() => import("@/pages/expenses"));
+const TeamExpensesPage = lazy(() => import("@/pages/team-expenses"));
+const BillingPage = lazy(() => import("@/pages/billing"));
+const AdminBlogPage = lazy(() => import("@/pages/admin-blog"));
+const AdminSeoPage = lazy(() => import("@/pages/admin-seo"));
+const MigrateFilesPage = lazy(() => import("@/pages/migrate-files"));
+
+// Back-office pages — lazy-loaded (only platform admins ever reach these)
+const BackofficeOverviewPage = lazy(() => import("@/pages/backoffice-overview"));
+const BackofficeTenantDetailPage = lazy(() => import("@/pages/backoffice-tenant-detail"));
+const BackofficeDiscountsPage = lazy(() => import("@/pages/backoffice-discounts"));
+const BackofficeLogsPage = lazy(() => import("@/pages/backoffice-logs"));
+const BackofficeFlagsPage = lazy(() => import("@/pages/backoffice-flags"));
+const BackofficeTicketsPage = lazy(() => import("@/pages/backoffice-tickets"));
+const BackofficeSupportPage = lazy(() => import("@/pages/backoffice-support"));
+const BackofficeAuditLogPage = lazy(() => import("@/pages/backoffice-audit-log"));
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -508,14 +517,22 @@ function PortalTourWrapper() {
   );
 }
 
+const pageFallback = (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
+
 function PublicRoutes() {
   return (
-    <Switch>
-      <Route path="/login" component={LoginPage} />
-      <Route path="/signup" component={SignupPage} />
-      <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
-      <Route component={LandingPage} />
-    </Switch>
+    <Suspense fallback={pageFallback}>
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route path="/signup" component={SignupPage} />
+        <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
+        <Route component={LandingPage} />
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -523,20 +540,22 @@ function PublicRoutes() {
 // tenants — mocked data only, gated the same way as other admin-only areas.
 function BackOfficeRoutes() {
   return (
-    <Switch>
-      <Route path="/back-office" component={BackofficeOverviewPage} />
-      <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
-      <Route path="/back-office/discounts" component={BackofficeDiscountsPage} />
-      <Route path="/back-office/logs" component={BackofficeLogsPage} />
-      <Route path="/back-office/flags" component={BackofficeFlagsPage} />
-      <Route path="/back-office/tickets" component={BackofficeTicketsPage} />
-      <Route path="/back-office/support" component={BackofficeSupportPage} />
-      <Route path="/back-office/blog">{() => <BackofficeLayout title="Blog articles"><AdminBlogPage /></BackofficeLayout>}</Route>
-      <Route path="/back-office/seo">{() => <BackofficeLayout title="SEO pages"><AdminSeoPage /></BackofficeLayout>}</Route>
-      <Route path="/back-office/migrate">{() => <BackofficeLayout title="File migration"><MigrateFilesPage /></BackofficeLayout>}</Route>
-      <Route path="/back-office/audit-log" component={BackofficeAuditLogPage} />
-      <Route component={BackofficeOverviewPage} />
-    </Switch>
+    <Suspense fallback={pageFallback}>
+      <Switch>
+        <Route path="/back-office" component={BackofficeOverviewPage} />
+        <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
+        <Route path="/back-office/discounts" component={BackofficeDiscountsPage} />
+        <Route path="/back-office/logs" component={BackofficeLogsPage} />
+        <Route path="/back-office/flags" component={BackofficeFlagsPage} />
+        <Route path="/back-office/tickets" component={BackofficeTicketsPage} />
+        <Route path="/back-office/support" component={BackofficeSupportPage} />
+        <Route path="/back-office/blog">{() => <BackofficeLayout title="Blog articles"><AdminBlogPage /></BackofficeLayout>}</Route>
+        <Route path="/back-office/seo">{() => <BackofficeLayout title="SEO pages"><AdminSeoPage /></BackofficeLayout>}</Route>
+        <Route path="/back-office/migrate">{() => <BackofficeLayout title="File migration"><MigrateFilesPage /></BackofficeLayout>}</Route>
+        <Route path="/back-office/audit-log" component={BackofficeAuditLogPage} />
+        <Route component={BackofficeOverviewPage} />
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -569,7 +588,7 @@ function ProtectedRoutes() {
   // Standalone strategy report — render outside the app shell to avoid
   // a double header/sidebar for authenticated users.
   if (location === "/competitive-analysis") {
-    return <CompetitiveAnalysisPage />;
+    return <Suspense fallback={pageFallback}><CompetitiveAnalysisPage /></Suspense>;
   }
 
   // Internal back-office console — platform admins only, not org admins.
@@ -590,35 +609,37 @@ function ProtectedRoutes() {
           <div className="flex-1 flex flex-col">
             <DynamicPageHeader />
             <main className="flex-1 overflow-auto bg-background pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0" data-testid="tour-target-dashboard">
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/ooo-requests" component={OOORequestsPage} />
-                <Route path="/ooo-requests/new" component={OOORequestsPage} />
-                <Route path="/timesheets" component={TimesheetsPage} />
-                <Route path="/timesheets/current" component={TimesheetsPage} />
-                <Route path="/invoices" component={InvoicesPage} />
-                <Route path="/invoices/upload" component={InvoicesPage} />
-                <Route path="/expenses" component={ExpensesPage} />
-                <Route path="/team-expenses" component={TeamExpensesPage} />
-                <Route path="/leave-requests" component={LeaveRequestsPage} />
-                <Route path="/overtime-approvals" component={OvertimeApprovalsPage} />
-                <Route path="/team-timesheets" component={TeamTimesheetsPage} />
-                <Route path="/team-invoices" component={TeamInvoicesPage} />
-                <Route path="/all-timesheets" component={AllTimesheetsPage} />
-                <Route path="/analytics">{() => <AdminOnlyRoute component={AnalyticsPage} />}</Route>
-                <Route path="/evaluations" component={EvaluationsPage} />
-                <Route path="/my-team" component={MyTeamPage} />
-                <Route path="/team/:userId" component={ICDetailPage} />
-                <Route path="/users">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
-                <Route path="/users/new">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
-                <Route path="/roles">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
-                <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
-                <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
-                <Route path="/profile" component={ProfilePage} />
-                <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
-                <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />
-                <Route component={NotFound} />
-              </Switch>
+              <Suspense fallback={pageFallback}>
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/ooo-requests" component={OOORequestsPage} />
+                  <Route path="/ooo-requests/new" component={OOORequestsPage} />
+                  <Route path="/timesheets" component={TimesheetsPage} />
+                  <Route path="/timesheets/current" component={TimesheetsPage} />
+                  <Route path="/invoices" component={InvoicesPage} />
+                  <Route path="/invoices/upload" component={InvoicesPage} />
+                  <Route path="/expenses" component={ExpensesPage} />
+                  <Route path="/team-expenses" component={TeamExpensesPage} />
+                  <Route path="/leave-requests" component={LeaveRequestsPage} />
+                  <Route path="/overtime-approvals" component={OvertimeApprovalsPage} />
+                  <Route path="/team-timesheets" component={TeamTimesheetsPage} />
+                  <Route path="/team-invoices" component={TeamInvoicesPage} />
+                  <Route path="/all-timesheets" component={AllTimesheetsPage} />
+                  <Route path="/analytics">{() => <AdminOnlyRoute component={AnalyticsPage} />}</Route>
+                  <Route path="/evaluations" component={EvaluationsPage} />
+                  <Route path="/my-team" component={MyTeamPage} />
+                  <Route path="/team/:userId" component={ICDetailPage} />
+                  <Route path="/users">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
+                  <Route path="/users/new">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
+                  <Route path="/roles">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
+                  <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
+                  <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
+                  <Route path="/profile" component={ProfilePage} />
+                  <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
+                  <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />
+                  <Route component={NotFound} />
+                </Switch>
+              </Suspense>
             </main>
           </div>
         </div>

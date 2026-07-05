@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { usePageMeta } from "@/lib/use-page-meta";
 import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Layers, Download, ArrowLeft, Bell } from "lucide-react";
@@ -1114,6 +1115,12 @@ function generatePdf() {
 }
 
 export default function CompetitiveAnalysisPage() {
+  usePageMeta({
+    title: "Axle vs. Competitors — Contractor Management Comparison",
+    description: "See how Axle compares to Deel, Remote, Rippling, Worksuite, and other contractor management platforms across features, pricing, and market positioning.",
+    canonical: "https://axle.run/competitive-analysis",
+  });
+
   const [, setLocation] = useLocation();
   const [generating, setGenerating] = useState(false);
 

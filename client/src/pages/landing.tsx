@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { usePageMeta } from "@/lib/use-page-meta";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -130,6 +131,12 @@ const darkDotBg =
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
+
+  usePageMeta({
+    title: "Axle — Contractor Management Platform",
+    description: "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews — all in one place.",
+    canonical: "https://axle.run/",
+  });
 
   const scrollToHowItWorks = () => {
     document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
