@@ -3224,10 +3224,11 @@ export async function registerRoutes(
     // ?managerId=self → team evaluations only (used by "Team Evaluations" view)
     // no params → default to own evaluations
     if (managerId && String(managerId) === currentUser.id) {
-      // Supervisor requesting their team queue — direct reports only
+      // Supervisor requesting their team queue — filter by current direct reports (not stale managerId)
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length === 0) return res.json([]);
-      return res.json(await storage.getEvaluationsByManager(currentUser.id));
+      const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+      return res.json(allOrgEvals.filter(e => teamMemberIds.includes(e.icId)));
     }
     // Own evaluations (default or explicit ?icId=self)
     res.json(await storage.getEvaluationsByIC(currentUser.id));
@@ -3242,7 +3243,9 @@ export async function registerRoutes(
       // (own draft self-evals are personal items, not a "team action queue")
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length > 0) {
-        const teamEvals = await storage.getEvaluationsByManager(currentUser.id);
+        // Filter by current direct reports (not stale managerId linkage)
+        const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+        const teamEvals = allOrgEvals.filter(e => teamMemberIds.includes(e.icId));
         return res.json({ count: teamEvals.filter(e => e.status === "ic_submitted").length });
       }
       // Pure IC: count own draft self-evaluations pending completion
@@ -3396,18 +3399,19 @@ export async function registerRoutes(
     const isManagerAction = req.body.status === "manager_submitted" || req.body.status === "completed";
 
     if (currentUser.role === "ic") {
-      // IC may only act on their own evaluation (self-assessment side)
-      if (existingEvaluation.icId !== currentUser.id) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-      // IC supervisors acting as managers (manager_submitted/completed) must be direct supervisor
       if (isManagerAction) {
+        // IC supervisor acting as manager: must be the assigned manager AND a direct supervisor
         if (existingEvaluation.managerId !== currentUser.id) {
           return res.status(403).json({ error: "Forbidden" });
         }
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (!teamMemberIds.includes(existingEvaluation.icId)) {
           return res.status(403).json({ error: "You may only review evaluations for your direct reports" });
+        }
+      } else {
+        // IC acting on self-assessment side — must be the IC on this evaluation
+        if (existingEvaluation.icId !== currentUser.id) {
+          return res.status(403).json({ error: "Forbidden" });
         }
       }
     } else if (!isAdminOrOwner) {
