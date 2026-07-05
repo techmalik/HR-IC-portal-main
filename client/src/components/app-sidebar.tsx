@@ -39,7 +39,6 @@ import {
   Timer,
   Briefcase,
   CheckSquare,
-  Building2,
   CreditCard,
   BookOpen,
   Receipt,
@@ -244,7 +243,6 @@ export function AppSidebar() {
           { title: "Activity Logs", url: "/activity-logs", icon: Activity },
           { title: "Blog Articles", url: "/admin/blog", icon: BookOpen },
           { title: "SEO Content", url: "/admin/seo", icon: BookOpen },
-          { title: "Back-office", url: "/back-office", icon: Building2 },
         ],
       });
     }

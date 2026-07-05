@@ -332,7 +332,12 @@ export async function registerRoutes(
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    res.json({ ...userWithoutPassword, hasDirectReports });
+    const loginAllowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const loginIsPlatformAdmin = loginAllowedPlatformAdmins.includes(user.email.toLowerCase());
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin: loginIsPlatformAdmin });
   });
 
   app.post("/api/auth/register", async (req, res) => {
@@ -419,7 +424,12 @@ export async function registerRoutes(
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    res.status(201).json({ ...userWithoutPassword, hasDirectReports: false });
+    const registerAllowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const registerIsPlatformAdmin = registerAllowedPlatformAdmins.includes(user.email.toLowerCase());
+    res.status(201).json({ ...userWithoutPassword, hasDirectReports: false, isPlatformAdmin: registerIsPlatformAdmin });
   });
 
   app.post("/api/auth/logout", async (req, res) => {
@@ -442,8 +452,16 @@ export async function registerRoutes(
     const directReports = await storage.getUsersBySupervisor(user.id);
     const hasDirectReports = directReports.length > 0;
     const { password: _, ...userWithoutPassword } = user;
-    res.json({ ...userWithoutPassword, hasDirectReports });
+    const allowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isPlatformAdmin = allowedPlatformAdmins.includes(user.email.toLowerCase());
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin });
   });
+
+  // Back-office API namespace — platform admins only
+  app.use("/api/backoffice", authMiddleware, requirePlatformAdmin);
 
   // User routes - protected with auth middleware
   app.get("/api/users", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {

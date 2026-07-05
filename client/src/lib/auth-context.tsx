@@ -12,6 +12,7 @@ const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "touchstart"] as const
 interface AuthUser extends Omit<User, 'mustChangePassword'> {
   hasDirectReports?: boolean;
   mustChangePassword?: boolean;
+  isPlatformAdmin?: boolean;
 }
 
 interface RegisterResult {
@@ -24,6 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSupervisor: boolean;
   isAdmin: boolean;
+  isPlatformAdmin: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   register: (firstName: string, lastName: string, email: string, password: string, organizationName: string) => Promise<RegisterResult>;
   logout: () => void;
@@ -232,9 +234,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const isSupervisor = isAdmin || (user?.hasDirectReports ?? false);
+  const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isSupervisor, isAdmin, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, isSupervisor, isAdmin, isPlatformAdmin, login, register, logout, updateUser }}>
       {children}
       {user && user.mustChangePassword && (
         <ForcePasswordChangeModal

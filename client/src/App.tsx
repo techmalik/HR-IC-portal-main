@@ -527,7 +527,7 @@ function BackOfficeRoutes() {
 }
 
 function ProtectedRoutes() {
-  const { user, isLoading, isAdmin } = useAuth();
+  const { user, isLoading, isAdmin, isPlatformAdmin } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -558,9 +558,9 @@ function ProtectedRoutes() {
     return <CompetitiveAnalysisPage />;
   }
 
-  // Internal back-office console — own sidebar/shell, gated like other admin-only areas.
+  // Internal back-office console — platform admins only, not org admins.
   if (location.startsWith("/back-office")) {
-    return isAdmin ? <BackOfficeRoutes /> : <AccessDenied />;
+    return isPlatformAdmin ? <BackOfficeRoutes /> : <AccessDenied />;
   }
 
   const sidebarStyle = {
