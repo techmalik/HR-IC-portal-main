@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -88,6 +89,7 @@ export function PageHeader({ title, breadcrumbs, backHref, backLabel, onStartTou
   return (
     <header className="sticky top-0 z-50 flex h-[54px] items-center justify-between gap-4 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-6">
       <div className="flex items-center gap-3">
+        <SidebarTrigger className="md:hidden -ml-2" />
         {backHref && (
           <>
             <Link href={backHref}>

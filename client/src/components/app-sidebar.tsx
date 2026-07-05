@@ -278,9 +278,9 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="px-4 py-[18px] border-b border-sidebar-border flex flex-row items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 min-w-0">
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="px-4 py-[18px] border-b border-sidebar-border flex flex-row items-center justify-between group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <Link href="/" className="flex items-center gap-2.5 min-w-0 group-data-[collapsible=icon]:hidden">
           <svg width="26" height="26" viewBox="0 0 28 28" fill="none" className="shrink-0">
             <circle cx="14" cy="14" r="11.5" stroke="white" strokeWidth="2" />
             <circle cx="14" cy="14" r="4" fill="white" />
@@ -289,7 +289,7 @@ export function AppSidebar() {
         </Link>
         <SidebarTrigger
           data-testid="button-sidebar-toggle"
-          className="text-sidebar-foreground/60 hover:text-sidebar-foreground shrink-0 ml-2"
+          className="text-sidebar-foreground/60 hover:text-sidebar-foreground shrink-0 ml-2 group-data-[collapsible=icon]:ml-0"
         />
       </SidebarHeader>
 
