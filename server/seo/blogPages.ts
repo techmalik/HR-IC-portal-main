@@ -186,7 +186,7 @@ export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): st
   };
 
   return ssrHtmlShell({
-    title: `${article.title} | Axle Blog`,
+    title: `${article.seoTitle ?? article.title} | Axle Blog`,
     metaDescription: article.metaDescription,
     canonicalPath: `/blog/${article.slug}`,
     ogTitle: article.title,

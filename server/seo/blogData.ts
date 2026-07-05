@@ -1,6 +1,7 @@
 export interface BlogArticle {
   slug: string;
   title: string;
+  seoTitle?: string;
   metaDescription: string;
   publishedDate: string;
   updatedDate: string;
@@ -13,6 +14,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "how-to-manage-independent-contractors",
     title: "How to Manage Independent Contractors: The Complete Ops Guide",
+    seoTitle: "Managing Independent Contractors: Complete Guide",
     metaDescription: "A practical guide for SaaS founders and ops managers on managing independent contractors, from onboarding and timesheets to invoices and offboarding.",
     publishedDate: "2026-01-06",
     updatedDate: "2026-02-03",
@@ -103,6 +105,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "independent-contractor-vs-employee",
     title: "Contractor vs Employee: The Misclassification Risks Every SaaS Founder Must Know",
+    seoTitle: "Contractor vs Employee: Misclassification Risks",
     metaDescription: "IRS, DOL, and international rules on contractor classification keep tightening. Learn the key tests, the real penalties, and how to stay compliant.",
     publishedDate: "2026-01-20",
     updatedDate: "2026-02-17",
@@ -181,6 +184,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "contractor-invoice-best-practices",
     title: "Contractor Invoice Best Practices Every Ops Team Should Enforce",
+    seoTitle: "Contractor Invoice Best Practices for Ops Teams",
     metaDescription: "Learn what a compliant contractor invoice must include, how to set payment terms contractors actually follow, and how to automate the approval workflow.",
     publishedDate: "2026-02-03",
     updatedDate: "2026-03-02",
@@ -264,6 +268,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "timesheet-management-for-remote-teams",
     title: "Timesheet Management for Remote Teams: Tracking Hours Without Micromanaging",
+    seoTitle: "Timesheet Management for Remote Teams",
     metaDescription: "How async-first SaaS teams track contractor hours accurately, cut approval bottlenecks, and keep trust intact without surveillance or micromanagement.",
     publishedDate: "2026-02-17",
     updatedDate: "2026-03-16",
@@ -338,6 +343,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "how-to-set-contractor-rates",
     title: "How to Set Contractor Rates: Market Data, Billing Models, and Negotiation",
+    seoTitle: "How to Set Contractor Rates: A Complete Guide",
     metaDescription: "Current benchmarks for contractor rates across engineering, design, and ops roles, plus the billing model tradeoffs every SaaS founder should understand.",
     publishedDate: "2026-03-03",
     updatedDate: "2026-03-30",
@@ -405,6 +411,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "iban-swift-international-contractor-payments",
     title: "Paying International Contractors: The IBAN, SWIFT, and Compliance Guide",
+    seoTitle: "Paying International Contractors: IBAN & SWIFT",
     metaDescription: "Everything SaaS finance teams need to know about paying contractors abroad: IBAN vs SWIFT, transfer fees, FX risk, FBAR, and OFAC screening.",
     publishedDate: "2026-03-17",
     updatedDate: "2026-04-13",
@@ -482,6 +489,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "performance-reviews-for-contractors",
     title: "Performance Reviews for Independent Contractors: A Framework That Actually Works",
+    seoTitle: "Performance Reviews for Independent Contractors",
     metaDescription: "A practical approach to reviewing contractor performance for SaaS teams, covering what to measure, how to structure the conversation, and when to revisit rates.",
     publishedDate: "2026-07-06",
     updatedDate: "2026-07-20",
@@ -542,6 +550,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "onboarding-independent-contractors-at-scale",
     title: "Onboarding Contractors at Scale Without Losing Track of Anything",
+    seoTitle: "Onboarding Contractors at Scale",
     metaDescription: "A repeatable process for onboarding ten, twenty, or fifty contractors at once, covering paperwork, tool access, and the first two weeks.",
     publishedDate: "2026-08-03",
     updatedDate: "2026-08-17",
@@ -603,6 +612,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "contractor-compliance-checklist",
     title: "The Contractor Compliance Checklist Every SaaS Ops Team Needs",
+    seoTitle: "Contractor Compliance Checklist for SaaS Teams",
     metaDescription: "A practical checklist covering the legal, tax, IP, and security items most commonly missed when hiring independent contractors.",
     publishedDate: "2026-09-01",
     updatedDate: "2026-09-15",
@@ -687,6 +697,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "leave-and-ooo-management-for-contractor-teams",
     title: "OOO and Availability Policies for Contractor Teams That Don't Create Legal Risk",
+    seoTitle: "OOO Policies for Contractor Teams: Legal Guide",
     metaDescription: "How to handle vacation, sick days, and unplanned absences for independent contractors without drifting into employee-style leave management.",
     publishedDate: "2026-10-05",
     updatedDate: "2026-10-19",
@@ -746,6 +757,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "contractor-timesheet-approval-workflow",
     title: "How to Design a Contractor Timesheet Approval Workflow That Doesn't Bottleneck on One Person",
+    seoTitle: "Contractor Timesheet Approval Workflow Guide",
     metaDescription: "A step-by-step approach to building a timesheet approval process for contractor teams, from submission rules to escalation paths to what to automate first.",
     publishedDate: "2026-11-02",
     updatedDate: "2026-11-16",
@@ -812,6 +824,7 @@ export const blogArticles: BlogArticle[] = [
   {
     slug: "remote-contractor-team-communication",
     title: "Async-First Communication for Distributed Contractor Teams",
+    seoTitle: "Async Communication for Contractor Teams",
     metaDescription: "A practical playbook for communicating with contractors across time zones, built around fewer meetings and better default visibility.",
     publishedDate: "2026-12-07",
     updatedDate: "2026-12-21",
