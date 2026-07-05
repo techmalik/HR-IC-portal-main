@@ -2112,10 +2112,14 @@ export async function registerRoutes(
       }
     }
 
-    const request = await storage.updateOvertimeRequest(req.params.id, {
-      ...req.body,
-      reviewedAt: new Date(),
-    });
+    // Strip client-supplied reviewedBy — always derive reviewer from authenticated session
+    const { reviewedBy: _ignored, ...bodyWithoutReviewedBy } = req.body;
+    const updatePayload: Record<string, any> = { ...bodyWithoutReviewedBy, reviewedAt: new Date() };
+    if (isReviewAction) {
+      updatePayload.reviewedBy = currentUser.id;
+    }
+
+    const request = await storage.updateOvertimeRequest(req.params.id, updatePayload);
 
     if (!request) {
       return res.status(500).json({ error: "Failed to update overtime request" });
@@ -2148,16 +2152,16 @@ export async function registerRoutes(
 
     try {
       await storage.createActivityLog({
-        userId: req.body.reviewedBy,
-        organizationId: req.authenticatedUser!.organizationId,
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
         action: `Overtime request ${req.body.status}`,
         details: `Overtime request was ${req.body.status}`,
         entityType: "overtime_request",
         entityId: request.id,
       });
 
-      if (req.body.reviewedBy && req.body.status) {
-        const reviewer = await storage.getUser(req.body.reviewedBy);
+      if (isReviewAction) {
+        const reviewer = await storage.getUser(currentUser.id);
         if (reviewer) {
           if (req.body.status === "approved") {
             await notifyOvertimeApproved(request, reviewer);
