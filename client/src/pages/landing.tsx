@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { usePageMeta } from "@/lib/use-page-meta";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import {
   Award,
   Users,
   ShieldCheck,
+  X,
+  TrendingDown,
 } from "lucide-react";
 
 function LogoMark({ size = 28, color = "#111827" }: { size?: number; color?: string }) {
@@ -87,39 +90,51 @@ const steps = [
 const plans = [
   {
     name: "Free",
-    tagline: "For small teams just getting started",
+    tagline: "Try it free — no card needed",
     price: "$0",
+    priceNote: "30-day trial",
     seats: "Up to 3 contractors",
-    cta: "Get started",
+    cta: "Start free trial",
+    ctaVariant: "secondary" as const,
     highlight: false,
-    features: ["Timesheet management", "Leave tracking", "Basic invoicing"],
+    enterprise: false,
+    features: ["Timesheet management", "Leave tracking", "Basic invoicing", "1 admin seat"],
   },
   {
     name: "Starter",
     tagline: "Growing teams that need structure",
-    price: "$29",
-    seats: "Up to 10 contractors/mo",
-    cta: "Get started",
+    price: "$9",
+    priceNote: "per IC / month",
+    seats: "Up to 25 contractors",
+    cta: "Start free trial",
+    ctaVariant: "secondary" as const,
     highlight: false,
-    features: ["Everything in Free", "Performance evaluations", "Team dashboards"],
+    enterprise: false,
+    features: ["Everything in Free", "Unlimited admin seats", "CSV + PDF exports", "Email notifications"],
   },
   {
     name: "Pro",
     tagline: "Teams that move fast",
-    price: "$79",
-    seats: "Up to 50 contractors/mo",
-    cta: "Get started",
+    price: "$14",
+    priceNote: "per IC / month",
+    seats: "Up to 100 contractors",
+    cta: "Start free trial",
+    ctaVariant: "default" as const,
     highlight: true,
-    features: ["Everything in Starter", "Advanced reporting", "Priority support"],
+    enterprise: false,
+    features: ["Everything in Starter", "Performance evaluations", "Expense tracking", "Audit-ready exports"],
   },
   {
     name: "Enterprise",
     tagline: "Large orgs with compliance needs",
     price: "Custom",
-    seats: "Unlimited contractors",
+    priceNote: "tailored to your team",
+    seats: "100+ contractors",
     cta: "Contact sales",
+    ctaVariant: "secondary" as const,
     highlight: false,
-    features: ["Everything in Pro", "Dedicated account manager", "SSO and advanced security"],
+    enterprise: true,
+    features: ["Everything in Pro", "Dedicated account manager", "SSO / SAML", "Audit API access"],
   },
 ];
 
@@ -131,6 +146,7 @@ const darkDotBg =
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
+  const [contractorCount, setContractorCount] = useState(25);
 
   usePageMeta({
     title: "Axle — Contractor Management Platform",
@@ -194,23 +210,25 @@ export default function LandingPage() {
             </div>
 
             <h1 className="font-serif font-normal text-gray-900 text-5xl sm:text-6xl leading-[1.08] tracking-tight mb-6">
-              <em>Finally,</em> contractor ops without the chaos.
+              Pure contractor ops.
+              <br />
+              <em>Not EOR. Not payroll.</em>
             </h1>
 
             <p className="text-gray-500 text-lg leading-relaxed mb-8 max-w-md">
-              Timesheets, invoices, leave, and evaluations, in one place. Built for teams that run on independent contractors.
+              Timesheets, invoices, leave, and evaluations — built for teams that manage contractors directly. No EOR overhead, no implementation weeks.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 mb-5">
               <Button size="lg" onClick={() => setLocation("/signup")} data-testid="button-hero-get-started">
-                Get started free
+                Start free trial
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={scrollToHowItWorks} data-testid="button-hero-demo">
                 See how it works
               </Button>
             </div>
-            <p className="text-gray-400 text-xs">No credit card required. Free for up to 3 contractors. </p>
+            <p className="text-gray-400 text-xs">30-day free trial · No credit card required · Free for up to 3 contractors.</p>
           </div>
 
           {/* Right: app screenshot mockup */}
@@ -379,6 +397,61 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      {/* Why not Deel? */}
+      <section className="bg-gray-50 border-t border-gray-100 py-16 sm:py-20">
+        <div className="max-w-5xl mx-auto px-6 lg:px-12">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start">
+            <div className="lg:w-72 shrink-0">
+              <div className="inline-block bg-emerald-50 text-primary text-[11px] font-semibold px-3 py-1 rounded-full mb-4 tracking-wide">
+                WHY NOT DEEL?
+              </div>
+              <h2 className="font-serif font-normal text-gray-900 text-2xl sm:text-3xl leading-snug mb-3">
+                Built for teams that already know who they're hiring
+              </h2>
+              <p className="text-gray-500 text-[14px] leading-relaxed">
+                Deel and Remote are great if you need to hire globally and convert contractors to employees. If you already have contractors and just need to run ops cleanly, you're paying for things you'll never use.
+              </p>
+            </div>
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                {
+                  icon: X,
+                  label: "No EOR overhead",
+                  body: "Deel charges from $49/IC/month to fund EOR infrastructure you don't need. Axle Pro starts at $14/IC.",
+                  bad: true,
+                },
+                {
+                  icon: X,
+                  label: "No entity fees",
+                  body: "No per-country legal entity fees, no compliance seat add-ons. One flat per-IC price covers everything.",
+                  bad: true,
+                },
+                {
+                  icon: Check,
+                  label: "Up and running today",
+                  body: "Axle is self-serve and live in minutes. Deel averages multi-week onboarding for full feature activation.",
+                  bad: false,
+                },
+                {
+                  icon: TrendingDown,
+                  label: "3–5× lower cost at any scale",
+                  body: "25 contractors on Deel: ~$1,225/mo. On Axle Pro: $350/mo. That's $10,500 saved per year.",
+                  bad: false,
+                },
+              ].map((item) => (
+                <div key={item.label} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-3 ${item.bad ? "bg-red-50" : "bg-emerald-50"}`}>
+                    <item.icon className={`w-4 h-4 ${item.bad ? "text-red-500" : "text-primary"}`} strokeWidth={2.5} />
+                  </div>
+                  <div className="text-gray-900 text-[14px] font-semibold mb-1">{item.label}</div>
+                  <p className="text-gray-500 text-[13px] leading-relaxed">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="bg-white border-t border-gray-100 py-20 sm:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -386,8 +459,8 @@ export default function LandingPage() {
             <div className="inline-block bg-emerald-50 text-primary text-[11px] font-semibold px-3 py-1 rounded-full mb-3.5 tracking-wide">
               PRICING
             </div>
-            <h2 className="font-serif font-normal text-gray-900 text-3xl sm:text-4xl mb-3">Simple, transparent pricing</h2>
-            <p className="text-gray-500 text-lg">Start free. Scale as you grow. No surprises.</p>
+            <h2 className="font-serif font-normal text-gray-900 text-3xl sm:text-4xl mb-3">Pay only for the ICs you have</h2>
+            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 30 days.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
@@ -401,23 +474,24 @@ export default function LandingPage() {
                 }`}
               >
                 {plan.highlight && (
-                  <div className="absolute top-3.5 right-3.5 bg-white/10 text-white text-[9.5px] font-bold px-2.5 py-1 rounded-full tracking-wide">
-                    POPULAR
+                  <div className="absolute top-3.5 right-3.5 bg-emerald-500 text-white text-[9.5px] font-bold px-2.5 py-1 rounded-full tracking-wide">
+                    BEST VALUE
                   </div>
                 )}
                 <div className={`text-[15px] font-semibold mb-1 ${plan.highlight ? "text-white" : "text-gray-900"}`}>
                   {plan.name}
                 </div>
                 <div className={`text-[13px] mb-6 ${plan.highlight ? "text-white/50" : "text-gray-500"}`}>{plan.tagline}</div>
-                <div className={`text-[38px] font-bold mb-0.5 tracking-tight ${plan.highlight ? "text-white" : "text-gray-900"}`}>
+                <div className={`text-[38px] font-bold mb-0.5 tracking-tight leading-none ${plan.highlight ? "text-white" : "text-gray-900"}`}>
                   {plan.price}
                 </div>
-                <div className={`text-xs mb-5 ${plan.highlight ? "text-white/40" : "text-gray-400"}`}>{plan.seats}</div>
+                <div className={`text-xs mb-1 ${plan.highlight ? "text-white/40" : "text-gray-400"}`}>{plan.priceNote}</div>
+                <div className={`text-[11px] mb-5 font-medium ${plan.highlight ? "text-emerald-400" : "text-primary"}`}>{plan.seats}</div>
                 <Button
                   className="mb-5 w-full"
-                  variant={plan.highlight ? "default" : plan.name === "Enterprise" ? "default" : "secondary"}
+                  variant={plan.highlight ? "default" : "secondary"}
                   onClick={() =>
-                    plan.name === "Enterprise"
+                    plan.enterprise
                       ? window.open("mailto:sales@axlehq.app")
                       : setLocation("/signup")
                   }
@@ -435,6 +509,46 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Pricing calculator */}
+          <div className="mt-12 max-w-2xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <p className="text-gray-900 text-[15px] font-semibold mb-0.5">How much could you save?</p>
+                <p className="text-gray-500 text-[13px]">Compare your cost on Axle vs Deel at your team size.</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <label htmlFor="contractor-count" className="text-gray-600 text-[13px] whitespace-nowrap">Number of contractors:</label>
+                <input
+                  id="contractor-count"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={contractorCount}
+                  onChange={(e) => setContractorCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                  data-testid="input-contractor-count"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Axle Pro</div>
+                <div className="text-2xl font-bold text-gray-900 mb-0.5">${(contractorCount * 14).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
+                <div className="text-[12px] text-gray-500">{contractorCount} ICs × $14</div>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Deel</div>
+                <div className="text-2xl font-bold text-gray-400 mb-0.5">${(contractorCount * 49).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
+                <div className="text-[12px] text-gray-500">{contractorCount} ICs × $49</div>
+              </div>
+            </div>
+            <div className="mt-4 bg-emerald-50 rounded-xl border border-emerald-100 px-5 py-3 flex items-center justify-between">
+              <span className="text-[13px] text-emerald-800 font-medium">Your annual saving with Axle</span>
+              <span className="text-emerald-700 font-bold text-[17px]">${((contractorCount * 49 - contractorCount * 14) * 12).toLocaleString()} / year</span>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-3 text-center">Comparison based on Deel's published contractor management price of $49/IC/month.</p>
           </div>
         </div>
       </section>
