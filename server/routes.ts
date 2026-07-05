@@ -1868,10 +1868,24 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Only approved timesheets can be unlocked" });
       }
 
+      // Org boundary check
+      if (timesheet.organizationId !== currentUser.organizationId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       // Verify the user is a supervisor of the timesheet owner
       const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
       if (!isSupervisor) {
         return res.status(403).json({ error: "Only supervisors can unlock timesheets" });
+      }
+
+      // Non-admin supervisors may only unlock timesheets for their direct reports
+      const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdminOrOwner) {
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(timesheet.userId)) {
+          return res.status(403).json({ error: "You may only unlock timesheets for your direct reports" });
+        }
       }
 
       // Update timesheet to draft status and add unlock note
@@ -2895,8 +2909,19 @@ export async function registerRoutes(
     let list: any[] = [];
 
     if (scope === "team") {
-      // Manager view: expenses where they are the reviewing manager
-      list = await storage.getExpensesByManager(currentUser.id);
+      if (isAdmin) {
+        // Admin/owner: full org view (all statuses)
+        list = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      } else {
+        // Non-admin supervisor: scope to current direct reports only
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (teamMemberIds.length === 0) {
+          list = [];
+        } else {
+          const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+          list = all.filter((e) => teamMemberIds.includes(e.userId));
+        }
+      }
     } else if (userIdParam) {
       if (!isAdmin && userIdParam !== currentUser.id) {
         return res.status(403).json({ error: "Not authorized" });
@@ -2949,8 +2974,12 @@ export async function registerRoutes(
       const count = all.filter((e) => e.status === "pending").length;
       return res.json({ count });
     }
-    const list = await storage.getPendingExpensesByManager(currentUser.id);
-    res.json({ count: list.length });
+    // Non-admin supervisors: count pending expenses from direct reports only
+    const teamMemberIds = await getTeamMemberIds(currentUser.id);
+    if (teamMemberIds.length === 0) return res.json({ count: 0 });
+    const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+    const count = all.filter((e) => teamMemberIds.includes(e.userId) && e.status === "pending").length;
+    res.json({ count });
   }));
 
   // Approved expenses available to add as line items on the IC's invoice for a given month/year
@@ -3086,12 +3115,18 @@ export async function registerRoutes(
     if (!expense) return res.status(404).json({ error: "Expense not found" });
 
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
-    const isManager = expense.managerId === currentUser.id;
-    if (!isAdmin && !isManager) {
-      return res.status(403).json({ error: "Not authorized to review this expense" });
-    }
+
+    // Org boundary check
     if (currentUser.organizationId && expense.organizationId && expense.organizationId !== currentUser.organizationId) {
       return res.status(403).json({ error: "Not authorized" });
+    }
+
+    if (!isAdmin) {
+      // Non-admin supervisors may only review expenses for their direct reports
+      const teamMemberIds = await getTeamMemberIds(currentUser.id);
+      if (!teamMemberIds.includes(expense.userId)) {
+        return res.status(403).json({ error: "Not authorized to review this expense" });
+      }
     }
     if (expense.status !== "pending") {
       return res.status(400).json({ error: "Expense has already been reviewed" });
@@ -4330,8 +4365,12 @@ export async function registerRoutes(
       if (currentUser.organizationId && expense.organizationId && expense.organizationId !== currentUser.organizationId) {
         throw new Error("Not authorized");
       }
-      if (!isAdmin && expense.managerId !== currentUser.id) {
-        throw new Error("Not authorized to review this expense");
+      if (!isAdmin) {
+        // Non-admin supervisors may only bulk-review their direct reports' expenses
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(expense.userId)) {
+          throw new Error("Not authorized to review this expense");
+        }
       }
       if (expense.status !== "pending") {
         throw new Error("Expense has already been reviewed");
