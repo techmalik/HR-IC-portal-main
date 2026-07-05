@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-TeamFlow is a multi-tenant contractor management SaaS. It uses a React/TypeScript frontend, a Node.js/Express backend, PostgreSQL through Drizzle ORM, database-backed session cookies, Replit Object Storage for invoices/receipts/contracts/avatars, and Resend for email notifications. Users include organization owners, admins, independent contractors, and IC supervisors with direct reports.
+Axle is a multi-tenant contractor management SaaS. It uses a React/TypeScript frontend, a Node.js/Express backend, PostgreSQL through Drizzle ORM, database-backed session cookies, Replit Object Storage for invoices/receipts/contracts/avatars, and Resend for email notifications. Users include organization owners, admins, independent contractors, and IC supervisors with direct reports.
 
 ## Assets
 

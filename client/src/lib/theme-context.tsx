@@ -12,7 +12,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("teamflow_theme") as Theme;
+      // Migrate old key name.
+      const legacyTheme = localStorage.getItem("teamflow_theme");
+      if (legacyTheme) { try { localStorage.setItem("axle_theme", legacyTheme); localStorage.removeItem("teamflow_theme"); } catch {} }
+      const saved = localStorage.getItem("axle_theme") as Theme;
       return saved || "light";
     }
     return "light";
@@ -25,7 +28,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("teamflow_theme", theme);
+    localStorage.setItem("axle_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

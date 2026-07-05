@@ -1,4 +1,4 @@
-# TeamFlow HR Management System - Design Guidelines
+# Axle - Design Guidelines
 
 ## Design Approach
 **Reference-Based Approach**: Drawing inspiration from BambooHR and Gusto's professional HR interfaces, emphasizing role-based dashboards, streamlined approval workflows, and clear information hierarchy.

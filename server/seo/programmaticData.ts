@@ -23,8 +23,8 @@ export interface CompetitorPage {
   intro: string;
   positioning: string;
   competitorWeaknesses: string[];
-  teamflowStrengths: string[];
-  comparison: { feature: string; teamflow: string; competitor: string }[];
+  axleStrengths: string[];
+  comparison: { feature: string; axle: string; competitor: string }[];
   pricingNote: string;
   faqs: { q: string; a: string }[];
   updatedDate: string;
@@ -498,13 +498,13 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
 export const defaultIndustries: IndustryPage[] = industriesData.map((d) => ({ ...d, updatedDate: today }));
 
 const competitorComparisonBase = (name: string) => [
-  { feature: "Built specifically for contractor ops", teamflow: "Yes — every workflow assumes contractor model", competitor: `${name} positions broadly across employee + contractor; contractor flows are a subset` },
-  { feature: "Time to set up", teamflow: "Most teams operational in under a day", competitor: `${name} typically requires multi-day onboarding and configuration` },
-  { feature: "Free plan", teamflow: "Free for up to 3 contractors with full features", competitor: `${name} requires a paid plan or has limited free usage` },
-  { feature: "Approval workflow gating invoices", teamflow: "Invoice cannot be submitted unless timesheet is approved", competitor: `${name} treats timesheets and invoices as separate workflows` },
-  { feature: "Audit trail", teamflow: "Every approval, edit, and rejection logged automatically", competitor: `${name} provides logs but with varying granularity per plan tier` },
-  { feature: "Multi-currency invoice records", teamflow: "Native currency stored per invoice; no forced conversion", competitor: `${name} typically routes through their own payment rails and conversion` },
-  { feature: "Pricing transparency", teamflow: "Clear per-seat pricing; no per-payment fees", competitor: `${name} pricing often varies with payment volume and country` },
+  { feature: "Built specifically for contractor ops", axle: "Yes — every workflow assumes contractor model", competitor: `${name} positions broadly across employee + contractor; contractor flows are a subset` },
+  { feature: "Time to set up", axle: "Most teams operational in under a day", competitor: `${name} typically requires multi-day onboarding and configuration` },
+  { feature: "Free plan", axle: "Free for up to 3 contractors with full features", competitor: `${name} requires a paid plan or has limited free usage` },
+  { feature: "Approval workflow gating invoices", axle: "Invoice cannot be submitted unless timesheet is approved", competitor: `${name} treats timesheets and invoices as separate workflows` },
+  { feature: "Audit trail", axle: "Every approval, edit, and rejection logged automatically", competitor: `${name} provides logs but with varying granularity per plan tier` },
+  { feature: "Multi-currency invoice records", axle: "Native currency stored per invoice; no forced conversion", competitor: `${name} typically routes through their own payment rails and conversion` },
+  { feature: "Pricing transparency", axle: "Clear per-seat pricing; no per-payment fees", competitor: `${name} pricing often varies with payment volume and country` },
 ];
 
 const switchHistoryFaq = (name: string) => ({
@@ -641,7 +641,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Onboarding can take days for organizations with multiple country setups",
       "Heavy product means many features compete for attention with the core contractor ops workflow",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Single-purpose: contractor timesheets, invoices, OOO, and audit trail",
       "Most teams fully set up in under a day",
       "Transparent per-seat pricing — no per-payment markup",
@@ -664,7 +664,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Setup is more involved than a contractor-only team typically needs",
       "UI is optimized for HR/payroll teams more than for ops or founders",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Focused exclusively on contractor ops — no EOR overhead",
       "Free plan covers small teams completely",
       "Clean separation between ops layer and payment processing",
@@ -687,7 +687,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Feature breadth introduces ongoing learning curve",
       "Enterprise-grade flexibility means complex permission models even for small teams",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Built specifically for contractor ops, not as an HRIS module",
       "Setup in hours, not weeks",
       "Per-seat pricing covers all features — no module-by-module pricing",
@@ -710,7 +710,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Permissions model isn't designed for managers and admins",
       "Reporting is contractor-centric, not company-centric",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Multi-role workflow: contractors, supervisors, admins, owners — all native",
       "Layered approval gates between timesheets and invoices",
       "Company-side reporting: utilization, spend, OOO across the team",
@@ -733,7 +733,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing not transparent on the website; quote-based",
       "Feature depth assumes mature ops team to operate it",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Self-serve signup and setup — no sales call required",
       "Operational in under a day",
       "Transparent per-seat pricing on the website",
@@ -756,7 +756,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Forces a specific payment workflow that may duplicate your existing finance stack",
       "Less flexibility for teams that want to keep their existing payment provider",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Clean separation between ops and payments — keep your existing financial stack",
       "Predictable per-seat pricing, no transaction markup",
       "Faster setup for teams that don't need a new payment rail",
@@ -779,7 +779,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Onboarding is heavier than a contractor-only team needs",
       "Many features irrelevant for non-EOR usage",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Contractor-first, not EOR-first",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -802,7 +802,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pushes contractor classification toward employee territory in audit reviews",
       "Misalignment with modern remote-work norms",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Trust-based time tracking with structured supervisor approval",
       "Compatible with senior and specialist contractor relationships",
       "Reinforces contractor classification model",
@@ -825,7 +825,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Limited multi-role permissions for managers vs. admins",
       "Less audit-trail granularity per role",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "End-to-end contractor lifecycle in one tool",
       "Native OOO management with team availability calendar",
       "Multi-role permissions designed for managers and admins",
@@ -848,7 +848,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "No OOO management for contractors",
       "Reporting designed around payroll, not contractor operations",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Purpose-built contractor ops layer",
       "Layered approval workflows and supervisor permissions",
       "Native OOO management",
@@ -871,7 +871,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing isn't transparent — quote-based",
       "Dated UI compared to modern SaaS tools",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Self-serve, modern UI",
       "Transparent pricing on the website",
       "Operational in under a day",
@@ -894,7 +894,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "OOO and team availability not relevant to its core model",
       "Records not optimized for long-term contractor relationships",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Built for recurring contractor relationships",
       "Layered approval and invoice workflows",
       "Native OOO and team availability management",
@@ -917,7 +917,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "More complex setup than contractor-only teams need",
       "Many features designed for managing employees abroad, not contractors",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Contractor-first, lean and focused",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -940,7 +940,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Setup requires dedicated implementation team",
       "Feature breadth far exceeds what most contractor-only teams need",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Self-serve, no enterprise procurement",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -963,7 +963,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing structure designed for employee headcount",
       "Limited contractor-specific workflows",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Built specifically for contractor — not employee — management",
       "Reinforces contractor classification model in workflow",
       "Per-seat pricing with no PEO overhead",
@@ -986,7 +986,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing not transparent",
       "Designed for large, complex workforces",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Self-serve signup",
       "Operational in under a day",
       "Transparent pricing",
@@ -1009,7 +1009,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing structure designed for the compliance services bundle",
       "Less self-serve than modern SaaS tools",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Pure ops layer — no compliance services markup",
       "Self-serve modern SaaS workflow",
       "Transparent per-seat pricing",
@@ -1032,7 +1032,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "Pricing assumes a marketplace placement fee",
       "Doesn't address the full operational lifecycle",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Manage contractors regardless of sourcing channel",
       "Full operational lifecycle: timesheets, invoices, OOO, audit",
       "Per-seat pricing with no placement fees",
@@ -1055,7 +1055,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "No tooling for managing contractors you sourced elsewhere",
       "Operational lifecycle not addressed",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Source-agnostic ops platform",
       "Full operational lifecycle per contractor",
       "No markup on contractor rates",
@@ -1078,7 +1078,7 @@ const competitorsData: Omit<CompetitorPage, "updatedDate">[] = [
       "No structured ops workflow for ongoing relationships",
       "Markup on contractor rates",
     ],
-    teamflowStrengths: [
+    axleStrengths: [
       "Direct contractor relationships, no marketplace overhead",
       "Structured ops workflows for ongoing engagements",
       "No transaction fees or rate markup",

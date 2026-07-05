@@ -10,7 +10,16 @@ type QueuedDraft = {
   savedAt: number;
 };
 
-const KEY = "teamflow.offline.queue";
+const KEY = "axle.offline.queue";
+
+// One-time migration from old key name (pre-rename).
+if (typeof window !== "undefined") {
+  try {
+    const old = localStorage.getItem("teamflow.offline.queue");
+    if (old !== null && localStorage.getItem(KEY) === null) localStorage.setItem(KEY, old);
+    localStorage.removeItem("teamflow.offline.queue");
+  } catch {}
+}
 
 function read(): QueuedDraft[] {
   try {

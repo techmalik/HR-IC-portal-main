@@ -1,4 +1,4 @@
-# TeamFlow
+# Axle
 
 A SaaS platform for managing Independent Contractors (ICs) and their supervisors. It streamlines time tracking, leave management, invoicing, and performance evaluations in one place.
 

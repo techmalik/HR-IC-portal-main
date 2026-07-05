@@ -4346,7 +4346,7 @@ export async function registerRoutes(
   }
   function validateCompetitorBody(b: any, mode: "create" | "update" = "create"): string | null {
     if (b == null || typeof b !== "object") return "request body must be an object";
-    const required = ["slug", "competitorName", "metaTitle", "metaDescription", "intro", "positioning", "competitorWeaknesses", "teamflowStrengths", "comparison", "pricingNote", "faqs", "updatedDate"];
+    const required = ["slug", "competitorName", "metaTitle", "metaDescription", "intro", "positioning", "competitorWeaknesses", "axleStrengths", "comparison", "pricingNote", "faqs", "updatedDate"];
     if (mode === "create") {
       for (const k of required) if (b[k] == null) return `Field "${k}" is required`;
     }
@@ -4356,7 +4356,7 @@ export async function registerRoutes(
     }
     if (b.metaDescription !== undefined && (typeof b.metaDescription !== "string" || b.metaDescription.length > 200)) return "metaDescription must be a string ≤ 200 chars";
     if (b.competitorWeaknesses !== undefined && !Array.isArray(b.competitorWeaknesses)) return "competitorWeaknesses must be an array";
-    if (b.teamflowStrengths !== undefined && !Array.isArray(b.teamflowStrengths)) return "teamflowStrengths must be an array";
+    if (b.axleStrengths !== undefined && !Array.isArray(b.axleStrengths)) return "axleStrengths must be an array";
     if (b.comparison !== undefined && !Array.isArray(b.comparison)) return "comparison must be an array";
     if (b.faqs !== undefined && !Array.isArray(b.faqs)) return "faqs must be an array";
     return validateStatusField(b);

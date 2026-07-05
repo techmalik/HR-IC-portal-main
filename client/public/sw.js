@@ -1,6 +1,6 @@
-// TeamFlow service worker — caches the static app shell so the PWA can load
+// Axle service worker — caches the static app shell so the PWA can load
 // instantly on flaky mobile networks. API calls always go to the network.
-const CACHE_NAME = "teamflow-shell-v1";
+const CACHE_NAME = "axle-shell-v1";
 const SHELL_ASSETS = [
   "/",
   "/manifest.webmanifest",

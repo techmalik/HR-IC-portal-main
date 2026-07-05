@@ -10,8 +10,20 @@ import {
 } from "@/lib/pwa";
 import { trackEvent } from "@/lib/analytics";
 
-const SEEN_KEY = "teamflow.install-hint.seen";
-const VISIT_KEY = "teamflow.install-hint.visits";
+const SEEN_KEY = "axle.install-hint.seen";
+const VISIT_KEY = "axle.install-hint.visits";
+
+// One-time migration from old key names (pre-rename).
+if (typeof window !== "undefined") {
+  try {
+    const oldSeen = localStorage.getItem("teamflow.install-hint.seen");
+    if (oldSeen !== null && localStorage.getItem(SEEN_KEY) === null) localStorage.setItem(SEEN_KEY, oldSeen);
+    localStorage.removeItem("teamflow.install-hint.seen");
+    const oldVisit = localStorage.getItem("teamflow.install-hint.visits");
+    if (oldVisit !== null && localStorage.getItem(VISIT_KEY) === null) localStorage.setItem(VISIT_KEY, oldVisit);
+    localStorage.removeItem("teamflow.install-hint.visits");
+  } catch {}
+}
 
 function getVisitCount(): number {
   try {

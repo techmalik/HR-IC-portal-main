@@ -1,8 +1,20 @@
 // Lightweight client-side analytics. Events are stored in localStorage so we
 // can measure adoption (PWA install, first submit) without standing up a
 // dedicated analytics service. We dedupe "first" events per user/per day.
-const KEY = "teamflow.analytics";
-const FIRST_KEY = "teamflow.analytics.firsts";
+const KEY = "axle.analytics";
+const FIRST_KEY = "axle.analytics.firsts";
+
+// One-time migration from old key names (pre-rename).
+if (typeof window !== "undefined") {
+  try {
+    const old = localStorage.getItem("teamflow.analytics");
+    if (old !== null && localStorage.getItem(KEY) === null) localStorage.setItem(KEY, old);
+    localStorage.removeItem("teamflow.analytics");
+    const oldF = localStorage.getItem("teamflow.analytics.firsts");
+    if (oldF !== null && localStorage.getItem(FIRST_KEY) === null) localStorage.setItem(FIRST_KEY, oldF);
+    localStorage.removeItem("teamflow.analytics.firsts");
+  } catch {}
+}
 
 export type AnalyticsEvent = {
   event: string;

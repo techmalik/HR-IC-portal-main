@@ -1,7 +1,7 @@
-# TeamFlow — Multi-Tenant Contractor Management SaaS
+# Axle — Multi-Tenant Contractor Management SaaS
 
 ## Overview
-TeamFlow is a multi-tenant SaaS platform for managing independent contractors. Organizations can sign up, add their contractors, and manage timesheets, leave tracking, invoicing, and performance evaluations — all in one platform.
+Axle is a multi-tenant SaaS platform for managing independent contractors. Organizations can sign up, add their contractors, and manage timesheets, leave tracking, invoicing, and performance evaluations — all in one platform.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

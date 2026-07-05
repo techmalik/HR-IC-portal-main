@@ -12,7 +12,7 @@
       "Onboarding can take days for organizations with multiple country setups",
       "Heavy product means many features compete for attention with the core contractor ops workflow"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Single-purpose: contractor timesheets, invoices, OOO, and audit trail",
       "Most teams fully set up in under a day",
       "Transparent per-seat pricing — no per-payment markup",
@@ -21,37 +21,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Deel positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Deel typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Deel requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Deel treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Deel provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Deel typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Deel pricing often varies with payment volume and country"
       }
     ],
@@ -89,7 +89,7 @@
       "Setup is more involved than a contractor-only team typically needs",
       "UI is optimized for HR/payroll teams more than for ops or founders"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Focused exclusively on contractor ops — no EOR overhead",
       "Free plan covers small teams completely",
       "Clean separation between ops layer and payment processing",
@@ -98,37 +98,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Remote positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Remote typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Remote requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Remote treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Remote provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Remote typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Remote pricing often varies with payment volume and country"
       }
     ],
@@ -166,7 +166,7 @@
       "Feature breadth introduces ongoing learning curve",
       "Enterprise-grade flexibility means complex permission models even for small teams"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Built specifically for contractor ops, not as an HRIS module",
       "Setup in hours, not weeks",
       "Per-seat pricing covers all features — no module-by-module pricing",
@@ -175,37 +175,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Rippling positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Rippling typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Rippling requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Rippling treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Rippling provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Rippling typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Rippling pricing often varies with payment volume and country"
       }
     ],
@@ -243,7 +243,7 @@
       "Permissions model isn't designed for managers and admins",
       "Reporting is contractor-centric, not company-centric"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Multi-role workflow: contractors, supervisors, admins, owners — all native",
       "Layered approval gates between timesheets and invoices",
       "Company-side reporting: utilization, spend, OOO across the team",
@@ -252,37 +252,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Bonsai positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Bonsai typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Bonsai requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Bonsai treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Bonsai provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Bonsai typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Bonsai pricing often varies with payment volume and country"
       }
     ],
@@ -320,7 +320,7 @@
       "Pricing not transparent on the website; quote-based",
       "Feature depth assumes mature ops team to operate it"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Self-serve signup and setup — no sales call required",
       "Operational in under a day",
       "Transparent per-seat pricing on the website",
@@ -329,37 +329,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Worksuite positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Worksuite typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Worksuite requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Worksuite treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Worksuite provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Worksuite typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Worksuite pricing often varies with payment volume and country"
       }
     ],
@@ -397,7 +397,7 @@
       "Forces a specific payment workflow that may duplicate your existing finance stack",
       "Less flexibility for teams that want to keep their existing payment provider"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Clean separation between ops and payments — keep your existing financial stack",
       "Predictable per-seat pricing, no transaction markup",
       "Faster setup for teams that don't need a new payment rail",
@@ -406,37 +406,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Plane positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Plane typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Plane requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Plane treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Plane provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Plane typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Plane pricing often varies with payment volume and country"
       }
     ],
@@ -474,7 +474,7 @@
       "Onboarding is heavier than a contractor-only team needs",
       "Many features irrelevant for non-EOR usage"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Contractor-first, not EOR-first",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -483,37 +483,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Multiplier positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Multiplier typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Multiplier requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Multiplier treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Multiplier provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Multiplier typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Multiplier pricing often varies with payment volume and country"
       }
     ],
@@ -551,7 +551,7 @@
       "Pushes contractor classification toward employee territory in audit reviews",
       "Misalignment with modern remote-work norms"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Trust-based time tracking with structured supervisor approval",
       "Compatible with senior and specialist contractor relationships",
       "Reinforces contractor classification model",
@@ -560,37 +560,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Hubstaff positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Hubstaff typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Hubstaff requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Hubstaff treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Hubstaff provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Hubstaff typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Hubstaff pricing often varies with payment volume and country"
       }
     ],
@@ -628,7 +628,7 @@
       "Limited multi-role permissions for managers vs. admins",
       "Less audit-trail granularity per role"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "End-to-end contractor lifecycle in one tool",
       "Native OOO management with team availability calendar",
       "Multi-role permissions designed for managers and admins",
@@ -637,37 +637,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Harvest positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Harvest typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Harvest requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Harvest treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Harvest provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Harvest typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Harvest pricing often varies with payment volume and country"
       }
     ],
@@ -705,7 +705,7 @@
       "No OOO management for contractors",
       "Reporting designed around payroll, not contractor operations"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Purpose-built contractor ops layer",
       "Layered approval workflows and supervisor permissions",
       "Native OOO management",
@@ -714,37 +714,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Gusto positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Gusto typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Gusto requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Gusto treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Gusto provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Gusto typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Gusto pricing often varies with payment volume and country"
       }
     ],
@@ -782,7 +782,7 @@
       "Pricing isn't transparent — quote-based",
       "Dated UI compared to modern SaaS tools"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Self-serve, modern UI",
       "Transparent pricing on the website",
       "Operational in under a day",
@@ -791,37 +791,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Paychex positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Paychex typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Paychex requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Paychex treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Paychex provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Paychex typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Paychex pricing often varies with payment volume and country"
       }
     ],
@@ -859,7 +859,7 @@
       "OOO and team availability not relevant to its core model",
       "Records not optimized for long-term contractor relationships"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Built for recurring contractor relationships",
       "Layered approval and invoice workflows",
       "Native OOO and team availability management",
@@ -868,37 +868,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Qwick positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Qwick typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Qwick requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Qwick treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Qwick provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Qwick typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Qwick pricing often varies with payment volume and country"
       }
     ],
@@ -936,7 +936,7 @@
       "More complex setup than contractor-only teams need",
       "Many features designed for managing employees abroad, not contractors"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Contractor-first, lean and focused",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -945,37 +945,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Oyster positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Oyster typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Oyster requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Oyster treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Oyster provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Oyster typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Oyster pricing often varies with payment volume and country"
       }
     ],
@@ -1013,7 +1013,7 @@
       "Setup requires dedicated implementation team",
       "Feature breadth far exceeds what most contractor-only teams need"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Self-serve, no enterprise procurement",
       "Operational in under a day",
       "Transparent per-seat pricing",
@@ -1022,37 +1022,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Papaya Global positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Papaya Global typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Papaya Global requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Papaya Global treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Papaya Global provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Papaya Global typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Papaya Global pricing often varies with payment volume and country"
       }
     ],
@@ -1090,7 +1090,7 @@
       "Pricing structure designed for employee headcount",
       "Limited contractor-specific workflows"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Built specifically for contractor — not employee — management",
       "Reinforces contractor classification model in workflow",
       "Per-seat pricing with no PEO overhead",
@@ -1099,37 +1099,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Justworks positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Justworks typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Justworks requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Justworks treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Justworks provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Justworks typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Justworks pricing often varies with payment volume and country"
       }
     ],
@@ -1167,7 +1167,7 @@
       "Pricing not transparent",
       "Designed for large, complex workforces"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Self-serve signup",
       "Operational in under a day",
       "Transparent pricing",
@@ -1176,37 +1176,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "WorkMarket positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "WorkMarket typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "WorkMarket requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "WorkMarket treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "WorkMarket provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "WorkMarket typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "WorkMarket pricing often varies with payment volume and country"
       }
     ],
@@ -1244,7 +1244,7 @@
       "Pricing structure designed for the compliance services bundle",
       "Less self-serve than modern SaaS tools"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Pure ops layer — no compliance services markup",
       "Self-serve modern SaaS workflow",
       "Transparent per-seat pricing",
@@ -1253,37 +1253,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "MBO Partners positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "MBO Partners typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "MBO Partners requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "MBO Partners treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "MBO Partners provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "MBO Partners typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "MBO Partners pricing often varies with payment volume and country"
       }
     ],
@@ -1321,7 +1321,7 @@
       "Pricing assumes a marketplace placement fee",
       "Doesn't address the full operational lifecycle"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Manage contractors regardless of sourcing channel",
       "Full operational lifecycle: timesheets, invoices, OOO, audit",
       "Per-seat pricing with no placement fees",
@@ -1330,37 +1330,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Andela positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Andela typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Andela requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Andela treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Andela provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Andela typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Andela pricing often varies with payment volume and country"
       }
     ],
@@ -1398,7 +1398,7 @@
       "No tooling for managing contractors you sourced elsewhere",
       "Operational lifecycle not addressed"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Source-agnostic ops platform",
       "Full operational lifecycle per contractor",
       "No markup on contractor rates",
@@ -1407,37 +1407,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Toptal positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Toptal typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Toptal requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Toptal treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Toptal provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Toptal typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Toptal pricing often varies with payment volume and country"
       }
     ],
@@ -1475,7 +1475,7 @@
       "No structured ops workflow for ongoing relationships",
       "Markup on contractor rates"
     ],
-    "teamflowStrengths": [
+    "axleStrengths": [
       "Direct contractor relationships, no marketplace overhead",
       "Structured ops workflows for ongoing engagements",
       "No transaction fees or rate markup",
@@ -1484,37 +1484,37 @@
     "comparison": [
       {
         "feature": "Built specifically for contractor ops",
-        "teamflow": "Yes — every workflow assumes contractor model",
+        "axle": "Yes — every workflow assumes contractor model",
         "competitor": "Upwork positions broadly across employee + contractor; contractor flows are a subset"
       },
       {
         "feature": "Time to set up",
-        "teamflow": "Most teams operational in under a day",
+        "axle": "Most teams operational in under a day",
         "competitor": "Upwork typically requires multi-day onboarding and configuration"
       },
       {
         "feature": "Free plan",
-        "teamflow": "Free for up to 3 contractors with full features",
+        "axle": "Free for up to 3 contractors with full features",
         "competitor": "Upwork requires a paid plan or has limited free usage"
       },
       {
         "feature": "Approval workflow gating invoices",
-        "teamflow": "Invoice cannot be submitted unless timesheet is approved",
+        "axle": "Invoice cannot be submitted unless timesheet is approved",
         "competitor": "Upwork treats timesheets and invoices as separate workflows"
       },
       {
         "feature": "Audit trail",
-        "teamflow": "Every approval, edit, and rejection logged automatically",
+        "axle": "Every approval, edit, and rejection logged automatically",
         "competitor": "Upwork provides logs but with varying granularity per plan tier"
       },
       {
         "feature": "Multi-currency invoice records",
-        "teamflow": "Native currency stored per invoice; no forced conversion",
+        "axle": "Native currency stored per invoice; no forced conversion",
         "competitor": "Upwork typically routes through their own payment rails and conversion"
       },
       {
         "feature": "Pricing transparency",
-        "teamflow": "Clear per-seat pricing; no per-payment fees",
+        "axle": "Clear per-seat pricing; no per-payment fees",
         "competitor": "Upwork pricing often varies with payment volume and country"
       }
     ],

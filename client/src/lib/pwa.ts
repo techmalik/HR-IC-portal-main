@@ -28,10 +28,10 @@ if (typeof window !== "undefined") {
     listeners.forEach((l) => l(false));
     try {
       const events = JSON.parse(
-        localStorage.getItem("teamflow.analytics") || "[]"
+        localStorage.getItem("axle.analytics") || "[]"
       );
       events.push({ event: "pwa_installed", at: Date.now() });
-      localStorage.setItem("teamflow.analytics", JSON.stringify(events));
+      localStorage.setItem("axle.analytics", JSON.stringify(events));
     } catch {}
   });
 }

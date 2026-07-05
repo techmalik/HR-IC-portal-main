@@ -1,6 +1,6 @@
-# TeamFlow 10-Pillar Content Plan
+# Axle 10-Pillar Content Plan
 
-This is the editorial roadmap for TeamFlow's organic search strategy. Each pillar
+This is the editorial roadmap for Axle's organic search strategy. Each pillar
 groups a high-intent commercial topic with a cluster of supporting articles,
 programmatic SEO pages, and internal-link surfaces.
 
@@ -117,16 +117,16 @@ programmatic SEO pages, and internal-link surfaces.
 
 ## Pillar 9 — Contractor Tooling Comparisons
 
-**Primary keyword:** TeamFlow vs [competitor]
+**Primary keyword:** Axle vs [competitor]
 **Target pages:** 20 `/(competitor)-alternative` programmatic pages.
 
 **Cluster:**
-- TeamFlow vs Deel
-- TeamFlow vs Bonsai
-- TeamFlow vs Worksuite
-- TeamFlow vs Rippling
+- Axle vs Deel
+- Axle vs Bonsai
+- Axle vs Worksuite
+- Axle vs Rippling
 - "Best Deel alternatives 2026"
-- Migration guide: Deel → TeamFlow
+- Migration guide: Deel → Axle
 
 ---
 
@@ -136,7 +136,7 @@ programmatic SEO pages, and internal-link surfaces.
 **Target pages:** 20 `/contractor-management-for-:industry` programmatic pages.
 
 **Cluster:**
-- Industry use-case stories ("How [industry] uses TeamFlow")
+- Industry use-case stories ("How [industry] uses Axle")
 - Industry-specific compliance notes
 - Industry-specific invoice and rate templates
 - Industry comparison matrix (agencies vs studios vs accounting firms)

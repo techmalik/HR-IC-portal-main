@@ -204,7 +204,7 @@ function renderCompetitor(page: CompetitorPage): string {
   const weaknessesHtml = page.competitorWeaknesses
     .map((w) => `<li>${escHtml(w)}</li>`)
     .join("");
-  const strengthsHtml = page.teamflowStrengths
+  const strengthsHtml = page.axleStrengths
     .map((s) => `<li>${escHtml(s)}</li>`)
     .join("");
   const tableRows = page.comparison
@@ -212,7 +212,7 @@ function renderCompetitor(page: CompetitorPage): string {
       (c) => `
     <tr>
       <td><strong>${escHtml(c.feature)}</strong></td>
-      <td>${escHtml(c.teamflow)}</td>
+      <td>${escHtml(c.axle)}</td>
       <td>${escHtml(c.competitor)}</td>
     </tr>`
     )

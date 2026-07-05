@@ -41,8 +41,8 @@ interface CompetitorPage {
   intro: string;
   positioning: string;
   competitorWeaknesses: string[];
-  teamflowStrengths: string[];
-  comparison: { feature: string; teamflow: string; competitor: string }[];
+  axleStrengths: string[];
+  comparison: { feature: string; axle: string; competitor: string }[];
   pricingNote: string;
   faqs: { q: string; a: string }[];
   updatedDate: string;
@@ -257,8 +257,8 @@ function CompetitorEditor({
       intro: "",
       positioning: "",
       competitorWeaknesses: [""],
-      teamflowStrengths: [""],
-      comparison: [{ feature: "", teamflow: "", competitor: "" }],
+      axleStrengths: [""],
+      comparison: [{ feature: "", axle: "", competitor: "" }],
       pricingNote: "",
       faqs: [{ q: "", a: "" }],
       updatedDate: today(),
@@ -271,7 +271,7 @@ function CompetitorEditor({
       const cleaned: CompetitorPage = {
         ...v,
         competitorWeaknesses: v.competitorWeaknesses.filter((p) => p.trim()),
-        teamflowStrengths: v.teamflowStrengths.filter((p) => p.trim()),
+        axleStrengths: v.axleStrengths.filter((p) => p.trim()),
         comparison: v.comparison.filter((c) => c.feature.trim()),
         faqs: v.faqs.filter((f) => f.q.trim()),
         updatedDate: today(),
@@ -345,8 +345,8 @@ function CompetitorEditor({
         <label className="text-sm font-medium">Axle strengths (one per line)</label>
         <Textarea
           rows={4}
-          value={form.teamflowStrengths.join("\n")}
-          onChange={(e) => setForm({ ...form, teamflowStrengths: e.target.value.split("\n") })}
+          value={form.axleStrengths.join("\n")}
+          onChange={(e) => setForm({ ...form, axleStrengths: e.target.value.split("\n") })}
         />
       </div>
 
@@ -354,13 +354,13 @@ function CompetitorEditor({
         <label className="text-sm font-medium">Comparison rows (Feature :: Axle :: Competitor, one per line)</label>
         <Textarea
           rows={6}
-          value={form.comparison.map((c) => `${c.feature} :: ${c.teamflow} :: ${c.competitor}`).join("\n")}
+          value={form.comparison.map((c) => `${c.feature} :: ${c.axle} :: ${c.competitor}`).join("\n")}
           onChange={(e) =>
             setForm({
               ...form,
               comparison: e.target.value.split("\n").map((line) => {
                 const parts = line.split("::").map((p) => p.trim());
-                return { feature: parts[0] ?? "", teamflow: parts[1] ?? "", competitor: parts[2] ?? "" };
+                return { feature: parts[0] ?? "", axle: parts[1] ?? "", competitor: parts[2] ?? "" };
               }),
             })
           }
