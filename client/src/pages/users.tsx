@@ -102,7 +102,7 @@ export default function UsersPage() {
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedUsers, setEditedUsers] = useState<Map<string, EditedUserData>>(new Map());
-  const [generatedTempPassword, setGeneratedTempPassword] = useState<{ password: string; userName: string } | null>(null);
+  const [generatedTempPassword, setGeneratedTempPassword] = useState<{ password: string; userName: string; emailSent: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const { user: currentUser } = useAuth();
@@ -408,11 +408,11 @@ export default function UsersPage() {
     mutationFn: async (user: User) => {
       const response = await apiRequest("POST", `/api/users/${user.id}/reset-password`, undefined);
       const data = await response.json();
-      return { tempPassword: data.tempPassword, userName: `${user.firstName} ${user.lastName}` };
+      return { tempPassword: data.tempPassword, emailSent: data.emailSent as boolean, userName: `${user.firstName} ${user.lastName}` };
     },
     onSuccess: (data) => {
       setUserToResetPassword(null);
-      setGeneratedTempPassword({ password: data.tempPassword, userName: data.userName });
+      setGeneratedTempPassword({ password: data.tempPassword, userName: data.userName, emailSent: data.emailSent });
       setCopied(false);
     },
     onError: () => {
@@ -1235,7 +1235,10 @@ export default function UsersPage() {
             </DialogTitle>
             <DialogDescription>
               A temporary password has been generated for {generatedTempPassword?.userName}.
-              Please share this password securely with the user. They will be required to change it on their next login.
+              {generatedTempPassword?.emailSent
+                ? " An email with the temporary password has been sent to the user."
+                : " Please share this password securely with the user."}{" "}
+              They will be required to change it on their next login.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -285,6 +285,95 @@ export async function sendNotificationEmail(
   }
 }
 
+export async function sendPasswordResetEmail(
+  toEmail: string,
+  userName: string,
+  tempPassword: string
+): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Email service not configured — skipping password reset email");
+    return false;
+  }
+
+  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : "#";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset</title>
+</head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 32px 0;">
+              <span style="display:inline-block;background-color:#F59E0B15;color:#F59E0B;padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Action Required</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 32px;">
+              <h2 style="margin:0 0 16px;color:#18181b;font-size:24px;font-weight:600;">Your password has been reset</h2>
+              <p style="margin:0 0 24px;color:#52525b;font-size:16px;line-height:1.6;">Hi ${userName}, an administrator has reset your password. Use the temporary password below to log in, then change it immediately when prompted.</p>
+              <table style="margin:16px 0 24px;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:4px 16px 4px 0;color:#71717a;font-size:14px;font-weight:500;">Temporary password:</td>
+                  <td style="padding:4px 0;color:#18181b;font-size:16px;font-family:monospace;font-weight:700;letter-spacing:0.05em;">${tempPassword}</td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#71717a;font-size:14px;line-height:1.6;">You will be required to set a new password before you can access the app. If you did not expect this, please contact your administrator.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 32px;">
+              <a href="${baseUrl}/login" style="display:inline-block;background-color:${BRAND_COLOR};color:#ffffff;padding:14px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1);">Log in to ${APP_NAME}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#fafafa;padding:24px 32px;border-top:1px solid #e4e4e7;">
+              <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.5;">This is a security notification from ${APP_NAME}. You cannot unsubscribe from security emails.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Your password has been reset\n\nHi ${userName}, an administrator has reset your password.\n\nTemporary password: ${tempPassword}\n\nUse this to log in at ${baseUrl}/login. You will be required to set a new password immediately.\n\nIf you did not expect this, contact your administrator.`;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: toEmail,
+      subject: `[${APP_NAME}] Your password has been reset`,
+      html,
+      text,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Failed to send password reset email:", result.error);
+      return false;
+    }
+    console.log(`[EMAIL] Password reset email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error("[EMAIL] Error sending password reset email:", error);
+    return false;
+  }
+}
+
 export function isEmailServiceConfigured(): boolean {
   return !!resend;
 }

@@ -284,6 +284,7 @@ import {
   notifyEvaluationOutcome,
   createNotification,
 } from "./notificationService";
+import { sendPasswordResetEmail } from "./emailService";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -1580,7 +1581,16 @@ export async function registerRoutes(
       console.error("Failed to create activity log:", e);
     }
 
-    res.json({ message: "Password reset successfully" });
+    let emailSent = false;
+    if (user.email) {
+      try {
+        emailSent = await sendPasswordResetEmail(user.email, `${user.firstName} ${user.lastName}`, tempPassword);
+      } catch (e) {
+        console.error("Failed to send password reset email:", e);
+      }
+    }
+
+    res.json({ message: "Password reset successfully", tempPassword, emailSent });
   });
 
   // OOO Request routes - protected
