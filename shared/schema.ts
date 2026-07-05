@@ -767,7 +767,7 @@ export const DEFAULT_EVALUATION_SECTIONS = [
   {
     sectionNumber: 6,
     sectionName: "Initiative & Proactivity",
-    question: "Describe actions where you went above and beyond—learning new tools, streamlining processes, or supporting your team outside core duties. Include situations when you shared learnings with others.",
+    question: "Describe actions where you went above and beyond, such as learning new tools, streamlining processes, or supporting your team outside core duties. Include situations when you shared learnings with others.",
   },
 ] as const;
 

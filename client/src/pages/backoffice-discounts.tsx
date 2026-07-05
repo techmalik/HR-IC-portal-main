@@ -360,7 +360,7 @@ export default function BackofficeDiscountsPage() {
                       </button>
                     </div>
                     <div className="text-[12.5px] text-[#6B7280]">
-                      {c.expiresAt ? format(new Date(c.expiresAt), "MMM d, yyyy") : "—"}
+                      {c.expiresAt ? format(new Date(c.expiresAt), "MMM d, yyyy") : "-"}
                     </div>
                     <div className="text-[12.5px] text-[#6B7280]">
                       {format(new Date(c.createdAt), "MMM d, yyyy")}

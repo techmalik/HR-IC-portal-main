@@ -32,7 +32,7 @@ function emailCaptureFormHtml(returnTo: string, subscribed: boolean, error?: str
   return `
     <aside class="ssr-email-capture">
       <h3>Get contractor ops tips in your inbox</h3>
-      <p>Practical guides on timesheets, invoices, compliance, and remote team management — delivered free.</p>
+      <p>Practical guides on timesheets, invoices, compliance, and remote team management, delivered free.</p>
       <form class="ssr-email-form" method="POST" action="/api/blog/subscribe">
         <input type="hidden" name="returnTo" value="${safeReturnTo}">
         <input
@@ -76,7 +76,7 @@ export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
   const bodyHtml = `
     <div class="ssr-hero">
       <h1>The Axle Blog</h1>
-      <p>Practical guides for SaaS teams managing independent contractors — timesheets, invoices, compliance, and remote ops.</p>
+      <p>Practical guides for SaaS teams managing independent contractors: timesheets, invoices, compliance, and remote ops.</p>
     </div>
     <main class="ssr-main">
       ${captureForm}
@@ -100,7 +100,7 @@ export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
   };
 
   return ssrHtmlShell({
-    title: "Axle Blog — Contractor Operations for SaaS Teams",
+    title: "Axle Blog: Contractor Operations for SaaS Teams",
     metaDescription:
       "Practical guides on managing independent contractors: timesheets, invoice compliance, misclassification, remote team communication, and more.",
     canonicalPath: "/blog",

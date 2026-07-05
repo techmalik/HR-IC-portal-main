@@ -16,7 +16,7 @@ function organizationJsonLd() {
     url: BASE_URL,
     logo: `${BASE_URL}/favicon.png`,
     description:
-      "Contractor operations platform for SaaS and services teams — timesheets, invoice approvals, OOO, and audit trail.",
+      "Contractor operations platform for SaaS and services teams: timesheets, invoice approvals, OOO, and audit trail.",
   };
 }
 
@@ -86,7 +86,7 @@ function ctaHtml(headline: string, sub: string) {
   <div class="ssr-cta-block">
     <h3>${escHtml(headline)}</h3>
     <p>${escHtml(sub)}</p>
-    <a href="/signup" class="ssr-cta-btn">Start free — no credit card</a>
+    <a href="/signup" class="ssr-cta-btn">Start free, no credit card</a>
   </div>`;
 }
 
@@ -291,7 +291,7 @@ export function getIndustriesIndexHtml(): string {
 
   return ssrHtmlShell({
     title: "Contractor Management by Industry | Axle",
-    metaDescription: "Industry-specific guides for managing independent contractors — agencies, dev shops, studios, accounting, law, fintech, and more.",
+    metaDescription: "Industry-specific guides for managing independent contractors: agencies, dev shops, studios, accounting, law, fintech, and more.",
     canonicalPath: "/industries",
     jsonLd: combinedJsonLd([organizationJsonLd()]),
     bodyHtml,

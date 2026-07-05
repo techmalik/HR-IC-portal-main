@@ -160,7 +160,7 @@ export default function ActivityLogsPage() {
                       </TableCell>
                       <TableCell className="max-w-xs">
                         <p className="text-[12.5px] text-[#6B7280] truncate">
-                          {log.details || "—"}
+                          {log.details || "-"}
                         </p>
                       </TableCell>
                       <TableCell>

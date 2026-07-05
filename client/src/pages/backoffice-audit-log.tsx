@@ -159,10 +159,10 @@ export default function BackofficeAuditLogPage() {
               <span className="text-[12.5px] text-[#374151] truncate pr-3">{entry.adminEmail}</span>
               <ActionPill action={entry.action} />
               <span className="text-[12.5px] font-medium text-[#111827] truncate pr-3">
-                {entry.targetOrgName ?? <span className="text-[#9CA3AF]">—</span>}
+                {entry.targetOrgName ?? <span className="text-[#9CA3AF]">-</span>}
               </span>
               <span className="text-[11.5px] text-[#6B7280] truncate">
-                {entry.details ?? "—"}
+                {entry.details ?? "-"}
               </span>
             </div>
           ))

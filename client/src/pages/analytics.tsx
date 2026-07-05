@@ -666,11 +666,11 @@ export default function AnalyticsPage() {
               >
                 <div className="text-sm font-medium">{b.label}</div>
                 <div className="mt-1 text-2xl font-semibold">
-                  {b.medianHours === null ? "—" : formatHoursReadable(b.medianHours)}
+                  {b.medianHours === null ? "-" : formatHoursReadable(b.medianHours)}
                 </div>
                 <div className="text-xs text-muted-foreground">median time to decision</div>
                 <div className="text-xs mt-2 text-muted-foreground">
-                  p90: {b.p90Hours === null ? "—" : formatHoursReadable(b.p90Hours)} ·{" "}
+                  p90: {b.p90Hours === null ? "-" : formatHoursReadable(b.p90Hours)} ·{" "}
                   {b.decided} decided · {b.pending} pending
                 </div>
               </div>

@@ -30,7 +30,7 @@ export function getFaqHtml(): string {
   const bodyHtml = `
     <div class="ssr-hero">
       <h1>Frequently Asked Questions</h1>
-      <p>Everything you need to know about managing contractors with Axle — from timesheets and invoices to compliance and roles.</p>
+      <p>Everything you need to know about managing contractors with Axle, from timesheets and invoices to compliance and roles.</p>
     </div>
     <main class="ssr-main">
       ${sectionsHtml}
@@ -55,7 +55,7 @@ export function getFaqHtml(): string {
   };
 
   return ssrHtmlShell({
-    title: "FAQ — Axle Contractor Management Platform",
+    title: "FAQ: Axle Contractor Management Platform",
     metaDescription:
       "Answers to the most common questions about Axle: timesheets, invoice approvals, OOO management, contractor compliance, roles, and pricing.",
     canonicalPath: "/faq",

@@ -99,7 +99,7 @@ export default function BackofficeOverviewPage() {
 
   const mrrFormatted = metrics
     ? `$${metrics.mrr.toLocaleString()}`
-    : "—";
+    : "-";
 
   const sortedPlanBreakdown = metrics
     ? [...metrics.planBreakdown].sort(
@@ -180,7 +180,7 @@ export default function BackofficeOverviewPage() {
                 Active tenants
               </div>
               <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
-                {metrics?.orgCount ?? "—"}
+                {metrics?.orgCount ?? "-"}
               </div>
               <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
                 organizations
@@ -194,7 +194,7 @@ export default function BackofficeOverviewPage() {
                 Total users
               </div>
               <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
-                {metrics?.userCount ?? "—"}
+                {metrics?.userCount ?? "-"}
               </div>
               <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
                 across all tenants
@@ -212,7 +212,7 @@ export default function BackofficeOverviewPage() {
                   ? metrics.planBreakdown
                       .filter((p) => p.plan !== "free")
                       .reduce((sum, p) => sum + p.count, 0)
-                  : "—"}
+                  : "-"}
               </div>
               <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
                 starter + pro + enterprise

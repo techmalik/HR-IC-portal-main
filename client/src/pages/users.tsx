@@ -640,7 +640,7 @@ export default function UsersPage() {
             <span className="text-[12.5px] text-[#374151]">
               {u.supervisorId
                 ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
-                : <span className="text-[#9CA3AF]">—</span>
+                : <span className="text-[#9CA3AF]">-</span>
               }
             </span>
           )}
@@ -1103,7 +1103,7 @@ export default function UsersPage() {
                       <span className="text-[12.5px] text-[#9CA3AF]">
                         {u.supervisorId
                           ? supervisors?.find(s => s.id === u.supervisorId)?.firstName + " " + supervisors?.find(s => s.id === u.supervisorId)?.lastName
-                          : "—"
+                          : "-"
                         }
                       </span>
                     </TableCell>

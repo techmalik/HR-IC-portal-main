@@ -292,7 +292,7 @@ function ArticleForm({
 
 function TopReferrers({ referrers }: { referrers: Record<string, number> }) {
   const entries = Object.entries(referrers).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  if (entries.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+  if (entries.length === 0) return <span className="text-muted-foreground text-xs">-</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {entries.map(([source, count]) => (

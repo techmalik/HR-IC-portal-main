@@ -10,28 +10,28 @@ interface RouteMeta {
 
 const PUBLIC_ROUTE_META: Record<string, RouteMeta> = {
   "/": {
-    title: "Axle — Contractor Management Platform",
+    title: "Axle | Contractor Management Platform",
     description:
-      "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews — all in one place.",
+      "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews, all in one place.",
     canonical: `${SITE_URL}/`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   "/login": {
-    title: "Log in — Axle",
+    title: "Log in | Axle",
     description:
       "Log in to your Axle account to manage timesheets, invoices, leave requests, and more.",
     canonical: `${SITE_URL}/login`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   "/signup": {
-    title: "Start your free trial — Axle",
+    title: "Start your free trial | Axle",
     description:
       "Create your Axle account and start managing independent contractors with timesheets, invoices, and performance reviews. Free plan available.",
     canonical: `${SITE_URL}/signup`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   "/competitive-analysis": {
-    title: "Axle vs. Competitors — Contractor Management Comparison",
+    title: "Axle vs. Competitors | Contractor Management Comparison",
     description:
       "See how Axle compares to Deel, Remote, Rippling, Worksuite, and other contractor management platforms across features, pricing, and market positioning.",
     canonical: `${SITE_URL}/competitive-analysis`,

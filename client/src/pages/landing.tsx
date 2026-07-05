@@ -90,7 +90,7 @@ const steps = [
 const plans = [
   {
     name: "Free",
-    tagline: "Try it free — no card needed",
+    tagline: "Try it free, no card needed",
     price: "$0",
     priceNote: "30-day trial",
     seats: "Up to 3 contractors",
@@ -149,8 +149,8 @@ export default function LandingPage() {
   const [contractorCount, setContractorCount] = useState(25);
 
   usePageMeta({
-    title: "Axle — Contractor Management Platform",
-    description: "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews — all in one place.",
+    title: "Axle | Contractor Management Platform",
+    description: "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews, all in one place.",
     canonical: "https://axle.run/",
   });
 
@@ -216,7 +216,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-gray-500 text-lg leading-relaxed mb-8 max-w-md">
-              Timesheets, invoices, leave, and evaluations — built for teams that manage contractors directly. No EOR overhead, no implementation weeks.
+              Timesheets, invoices, leave, and evaluations, built for teams that manage contractors directly. No EOR overhead, no implementation weeks.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 mb-5">
