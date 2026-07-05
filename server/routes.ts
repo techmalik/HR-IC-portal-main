@@ -5268,6 +5268,15 @@ export async function registerRoutes(
     );
   });
 
+  app.get("/llms.txt", (_req, res) => {
+    const base = "https://www.axlehq.app";
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", SEO_CACHE);
+    res.send(
+      `# Axle\n\n> Axle is a multi-tenant SaaS platform for managing independent contractors — timesheets, invoicing, leave tracking, performance evaluations, and compliance in one place.\n\n## Key public sections\n\n- Blog: ${base}/blog\n- FAQ: ${base}/faq\n- Industries: ${base}/industries\n- Compare: ${base}/compare\n\n## Programmatic landing pages\n\n- Industry pages: ${base}/contractor-management-for-[industry]\n- Competitor comparison pages: ${base}/axle-vs-[competitor]\n\n## Sitemaps\n\n- ${base}/sitemap.xml\n- ${base}/sitemap-blog.xml\n- ${base}/sitemap-programmatic.xml\n`
+    );
+  });
+
   function buildSitemapXml(urls: Array<{ loc: string; lastmod: string; changefreq?: string; priority?: string }>): string {
     const urlEntries = urls
       .map(
