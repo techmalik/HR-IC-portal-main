@@ -7,7 +7,7 @@ import {
 } from "./programmaticStorage";
 import type { IndustryPage, CompetitorPage } from "./programmaticData";
 
-const BASE_URL = "https://axlehq.app";
+const BASE_URL = "https://www.axlehq.app";
 
 function organizationJsonLd() {
   return {

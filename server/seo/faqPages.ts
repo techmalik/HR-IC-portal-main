@@ -1,7 +1,7 @@
 import { faqItems } from "./faqData";
 import { ssrHtmlShell, escHtml } from "../ssrShared";
 
-const BASE_URL = "https://axlehq.app";
+const BASE_URL = "https://www.axlehq.app";
 
 export function getFaqHtml(): string {
   const sections = Array.from(new Set(faqItems.map((f) => f.section)));

@@ -1,7 +1,7 @@
 import { getArticles, getArticleBySlug, type BlogArticle } from "./blogStorage";
 import { ssrHtmlShell, escHtml, escAttr } from "../ssrShared";
 
-const BASE_URL = "https://axlehq.app";
+const BASE_URL = "https://www.axlehq.app";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {

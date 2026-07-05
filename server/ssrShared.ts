@@ -27,7 +27,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/<\/script/gi, "<\\/script")}</script>`
     : "";
 
-  const baseUrl = "https://axlehq.app";
+  const baseUrl = "https://www.axlehq.app";
   const canonical = `${baseUrl}${canonicalPath}`;
 
   return `<!DOCTYPE html>
