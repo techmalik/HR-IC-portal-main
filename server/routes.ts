@@ -3555,12 +3555,19 @@ export async function registerRoutes(
     const isManager = await hasSupervisorPrivileges(currentUser.id);
     const { sections, evaluationUpdates, finalizeAs } = req.body;
 
+    // Require a valid finalizeAs — reject missing or unknown values immediately
+    if (finalizeAs !== "ic" && finalizeAs !== "manager") {
+      return res.status(400).json({ error: "finalizeAs must be 'ic' or 'manager'" });
+    }
+
     if (isIC) {
-      if (finalizeAs === "ic" && existingEvaluation.icId !== currentUser.id) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
-      if (finalizeAs === "manager") {
-        // IC supervisor acting as manager: must be the assigned manager and a direct supervisor
+      if (finalizeAs === "ic") {
+        // IC acting on self-assessment — must own the evaluation
+        if (existingEvaluation.icId !== currentUser.id) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+      } else {
+        // finalizeAs === "manager": IC supervisor acting as manager — must be assigned manager and direct supervisor
         if (existingEvaluation.managerId !== currentUser.id) {
           return res.status(403).json({ error: "Forbidden" });
         }
