@@ -50,6 +50,13 @@
       "when": 1777819264254,
       "tag": "0006_bent_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783260126608,
+      "tag": "0007_backoffice_activity_logs",
+      "breakpoints": true
     }
   ]
 }
