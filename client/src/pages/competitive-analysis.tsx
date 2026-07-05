@@ -12,11 +12,11 @@ import {
   whiteSpace,
 } from "@/data/competitorData";
 
-const REPORT_TITLE = "Mentalyc Competitive Analysis";
+const REPORT_TITLE = "Axle Competitive Analysis";
 const REPORT_SUBTITLE = "Contractor Management Market — May 2026";
-const REPORT_AUTHOR = "Mentalyc Strategy";
+const REPORT_AUTHOR = "Axle Strategy";
 
-const competitorNames = ["Mentalyc", "Deel", "Remote", "Rippling", "Worksuite", "Bonsai", "Plane", "Multiplier"];
+const competitorNames = ["Axle", "Deel", "Remote", "Rippling", "Worksuite", "Bonsai", "Plane", "Multiplier"];
 
 function PageShell({
   pageNumber,
@@ -43,7 +43,7 @@ function PageShell({
         </div>
         <div className="flex-1 pt-6 pb-4 overflow-hidden">{children}</div>
         <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-200 pt-3">
-          <span>© 2026 Mentalyc · Confidential strategy doc</span>
+          <span>© 2026 Axle · Confidential strategy doc</span>
           <span>
             {pageNumber} / {totalPages}
           </span>
@@ -61,7 +61,7 @@ function CoverPage() {
           <div className="w-10 h-10 rounded-lg bg-[#111827] flex items-center justify-center">
             <Layers className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-semibold tracking-tight">Mentalyc</span>
+          <span className="text-xl font-semibold tracking-tight">Axle</span>
         </div>
         <div className="text-xs uppercase tracking-[0.25em] text-emerald-700 font-semibold mb-4">
           Strategy Report
@@ -92,7 +92,7 @@ function CoverPage() {
         <p className="text-xl leading-relaxed">
           The contractor management market is bifurcating: high-ASP EOR platforms (Deel, Remote,
           Multiplier) keep adding scope, while freelancer-side tools (Bonsai, Plane) stay shallow
-          on buyer-side workflows. Mentalyc's wedge is the ops-only middle: approval-gated,
+          on buyer-side workflows. Axle's wedge is the ops-only middle: approval-gated,
           audit-ready, live in a day, no EOR upsell.
         </p>
       </div>
@@ -113,19 +113,19 @@ function ExecutiveSummaryPage() {
           },
           {
             t: "2. Implementation time is the most reliable wedge.",
-            b: "Every competitor over $39/seat ships with a 2–6 week onboarding. Mentalyc's sub-day onboarding is structurally hard for them to match without cannibalizing their services revenue.",
+            b: "Every competitor over $39/seat ships with a 2–6 week onboarding. Axle's sub-day onboarding is structurally hard for them to match without cannibalizing their services revenue.",
           },
           {
             t: "3. Buyers want approval gates and audit trails, not more features.",
-            b: "G2 weaknesses cluster around 'too much UI' (Deel, Rippling) or 'no real RBAC' (Bonsai, Plane). Mentalyc's invoice ↔ timesheet linkage and bounded supervisor view directly hit both pains.",
+            b: "G2 weaknesses cluster around 'too much UI' (Deel, Rippling) or 'no real RBAC' (Bonsai, Plane). Axle's invoice ↔ timesheet linkage and bounded supervisor view directly hit both pains.",
           },
           {
             t: "4. Pricing transparency is now table stakes.",
-            b: "Remote and Plane publish flat pricing; Deel and Worksuite do not. Buyers self-select against opaque vendors. Mentalyc's free tier + published pricing already wins this comparison.",
+            b: "Remote and Plane publish flat pricing; Deel and Worksuite do not. Buyers self-select against opaque vendors. Axle's free tier + published pricing already wins this comparison.",
           },
           {
             t: "5. White space: contractor performance reviews + branded portal at SMB price.",
-            b: "Only Rippling bundles performance reviews — and only inside its $8/user platform. Mentalyc can own this in the 5-200 contractor band before anyone else moves.",
+            b: "Only Rippling bundles performance reviews — and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves.",
           },
         ].map((row) => (
           <div key={row.t} className="border-l-4 border-emerald-500 pl-4 py-1">
@@ -264,7 +264,7 @@ function MatrixPage() {
                 <th
                   key={n}
                   className={`text-center px-1 py-2 font-semibold ${
-                    n === "Mentalyc" ? "bg-emerald-50 text-emerald-800" : ""
+                    n === "Axle" ? "bg-emerald-50 text-emerald-800" : ""
                   }`}
                 >
                   {n}
@@ -284,12 +284,12 @@ function MatrixPage() {
                     <td
                       key={n}
                       className={`text-center px-1 py-1.5 font-medium ${
-                        n === "Mentalyc" ? "bg-emerald-50/60" : ""
+                        n === "Axle" ? "bg-emerald-50/60" : ""
                       }`}
                       style={{
                         background:
                           score > 0
-                            ? n === "Mentalyc"
+                            ? n === "Axle"
                               ? `rgba(99, 102, 241, ${0.1 + intensity * 0.35})`
                               : `rgba(16, 185, 129, ${intensity * 0.25})`
                             : "transparent",
@@ -312,7 +312,7 @@ function MatrixPage() {
                 return (
                   <td
                     key={n}
-                    className={`text-center px-1 py-2 ${n === "Mentalyc" ? "text-emerald-800" : ""}`}
+                    className={`text-center px-1 py-2 ${n === "Axle" ? "text-emerald-800" : ""}`}
                   >
                     {total}
                   </td>
@@ -323,7 +323,7 @@ function MatrixPage() {
         </table>
       </div>
       <p className="text-xs text-slate-500 mt-4">
-        Mentalyc leads on setup speed, OOO, timesheet capture, and SMB pricing. Deel/Remote lead
+        Axle leads on setup speed, OOO, timesheet capture, and SMB pricing. Deel/Remote lead
         on EOR + country breadth. Rippling wins reporting + RBAC by virtue of its platform.
       </p>
     </div>
@@ -353,13 +353,13 @@ function PositioningMapPage() {
             Full scope · SMB
           </div>
         </div>
-        {/* Mentalyc */}
+        {/* Axle */}
         <div
           className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
           style={{ left: `${0.18 * 620}px`, top: `${(1 - 0.4) * 480}px` }}
         >
           <div className="w-4 h-4 rounded-full bg-emerald-700 ring-4 ring-emerald-200" />
-          <div className="text-xs font-bold text-emerald-800 mt-1 whitespace-nowrap">Mentalyc</div>
+          <div className="text-xs font-bold text-emerald-800 mt-1 whitespace-nowrap">Axle</div>
         </div>
         {competitors.map((c) => (
           <div
@@ -373,7 +373,7 @@ function PositioningMapPage() {
         ))}
       </div>
       <p className="text-xs text-slate-500 mt-4 max-w-2xl">
-        Mentalyc owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai
+        Axle owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai
         sits closest but on the freelancer side. Plane is the most likely encroacher; their
         product velocity is the key signal to monitor.
       </p>
@@ -431,7 +431,7 @@ function PositioningPage() {
         {[
           { k: "For", v: positioningStatement.forWhom },
           { k: "Who need", v: positioningStatement.whoNeed },
-          { k: "Mentalyc is", v: positioningStatement.product + " " + positioningStatement.category },
+          { k: "Axle is", v: positioningStatement.product + " " + positioningStatement.category },
           { k: "That delivers", v: positioningStatement.benefit },
           { k: "Unlike", v: positioningStatement.unlike },
           { k: "We alone", v: positioningStatement.weAlone },
@@ -449,7 +449,7 @@ function PositioningPage() {
           One-line version (use everywhere)
         </div>
         <div className="text-base font-semibold text-slate-900 leading-snug">
-          Mentalyc is the contractor operations platform for SaaS teams that want timesheets,
+          Axle is the contractor operations platform for SaaS teams that want timesheets,
           invoices, and approvals in a day — without paying for an EOR they don't need.
         </div>
       </div>
@@ -535,7 +535,7 @@ function MonitoringPage() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
         <Bell className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
         <div className="text-sm text-amber-900">
-          <strong>Owner action:</strong> tell the Mentalyc team which channel to activate. The
+          <strong>Owner action:</strong> tell the Axle team which channel to activate. The
           feed bundle is ready to paste — see <code>competitor-monitoring.md</code> at the
           project root.
         </div>
@@ -584,7 +584,7 @@ function drawHeaderFooter(c: PdfCursor) {
   doc.setDrawColor(220);
   doc.line(MARGIN, 30, PAGE_W - MARGIN, 30);
   doc.line(MARGIN, PAGE_H - 30, PAGE_W - MARGIN, PAGE_H - 30);
-  doc.text("© 2026 Mentalyc · Confidential", MARGIN, PAGE_H - 18);
+  doc.text("© 2026 Axle · Confidential", MARGIN, PAGE_H - 18);
   doc.text(`${pageNum} / ${totalPages}`, PAGE_W - MARGIN, PAGE_H - 18, { align: "right" });
   doc.setTextColor(0);
 }
@@ -676,7 +676,7 @@ function generatePdf() {
     cursor.doc.text("Contractor management, EOR & freelancer ops landscape", MARGIN, 158);
     cursor.doc.setFontSize(10);
     cursor.doc.setTextColor(120);
-    cursor.doc.text("May 2026  ·  Mentalyc Strategy  ·  7 competitors reviewed", MARGIN, 184);
+    cursor.doc.text("May 2026  ·  Axle Strategy  ·  7 competitors reviewed", MARGIN, 184);
 
     cursor.doc.setFillColor(99, 102, 241);
     cursor.doc.roundedRect(MARGIN, 240, CONTENT_W, 220, 12, 12, "F");
@@ -687,7 +687,7 @@ function generatePdf() {
     cursor.doc.setFont("helvetica", "normal");
     cursor.doc.setFontSize(13);
     const blLines = cursor.doc.splitTextToSize(
-      "The contractor management market is bifurcating: high-ASP EOR platforms (Deel, Remote, Multiplier) keep adding scope, while freelancer-side tools (Bonsai, Plane) stay shallow on buyer-side workflows. Mentalyc's wedge is the ops-only middle: approval-gated, audit-ready, live in a day, no EOR upsell.",
+      "The contractor management market is bifurcating: high-ASP EOR platforms (Deel, Remote, Multiplier) keep adding scope, while freelancer-side tools (Bonsai, Plane) stay shallow on buyer-side workflows. Axle's wedge is the ops-only middle: approval-gated, audit-ready, live in a day, no EOR upsell.",
       CONTENT_W - 40
     ) as string[];
     let by = 295;
@@ -704,10 +704,10 @@ function generatePdf() {
     spacer(cursor, 6);
     const exec = [
       ["1. The market is racing toward EOR, leaving contractor-ops underserved.", "Deel, Remote, Rippling, Multiplier, and Plane all upsell EOR (4–10x the per-seat fee). Buyers with no near-term EOR need are paying for optionality they never use."],
-      ["2. Implementation time is the most reliable wedge.", "Every competitor over $39/seat ships with a 2–6 week onboarding. Mentalyc's sub-day onboarding is structurally hard for them to match without cannibalizing their services revenue."],
-      ["3. Buyers want approval gates and audit trails, not more features.", "G2 weaknesses cluster around 'too much UI' (Deel, Rippling) or 'no real RBAC' (Bonsai, Plane). Mentalyc's invoice ↔ timesheet linkage and bounded supervisor view directly hit both pains."],
-      ["4. Pricing transparency is now table stakes.", "Remote and Plane publish flat pricing; Deel and Worksuite do not. Buyers self-select against opaque vendors. Mentalyc's free tier + published pricing already wins this comparison."],
-      ["5. White space: contractor performance reviews + branded portal at SMB price.", "Only Rippling bundles performance reviews — and only inside its $8/user platform. Mentalyc can own this in the 5-200 contractor band before anyone else moves."],
+      ["2. Implementation time is the most reliable wedge.", "Every competitor over $39/seat ships with a 2–6 week onboarding. Axle's sub-day onboarding is structurally hard for them to match without cannibalizing their services revenue."],
+      ["3. Buyers want approval gates and audit trails, not more features.", "G2 weaknesses cluster around 'too much UI' (Deel, Rippling) or 'no real RBAC' (Bonsai, Plane). Axle's invoice ↔ timesheet linkage and bounded supervisor view directly hit both pains."],
+      ["4. Pricing transparency is now table stakes.", "Remote and Plane publish flat pricing; Deel and Worksuite do not. Buyers self-select against opaque vendors. Axle's free tier + published pricing already wins this comparison."],
+      ["5. White space: contractor performance reviews + branded portal at SMB price.", "Only Rippling bundles performance reviews — and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves."],
     ];
     for (const [h, b] of exec) {
       ensureSpace(cursor, 60);
@@ -788,7 +788,7 @@ function generatePdf() {
     // Matrix
     newPage(cursor);
     writeHeading(cursor, "Feature comparison matrix");
-    writeText(cursor, "Scores 0–5. Weight = buyer importance (from lost-deal interviews + G2 review clustering). Mentalyc highlighted.", { color: 130 });
+    writeText(cursor, "Scores 0–5. Weight = buyer importance (from lost-deal interviews + G2 review clustering). Axle highlighted.", { color: 130 });
     spacer(cursor, 8);
 
     const matrixCols = ["Feature", "W", ...competitorNames];
@@ -826,7 +826,7 @@ function generatePdf() {
       competitorNames.forEach((n, ni) => {
         const score = row.scores[n] ?? 0;
         if (score > 0) {
-          if (n === "Mentalyc") {
+          if (n === "Axle") {
             cursor.doc.setFillColor(224, 231, 255);
           } else {
             const a = (score / 5) * 0.4;
@@ -834,7 +834,7 @@ function generatePdf() {
           }
           cursor.doc.rect(cx + 1, cursor.y + 1, colWidths[2 + ni] - 2, 12, "F");
         }
-        cursor.doc.setTextColor(n === "Mentalyc" ? 67 : 40, n === "Mentalyc" ? 56 : 40, n === "Mentalyc" ? 202 : 40);
+        cursor.doc.setTextColor(n === "Axle" ? 67 : 40, n === "Axle" ? 56 : 40, n === "Axle" ? 202 : 40);
         cursor.doc.text(String(score), cx + colWidths[2 + ni] / 2, cursor.y + 10, { align: "center" });
         cx += colWidths[2 + ni];
       });
@@ -855,7 +855,7 @@ function generatePdf() {
     cx += colWidths[1];
     competitorNames.forEach((n, ni) => {
       const total = featureMatrix.reduce((s, r) => s + (r.scores[n] ?? 0) * r.weight, 0);
-      cursor.doc.setTextColor(n === "Mentalyc" ? 67 : 40, n === "Mentalyc" ? 56 : 40, n === "Mentalyc" ? 202 : 40);
+      cursor.doc.setTextColor(n === "Axle" ? 67 : 40, n === "Axle" ? 56 : 40, n === "Axle" ? 202 : 40);
       cursor.doc.text(String(total), cx + colWidths[2 + ni] / 2, cursor.y + 11, { align: "center" });
       cx += colWidths[2 + ni];
     });
@@ -864,7 +864,7 @@ function generatePdf() {
     cursor.doc.setFont("helvetica", "normal");
     cursor.doc.setFontSize(9);
     cursor.doc.setTextColor(120);
-    writeText(cursor, "Mentalyc leads on setup speed, OOO, timesheet capture, and SMB pricing. Deel/Remote lead on EOR + country breadth. Rippling wins reporting + RBAC by virtue of its platform.", { size: 9, color: 120 });
+    writeText(cursor, "Axle leads on setup speed, OOO, timesheet capture, and SMB pricing. Deel/Remote lead on EOR + country breadth. Rippling wins reporting + RBAC by virtue of its platform.", { size: 9, color: 120 });
 
     // Positioning map
     newPage(cursor);
@@ -907,10 +907,10 @@ function generatePdf() {
       cursor.doc.setFontSize(8);
       cursor.doc.text(label, px + 7, py + 3);
     }
-    plot(0.18, 0.4, "Mentalyc", true);
+    plot(0.18, 0.4, "Axle", true);
     competitors.forEach((cc) => plot(cc.positioning.x, cc.positioning.y, cc.name, false));
     cursor.y = mapY + mapH + 14;
-    writeText(cursor, "Mentalyc owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai sits closest but on the freelancer side. Plane is the most likely encroacher; their product velocity is the key signal to monitor.", { size: 9, color: 120 });
+    writeText(cursor, "Axle owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai sits closest but on the freelancer side. Plane is the most likely encroacher; their product velocity is the key signal to monitor.", { size: 9, color: 120 });
 
     // Kano + white space
     newPage(cursor);
@@ -950,7 +950,7 @@ function generatePdf() {
     const ps = [
       ["For", positioningStatement.forWhom],
       ["Who need", positioningStatement.whoNeed],
-      ["Mentalyc is", positioningStatement.product + " " + positioningStatement.category],
+      ["Axle is", positioningStatement.product + " " + positioningStatement.category],
       ["That delivers", positioningStatement.benefit],
       ["Unlike", positioningStatement.unlike],
       ["We alone", positioningStatement.weAlone],
@@ -985,7 +985,7 @@ function generatePdf() {
     cursor.doc.setFontSize(11);
     cursor.doc.setTextColor(20);
     const ol = cursor.doc.splitTextToSize(
-      "Mentalyc is the contractor operations platform for SaaS teams that want timesheets, invoices, and approvals in a day — without paying for an EOR they don't need.",
+      "Axle is the contractor operations platform for SaaS teams that want timesheets, invoices, and approvals in a day — without paying for an EOR they don't need.",
       CONTENT_W - 28
     ) as string[];
     let oly = cursor.y + 36;
@@ -1089,7 +1089,7 @@ function generatePdf() {
     cursor.doc.setFontSize(9);
     cursor.doc.setTextColor(60);
     const oa = cursor.doc.splitTextToSize(
-      "Tell the Mentalyc team which channel to activate (Slack RSS / Teams RSS / Google Alerts). The feed bundle is ready to paste — see competitor-monitoring.md at the project root.",
+      "Tell the Axle team which channel to activate (Slack RSS / Teams RSS / Google Alerts). The feed bundle is ready to paste — see competitor-monitoring.md at the project root.",
       CONTENT_W - 28
     ) as string[];
     let oay = cursor.y + 32;
@@ -1110,7 +1110,7 @@ function generatePdf() {
   renderAll(fc);
 
   // Save
-  finalDoc.save("Mentalyc-Competitive-Analysis-May-2026.pdf");
+  finalDoc.save("Axle-Competitive-Analysis-May-2026.pdf");
 }
 
 export default function CompetitiveAnalysisPage() {
@@ -1144,7 +1144,7 @@ export default function CompetitiveAnalysisPage() {
             <div className="hidden sm:block">
               <div className="text-xs text-slate-500">Strategy report</div>
               <div className="text-sm font-semibold text-slate-900">
-                Mentalyc Competitive Analysis · May 2026
+                Axle Competitive Analysis · May 2026
               </div>
             </div>
           </div>
@@ -1167,7 +1167,7 @@ export default function CompetitiveAnalysisPage() {
         ))}
       </main>
       <footer className="py-10 text-center text-xs text-slate-500">
-        Mentalyc · Confidential strategy doc · Generated May 2026
+        Axle · Confidential strategy doc · Generated May 2026
       </footer>
     </div>
   );

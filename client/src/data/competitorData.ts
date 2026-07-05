@@ -262,17 +262,17 @@ export interface FeatureRow {
 }
 
 export const featureMatrix: FeatureRow[] = [
-  { feature: "Timesheet capture + approval", weight: 5, scores: { Mentalyc: 5, Deel: 3, Remote: 3, Rippling: 4, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
-  { feature: "Invoice review + audit trail", weight: 5, scores: { Mentalyc: 5, Deel: 4, Remote: 4, Rippling: 4, Worksuite: 4, Bonsai: 3, Plane: 4, Multiplier: 3 } },
-  { feature: "OOO / leave tracking", weight: 4, scores: { Mentalyc: 5, Deel: 3, Remote: 3, Rippling: 4, Worksuite: 3, Bonsai: 1, Plane: 2, Multiplier: 3 } },
-  { feature: "Performance evaluations", weight: 4, scores: { Mentalyc: 4, Deel: 4, Remote: 3, Rippling: 5, Worksuite: 2, Bonsai: 1, Plane: 1, Multiplier: 2 } },
-  { feature: "Approval workflows / RBAC", weight: 5, scores: { Mentalyc: 4, Deel: 3, Remote: 3, Rippling: 5, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
-  { feature: "EOR / global payroll", weight: 3, scores: { Mentalyc: 0, Deel: 5, Remote: 5, Rippling: 4, Worksuite: 2, Bonsai: 0, Plane: 4, Multiplier: 5 } },
-  { feature: "Country coverage breadth", weight: 3, scores: { Mentalyc: 2, Deel: 5, Remote: 5, Rippling: 4, Worksuite: 4, Bonsai: 3, Plane: 3, Multiplier: 4 } },
-  { feature: "Setup speed (time to first invoice)", weight: 4, scores: { Mentalyc: 5, Deel: 3, Remote: 3, Rippling: 2, Worksuite: 3, Bonsai: 4, Plane: 4, Multiplier: 3 } },
-  { feature: "Pricing accessibility (SMB)", weight: 4, scores: { Mentalyc: 5, Deel: 2, Remote: 3, Rippling: 2, Worksuite: 1, Bonsai: 4, Plane: 4, Multiplier: 3 } },
-  { feature: "Reporting + CSV/PDF exports", weight: 4, scores: { Mentalyc: 4, Deel: 3, Remote: 3, Rippling: 5, Worksuite: 3, Bonsai: 2, Plane: 3, Multiplier: 3 } },
-  { feature: "Audit-ready compliance trail", weight: 4, scores: { Mentalyc: 4, Deel: 4, Remote: 4, Rippling: 4, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
+  { feature: "Timesheet capture + approval", weight: 5, scores: { Axle: 5, Deel: 3, Remote: 3, Rippling: 4, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
+  { feature: "Invoice review + audit trail", weight: 5, scores: { Axle: 5, Deel: 4, Remote: 4, Rippling: 4, Worksuite: 4, Bonsai: 3, Plane: 4, Multiplier: 3 } },
+  { feature: "OOO / leave tracking", weight: 4, scores: { Axle: 5, Deel: 3, Remote: 3, Rippling: 4, Worksuite: 3, Bonsai: 1, Plane: 2, Multiplier: 3 } },
+  { feature: "Performance evaluations", weight: 4, scores: { Axle: 4, Deel: 4, Remote: 3, Rippling: 5, Worksuite: 2, Bonsai: 1, Plane: 1, Multiplier: 2 } },
+  { feature: "Approval workflows / RBAC", weight: 5, scores: { Axle: 4, Deel: 3, Remote: 3, Rippling: 5, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
+  { feature: "EOR / global payroll", weight: 3, scores: { Axle: 0, Deel: 5, Remote: 5, Rippling: 4, Worksuite: 2, Bonsai: 0, Plane: 4, Multiplier: 5 } },
+  { feature: "Country coverage breadth", weight: 3, scores: { Axle: 2, Deel: 5, Remote: 5, Rippling: 4, Worksuite: 4, Bonsai: 3, Plane: 3, Multiplier: 4 } },
+  { feature: "Setup speed (time to first invoice)", weight: 4, scores: { Axle: 5, Deel: 3, Remote: 3, Rippling: 2, Worksuite: 3, Bonsai: 4, Plane: 4, Multiplier: 3 } },
+  { feature: "Pricing accessibility (SMB)", weight: 4, scores: { Axle: 5, Deel: 2, Remote: 3, Rippling: 2, Worksuite: 1, Bonsai: 4, Plane: 4, Multiplier: 3 } },
+  { feature: "Reporting + CSV/PDF exports", weight: 4, scores: { Axle: 4, Deel: 3, Remote: 3, Rippling: 5, Worksuite: 3, Bonsai: 2, Plane: 3, Multiplier: 3 } },
+  { feature: "Audit-ready compliance trail", weight: 4, scores: { Axle: 4, Deel: 4, Remote: 4, Rippling: 4, Worksuite: 4, Bonsai: 2, Plane: 3, Multiplier: 3 } },
 ];
 
 export interface KanoItem {
@@ -283,9 +283,9 @@ export interface KanoItem {
 
 export const kanoAnalysis: KanoItem[] = [
   { feature: "Timesheet approval gates", category: "Must-have", notes: "Buyers don't celebrate it but churn fast without it." },
-  { feature: "Invoice ↔ timesheet linking", category: "Performance", notes: "More automation = more buyer love. Owned by Mentalyc." },
+  { feature: "Invoice ↔ timesheet linking", category: "Performance", notes: "More automation = more buyer love. Owned by Axle." },
   { feature: "OOO calendar with team view", category: "Performance", notes: "Differentiator vs Deel/Remote which treat OOO as afterthought." },
-  { feature: "EOR coverage in 150 countries", category: "Must-have (for global buyers)", notes: "Table stakes if buyer hires globally; out of scope for Mentalyc's ICP." },
+  { feature: "EOR coverage in 150 countries", category: "Must-have (for global buyers)", notes: "Table stakes if buyer hires globally; out of scope for Axle's ICP." },
   { feature: "Performance review cycles", category: "Delighter", notes: "Rare in contractor-only tools; strong wedge against Bonsai/Plane." },
   { feature: "Branded contractor portal", category: "Delighter", notes: "No competitor offers white-label out of the box for SMB." },
   { feature: "Slack/Teams notifications", category: "Indifferent (today) / Performance (12mo)", notes: "Everyone will ship it; staying behind risks downgrade." },
@@ -294,11 +294,11 @@ export const kanoAnalysis: KanoItem[] = [
 export const positioningStatement = {
   forWhom: "SaaS ops leaders, founders, and HR managers running 5–200 independent contractors",
   whoNeed: "to replace spreadsheets and email threads with a single approval-driven workflow — without buying an EOR they don't need",
-  product: "Mentalyc is a contractor operations platform",
+  product: "Axle is a contractor operations platform",
   category: "(contractor management, NOT EOR/payroll)",
   benefit: "that delivers timesheets, invoices, OOO, and performance reviews in one approval-gated workflow",
   unlike: "Unlike Deel, Remote, and Multiplier (which bundle EOR you may not need) or Bonsai (built for the freelancer side, not the buyer)",
-  weAlone: "Mentalyc gives the buying company a structured, audit-ready ops layer in under a day, with pricing that scales from 3 contractors to 200 — no implementation team required.",
+  weAlone: "Axle gives the buying company a structured, audit-ready ops layer in under a day, with pricing that scales from 3 contractors to 200 — no implementation team required.",
 };
 
 export const recommendations = [
@@ -313,7 +313,7 @@ export const recommendations = [
   },
   {
     title: "Double down on approval-gated workflows as your moat",
-    body: "Every G2 weakness for Bonsai, Plane, and even Worksuite cites missing or weak approval chains. Mentalyc's invoice ↔ timesheet linkage is already best-in-class — productize it as 'Compliance Mode' with audit exports, role-bounded supervisors, and a public security page (SOC 2 plan, encryption, access logs). This converts the silent feature into a procurement-stage differentiator.",
+    body: "Every G2 weakness for Bonsai, Plane, and even Worksuite cites missing or weak approval chains. Axle's invoice ↔ timesheet linkage is already best-in-class — productize it as 'Compliance Mode' with audit exports, role-bounded supervisors, and a public security page (SOC 2 plan, encryption, access logs). This converts the silent feature into a procurement-stage differentiator.",
     battlecard: [
       "Q to ask buyer: 'When finance audits last quarter's contractor spend, can you produce timesheet → invoice → approver → timestamp in one click today?'",
       "Q to ask buyer: 'Who can see contractor banking details in your current tool? Can a supervisor see another supervisor's team?'",
@@ -322,11 +322,11 @@ export const recommendations = [
   },
   {
     title: "Build a 'we don't do EOR (and that's the point)' positioning page",
-    body: "The biggest brand risk is being mistaken for a Deel-lite. April Dunford's playbook says: name the category you're NOT in, loudly. Ship a comparison page (`/contractor-management-vs-eor`) that explains exactly when a buyer should choose Mentalyc vs Deel/Remote, including a pricing calculator that proves a 25-contractor team saves $15k+/year by not buying EOR. This earns SEO traffic for 'Deel alternative for contractors only' searches and disarms the 'why not just use Deel?' objection in sales.",
+    body: "The biggest brand risk is being mistaken for a Deel-lite. April Dunford's playbook says: name the category you're NOT in, loudly. Ship a comparison page (`/contractor-management-vs-eor`) that explains exactly when a buyer should choose Axle vs Deel/Remote, including a pricing calculator that proves a 25-contractor team saves $15k+/year by not buying EOR. This earns SEO traffic for 'Deel alternative for contractors only' searches and disarms the 'why not just use Deel?' objection in sales.",
     battlecard: [
       "Q to ask buyer: 'How many of your contractors will ever convert to EOR employees?' (Usually <10%)",
       "Q to ask buyer: 'Are you willing to pay 4x the per-seat cost for the optionality of converting that 10%?'",
-      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Mentalyc free/Pro tier — let math close.",
+      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Axle free/Pro tier — let math close.",
     ],
   },
 ];
