@@ -14,6 +14,7 @@ import {
   organizations as organizationsTable,
   subscriptions as subscriptionsTable,
   users as usersTable,
+  backofficeActivityLogs as backofficeActivityLogsTable,
   PLAN_LIMITS,
   computeNetPrice,
 } from "@shared/schema";
@@ -337,6 +338,14 @@ export async function registerRoutes(
 
     if (!user.isActive) {
       return res.status(403).json({ error: "Account is disabled" });
+    }
+
+    // Block login if the organization's subscription is suspended
+    if (user.organizationId) {
+      const sub = await storage.getSubscriptionByOrganization(user.organizationId);
+      if (sub?.status === "suspended") {
+        return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+      }
     }
 
     // Successful login - reset rate limit
@@ -785,6 +794,118 @@ export async function registerRoutes(
       };
     });
     res.json(tenants);
+  }));
+
+  // Back-office: change plan / max seats for a tenant
+  app.patch("/api/backoffice/tenants/:orgId/plan", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const adminUser = req.authenticatedUser!;
+    const { plan, maxSeats } = req.body;
+
+    const VALID_PLANS = ["free", "starter", "pro", "enterprise"];
+    if (plan !== undefined && !VALID_PLANS.includes(plan)) {
+      return res.status(400).json({ error: "Invalid plan" });
+    }
+    if (maxSeats !== undefined && (!Number.isInteger(Number(maxSeats)) || Number(maxSeats) < 1)) {
+      return res.status(400).json({ error: "maxSeats must be a positive integer" });
+    }
+
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found" });
+
+    const sub = await storage.getSubscriptionByOrganization(orgId);
+    if (!sub) return res.status(404).json({ error: "Subscription not found" });
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const changes: string[] = [];
+
+    if (plan !== undefined && plan !== sub.plan) {
+      updates.plan = plan;
+      changes.push(`plan: ${sub.plan} → ${plan}`);
+    }
+    if (maxSeats !== undefined && Number(maxSeats) !== sub.maxSeats) {
+      updates.maxSeats = Number(maxSeats);
+      changes.push(`maxSeats: ${sub.maxSeats} → ${maxSeats}`);
+    }
+
+    if (changes.length === 0) {
+      return res.json({ subscription: sub, message: "No changes" });
+    }
+
+    const updated = await storage.updateSubscription(sub.id, updates as any);
+
+    await storage.createBackofficeActivityLog({
+      adminEmail: adminUser.email,
+      action: "plan_change",
+      targetOrgId: orgId,
+      targetOrgName: org.name,
+      details: changes.join("; "),
+    });
+
+    res.json({ subscription: updated });
+  }));
+
+  // Back-office: suspend a tenant
+  app.post("/api/backoffice/tenants/:orgId/suspend", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const adminUser = req.authenticatedUser!;
+    const { reason } = req.body;
+
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found" });
+
+    const sub = await storage.getSubscriptionByOrganization(orgId);
+    if (!sub) return res.status(404).json({ error: "Subscription not found" });
+
+    if (sub.status === "suspended") {
+      return res.status(409).json({ error: "Organization is already suspended" });
+    }
+
+    const updated = await storage.updateSubscription(sub.id, { status: "suspended", updatedAt: new Date() } as any);
+
+    await storage.createBackofficeActivityLog({
+      adminEmail: adminUser.email,
+      action: "suspend",
+      targetOrgId: orgId,
+      targetOrgName: org.name,
+      details: reason ? `Reason: ${reason}` : null,
+    });
+
+    res.json({ subscription: updated });
+  }));
+
+  // Back-office: reactivate a suspended tenant
+  app.post("/api/backoffice/tenants/:orgId/reactivate", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const adminUser = req.authenticatedUser!;
+
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found" });
+
+    const sub = await storage.getSubscriptionByOrganization(orgId);
+    if (!sub) return res.status(404).json({ error: "Subscription not found" });
+
+    if (sub.status !== "suspended") {
+      return res.status(409).json({ error: "Organization is not suspended" });
+    }
+
+    const updated = await storage.updateSubscription(sub.id, { status: "active", updatedAt: new Date() } as any);
+
+    await storage.createBackofficeActivityLog({
+      adminEmail: adminUser.email,
+      action: "reactivate",
+      targetOrgId: orgId,
+      targetOrgName: org.name,
+      details: null,
+    });
+
+    res.json({ subscription: updated });
+  }));
+
+  // Back-office: audit log
+  app.get("/api/backoffice/audit-log", asyncHandler(async (_req, res) => {
+    const logs = await storage.getBackofficeActivityLogs(500);
+    res.json(logs);
   }));
 
   // Back-office: single tenant detail

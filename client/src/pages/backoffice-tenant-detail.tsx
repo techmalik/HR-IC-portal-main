@@ -2,10 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { BackofficeLayout } from "@/components/backoffice-layout";
-import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Tag, X, Loader2 } from "lucide-react";
+import { Tag, X, Loader2, AlertTriangle, Settings2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Tenant {
@@ -17,6 +16,7 @@ interface Tenant {
   userCount: number;
   createdAt: string;
   mrr: number;
+  maxSeats?: number;
   discountType: string | null;
   discountValue: number | null;
   appliedDiscountId: string | null;
@@ -46,6 +46,13 @@ function discountSummary(type: string | null, value: number | null) {
   if (!type || value == null) return null;
   return type === "percentage" ? `${value}% off` : `$${value} off`;
 }
+
+const PLAN_MAX_SEATS: Record<string, number> = {
+  free: 3,
+  starter: 10,
+  pro: 50,
+  enterprise: 999,
+};
 
 function DiscountModal({
   tenant,
@@ -178,9 +185,195 @@ function DiscountModal({
   );
 }
 
-export default function BackofficeTenantDetailPage() {
+function PlanModal({
+  tenant,
+  onClose,
+}: {
+  tenant: Tenant;
+  onClose: () => void;
+}) {
   const { toast } = useToast();
+  const [plan, setPlan] = useState(tenant.plan);
+  const [maxSeats, setMaxSeats] = useState(String(tenant.maxSeats ?? PLAN_MAX_SEATS[tenant.plan] ?? 3));
+
+  const planMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/backoffice/tenants/${tenant.id}/plan`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, maxSeats: Number(maxSeats) }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Failed to update plan");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      toast({ title: "Plan updated" });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const currentMaxSeats = tenant.maxSeats ?? PLAN_MAX_SEATS[tenant.plan] ?? 3;
+  const hasChanges = plan !== tenant.plan || Number(maxSeats) !== currentMaxSeats;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-[#111827]">Change plan — {tenant.name}</h2>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151]">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[12px] font-medium text-[#374151] block mb-1">Plan</label>
+            <select
+              className="w-full h-9 rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#059669]"
+              value={plan}
+              onChange={(e) => {
+                setPlan(e.target.value);
+                setMaxSeats(String(PLAN_MAX_SEATS[e.target.value] ?? 3));
+              }}
+            >
+              <option value="free">Free — $0/mo</option>
+              <option value="starter">Starter — $29/mo</option>
+              <option value="pro">Pro — $79/mo</option>
+              <option value="enterprise">Enterprise — custom</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[12px] font-medium text-[#374151] block mb-1">Max seats</label>
+            <input
+              type="number"
+              min={1}
+              max={9999}
+              value={maxSeats}
+              onChange={(e) => setMaxSeats(e.target.value)}
+              className="w-full h-9 rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#059669]"
+            />
+            <p className="text-[11px] text-[#9CA3AF] mt-1">
+              Default for {plan}: {PLAN_MAX_SEATS[plan] ?? "—"} seats
+            </p>
+          </div>
+        </div>
+
+        <Button
+          className="w-full text-[13px]"
+          disabled={!hasChanges || planMutation.isPending}
+          onClick={() => planMutation.mutate()}
+        >
+          {planMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SuspendModal({
+  tenant,
+  onClose,
+}: {
+  tenant: Tenant;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [reason, setReason] = useState("");
+  const isSuspended = tenant.status === "suspended";
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const endpoint = isSuspended ? "reactivate" : "suspend";
+      const res = await fetch(`/api/backoffice/tenants/${tenant.id}/${endpoint}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isSuspended ? {} : { reason }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Action failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      toast({ title: isSuspended ? "Organization reactivated" : "Organization suspended" });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${isSuspended ? "bg-emerald-50" : "bg-red-50"}`}>
+            <AlertTriangle className={`w-4 h-4 ${isSuspended ? "text-emerald-600" : "text-red-500"}`} />
+          </div>
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#111827]">
+              {isSuspended ? "Reactivate" : "Suspend"} — {tenant.name}
+            </h2>
+            <p className="text-[12px] text-[#6B7280]">
+              {isSuspended
+                ? "Restore access for all users in this organization."
+                : "All users in this organization will be blocked from logging in."}
+            </p>
+          </div>
+        </div>
+
+        {!isSuspended && (
+          <div>
+            <label className="text-[12px] font-medium text-[#374151] block mb-1">Reason (optional)</label>
+            <textarea
+              className="w-full rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+              rows={2}
+              placeholder="e.g. Payment overdue, policy violation..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 text-[13px]" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            className={`flex-1 text-[13px] ${isSuspended ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}`}
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {isSuspended ? "Reactivate" : "Suspend"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function BackofficeTenantDetailPage() {
   const [managingTenant, setManagingTenant] = useState<Tenant | null>(null);
+  const [planTenant, setPlanTenant] = useState<Tenant | null>(null);
+  const [suspendTenant, setSuspendTenant] = useState<Tenant | null>(null);
 
   const { data: tenants = [], isLoading } = useQuery<Tenant[]>({
     queryKey: ["/api/backoffice/tenants"],
@@ -201,9 +394,21 @@ export default function BackofficeTenantDetailPage() {
           onClose={() => setManagingTenant(null)}
         />
       )}
+      {planTenant && (
+        <PlanModal
+          tenant={planTenant}
+          onClose={() => setPlanTenant(null)}
+        />
+      )}
+      {suspendTenant && (
+        <SuspendModal
+          tenant={suspendTenant}
+          onClose={() => setSuspendTenant(null)}
+        />
+      )}
 
       <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_90px_70px_90px_160px_120px] px-5 py-2.5 bg-[#F9FAFB] border-b border-[#E5E7EB]">
+        <div className="grid grid-cols-[1fr_80px_60px_80px_140px_200px] px-5 py-2.5 bg-[#F9FAFB] border-b border-[#E5E7EB]">
           <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Organization</span>
           <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Plan</span>
           <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Users</span>
@@ -223,16 +428,24 @@ export default function BackofficeTenantDetailPage() {
         ) : (
           tenants.map((t, i) => {
             const summary = discountSummary(t.discountType, t.discountValue);
+            const isSuspended = t.status === "suspended";
             return (
               <div
                 key={t.id}
-                className={`grid grid-cols-[1fr_90px_70px_90px_160px_120px] px-5 py-3 border-b border-[#F9FAFB] items-center ${
+                className={`grid grid-cols-[1fr_80px_60px_80px_140px_200px] px-5 py-3 border-b border-[#F9FAFB] items-center ${
                   i % 2 === 1 ? "bg-[#FAFAFA]" : ""
-                }`}
+                } ${isSuspended ? "opacity-60" : ""}`}
                 data-testid={`row-tenant-${t.slug}`}
               >
                 <div>
-                  <div className="text-[13px] font-medium text-[#111827]">{t.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[13px] font-medium text-[#111827]">{t.name}</div>
+                    {isSuspended && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 uppercase tracking-wide">
+                        Suspended
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[11px] text-[#9CA3AF]">
                     {t.slug} · joined {format(new Date(t.createdAt), "MMM yyyy")}
                   </div>
@@ -262,11 +475,33 @@ export default function BackofficeTenantDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-[11.5px] text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] px-2.5"
+                    className="h-7 text-[11.5px] text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] px-2"
+                    onClick={() => setPlanTenant(t)}
+                    title="Change plan / seats"
+                  >
+                    <Settings2 className="w-3 h-3 mr-1" />
+                    Plan
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[11.5px] text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] px-2"
                     onClick={() => setManagingTenant(t)}
                   >
                     <Tag className="w-3 h-3 mr-1" />
-                    Discount
+                    Disc.
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-7 text-[11.5px] px-2 border ${
+                      isSuspended
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                        : "text-red-600 bg-red-50 border-red-200 hover:bg-red-100"
+                    }`}
+                    onClick={() => setSuspendTenant(t)}
+                  >
+                    {isSuspended ? "Unsuspend" : "Suspend"}
                   </Button>
                 </div>
               </div>

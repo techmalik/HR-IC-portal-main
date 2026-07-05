@@ -11,6 +11,7 @@ import {
   Layers,
   Upload,
   Tag,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,6 +55,7 @@ const sections: NavSection[] = [
   {
     label: "System",
     items: [
+      { label: "Audit log", href: "/back-office/audit-log", icon: ClipboardList },
       { label: "System logs", href: "/back-office/logs", icon: Activity },
       { label: "Feature flags", href: "/back-office/flags", icon: Shield },
       { label: "File migration", href: "/back-office/migrate", icon: Upload },

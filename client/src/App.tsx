@@ -53,6 +53,7 @@ import BackofficeLogsPage from "@/pages/backoffice-logs";
 import BackofficeFlagsPage from "@/pages/backoffice-flags";
 import BackofficeTicketsPage from "@/pages/backoffice-tickets";
 import BackofficeSupportPage from "@/pages/backoffice-support";
+import BackofficeAuditLogPage from "@/pages/backoffice-audit-log";
 import { BackofficeLayout } from "@/components/backoffice-layout";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
@@ -533,6 +534,7 @@ function BackOfficeRoutes() {
       <Route path="/back-office/blog">{() => <BackofficeLayout title="Blog articles"><AdminBlogPage /></BackofficeLayout>}</Route>
       <Route path="/back-office/seo">{() => <BackofficeLayout title="SEO pages"><AdminSeoPage /></BackofficeLayout>}</Route>
       <Route path="/back-office/migrate">{() => <BackofficeLayout title="File migration"><MigrateFilesPage /></BackofficeLayout>}</Route>
+      <Route path="/back-office/audit-log" component={BackofficeAuditLogPage} />
       <Route component={BackofficeOverviewPage} />
     </Switch>
   );

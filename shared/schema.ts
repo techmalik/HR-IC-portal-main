@@ -19,6 +19,7 @@ export const SubscriptionStatus = {
   CANCELED: "canceled",
   PAST_DUE: "past_due",
   TRIALING: "trialing",
+  SUSPENDED: "suspended",
 } as const;
 
 export type SubscriptionStatusType = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
@@ -916,6 +917,29 @@ export const insertNotificationPreferencesSchema = createInsertSchema(notificati
 
 export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Back-office audit log table (platform-admin mutations only)
+// ---------------------------------------------------------------------------
+export const backofficeActivityLogs = pgTable("backoffice_activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminEmail: text("admin_email").notNull(),
+  action: text("action").notNull(),
+  targetOrgId: varchar("target_org_id"),
+  targetOrgName: text("target_org_name"),
+  details: text("details"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("backoffice_logs_created_at_idx").on(table.createdAt),
+]);
+
+export const insertBackofficeActivityLogSchema = createInsertSchema(backofficeActivityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBackofficeActivityLog = z.infer<typeof insertBackofficeActivityLogSchema>;
+export type BackofficeActivityLog = typeof backofficeActivityLogs.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Sessions table for persistent authentication

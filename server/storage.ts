@@ -39,6 +39,8 @@ import {
   type InsertExpense,
   type DiscountCode,
   type InsertDiscountCode,
+  type BackofficeActivityLog,
+  type InsertBackofficeActivityLog,
   contracts,
   expenses,
   users,
@@ -59,6 +61,7 @@ import {
   organizations,
   subscriptions,
   discountCodes,
+  backofficeActivityLogs,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
@@ -216,6 +219,9 @@ export interface IStorage {
   deleteDiscountCode(id: string): Promise<boolean>;
   applyDiscountToSubscription(subscriptionId: string, discountCodeId: string, discountType: string, discountValue: number): Promise<Subscription | undefined>;
   removeDiscountFromSubscription(subscriptionId: string): Promise<Subscription | undefined>;
+
+  getBackofficeActivityLogs(limit?: number): Promise<BackofficeActivityLog[]>;
+  createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -894,6 +900,15 @@ export class DatabaseStorage implements IStorage {
       .set({ appliedDiscountId: null, discountType: null, discountValue: null, updatedAt: new Date() })
       .where(eq(subscriptions.id, subscriptionId))
       .returning();
+    return result[0];
+  }
+
+  async getBackofficeActivityLogs(limit = 200): Promise<BackofficeActivityLog[]> {
+    return db.select().from(backofficeActivityLogs).orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
+  }
+
+  async createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog> {
+    const result = await db.insert(backofficeActivityLogs).values(log).returning();
     return result[0];
   }
 }
