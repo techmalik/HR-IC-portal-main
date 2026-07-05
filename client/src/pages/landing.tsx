@@ -94,8 +94,8 @@ const plans = [
     price: "$0",
     priceNote: "30-day trial",
     seats: "Up to 3 contractors",
+    example: "3 ICs = $0",
     cta: "Start free trial",
-    ctaVariant: "secondary" as const,
     highlight: false,
     enterprise: false,
     features: ["Timesheet management", "Leave tracking", "Basic invoicing", "1 admin seat"],
@@ -106,8 +106,8 @@ const plans = [
     price: "$9",
     priceNote: "per IC / month",
     seats: "Up to 25 contractors",
+    example: "10 ICs = $90/mo",
     cta: "Start free trial",
-    ctaVariant: "secondary" as const,
     highlight: false,
     enterprise: false,
     features: ["Everything in Free", "Unlimited admin seats", "CSV + PDF exports", "Email notifications"],
@@ -118,8 +118,8 @@ const plans = [
     price: "$14",
     priceNote: "per IC / month",
     seats: "Up to 100 contractors",
+    example: "25 ICs = $350/mo",
     cta: "Start free trial",
-    ctaVariant: "default" as const,
     highlight: true,
     enterprise: false,
     features: ["Everything in Starter", "Performance evaluations", "Expense tracking", "Audit-ready exports"],
@@ -130,8 +130,8 @@ const plans = [
     price: "Custom",
     priceNote: "tailored to your team",
     seats: "100+ contractors",
+    example: "Custom for 100+ ICs",
     cta: "Contact sales",
-    ctaVariant: "secondary" as const,
     highlight: false,
     enterprise: true,
     features: ["Everything in Pro", "Dedicated account manager", "SSO / SAML", "Audit API access"],
@@ -486,7 +486,8 @@ export default function LandingPage() {
                   {plan.price}
                 </div>
                 <div className={`text-xs mb-1 ${plan.highlight ? "text-white/40" : "text-gray-400"}`}>{plan.priceNote}</div>
-                <div className={`text-[11px] mb-5 font-medium ${plan.highlight ? "text-emerald-400" : "text-primary"}`}>{plan.seats}</div>
+                <div className={`text-[11px] mb-1 font-medium ${plan.highlight ? "text-emerald-400" : "text-primary"}`}>{plan.seats}</div>
+                <div className={`text-[11px] mb-4 ${plan.highlight ? "text-white/30" : "text-gray-400"}`}>{plan.example}</div>
                 <Button
                   className="mb-5 w-full"
                   variant={plan.highlight ? "default" : "secondary"}
@@ -524,9 +525,9 @@ export default function LandingPage() {
                   id="contractor-count"
                   type="number"
                   min={1}
-                  max={100}
+                  max={500}
                   value={contractorCount}
-                  onChange={(e) => setContractorCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setContractorCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
                   className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
                   data-testid="input-contractor-count"
                 />
