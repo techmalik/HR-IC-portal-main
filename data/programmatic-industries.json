@@ -526,7 +526,7 @@
     "heroTitle": "Contractor Management for Real Estate Agencies",
     "metaTitle": "Contractor Management for Real Estate Agencies | Axle",
     "metaDescription": "Manage transaction coordinators, photographers, virtual assistants, and contract agents with structured timesheets and invoice approvals.",
-    "intro": "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. Axle gives broker-owners a clean way to manage that contractor team — structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
+    "intro": "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. Axle gives broker-owners a clean way to manage that contractor team: structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
     "painPoints": [
       "Transaction coordinators with deal-based billing",
       "Real estate photographers paid per shoot",
@@ -540,7 +540,7 @@
       },
       {
         "title": "Mixed billing models",
-        "description": "Day rates for photographers, hourly for VAs, project fees for TCs — all in one tool with one approval workflow."
+        "description": "Day rates for photographers, hourly for VAs, project fees for TCs: all in one tool with one approval workflow."
       },
       {
         "title": "Broker-owner visibility",
@@ -596,7 +596,7 @@
       },
       {
         "title": "Audit-grade trail",
-        "description": "Every approval, every edit, every change — logged with timestamp and user ID. Auditor-ready out of the box."
+        "description": "Every approval, every edit, every change: logged with timestamp and user ID. Auditor-ready out of the box."
       },
       {
         "title": "High-rate advisor management",
@@ -644,7 +644,7 @@
       },
       {
         "title": "Tiered approval",
-        "description": "Curriculum lead approves content; ops lead approves invoice — both gates required before payment."
+        "description": "Curriculum lead approves content; ops lead approves invoice, both gates required before payment."
       },
       {
         "title": "SME roster",
@@ -681,8 +681,8 @@
     "shortName": "fintechs",
     "heroTitle": "Contractor Management for Fintech Companies",
     "metaTitle": "Contractor Management for Fintech Companies | Axle",
-    "metaDescription": "Manage compliance consultants, contract engineers, and specialist contractors across your fintech team — audit-grade by design.",
-    "intro": "Fintechs operate under intense regulatory and security scrutiny — and increasingly rely on specialist contractors for compliance, engineering, and risk. Axle gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
+    "metaDescription": "Manage compliance consultants, contract engineers, and specialist contractors across your fintech team, audit-grade by design.",
+    "intro": "Fintechs operate under intense regulatory and security scrutiny, and increasingly rely on specialist contractors for compliance, engineering, and risk. Axle gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
     "painPoints": [
       "Compliance contractors with sensitive access",
       "Engineering contractors on regulated systems",
@@ -692,7 +692,7 @@
     "useCases": [
       {
         "title": "Role-based access",
-        "description": "Compliance contractors only see what compliance contractors should see — no broader org-wide visibility unless explicitly granted."
+        "description": "Compliance contractors only see what compliance contractors should see: no broader org-wide visibility unless explicitly granted."
       },
       {
         "title": "Audit-grade records",
@@ -734,7 +734,7 @@
     "heroTitle": "Contractor Management for SaaS Startups",
     "metaTitle": "Contractor Management for SaaS Startups | Axle",
     "metaDescription": "Manage contract engineers, designers, and growth specialists across your SaaS team without spreadsheet chaos. Built for fast-moving SaaS ops.",
-    "intro": "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. Axle is built specifically for that pattern — structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
+    "intro": "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. Axle is built specifically for that pattern: structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
     "painPoints": [
       "Contractor headcount growing faster than ops capacity",
       "Different rates and currencies across the team",
@@ -752,7 +752,7 @@
       },
       {
         "title": "Diligence-ready",
-        "description": "Investors love clean contractor records. Axle produces them automatically — no scramble before due diligence."
+        "description": "Investors love clean contractor records. Axle produces them automatically: no scramble before due diligence."
       },
       {
         "title": "Quick onboarding",
@@ -785,8 +785,8 @@
     "shortName": "nonprofits",
     "heroTitle": "Contractor Management for Nonprofits",
     "metaTitle": "Contractor Management for Nonprofits | Axle",
-    "metaDescription": "Manage program consultants, grant writers, and contract program staff with grant-ready records — built for nonprofit ops.",
-    "intro": "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. Axle gives nonprofit ops clean per-grant or per-program contractor records — the kind that simplify financial reporting to funders.",
+    "metaDescription": "Manage program consultants, grant writers, and contract program staff with grant-ready records. Built for nonprofit ops.",
+    "intro": "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. Axle gives nonprofit ops clean per-grant or per-program contractor records: the kind that simplify financial reporting to funders.",
     "painPoints": [
       "Per-grant or per-program budget tracking",
       "Grant writers and program consultants on project retainers",
@@ -804,7 +804,7 @@
       },
       {
         "title": "Affordable ops layer",
-        "description": "Axle's free plan covers up to 3 contractors at zero cost — perfect for grassroots nonprofits scaling capacity carefully."
+        "description": "Axle's free plan covers up to 3 contractors at zero cost, perfect for grassroots nonprofits scaling capacity carefully."
       },
       {
         "title": "Funder-ready records",
@@ -838,7 +838,7 @@
     "heroTitle": "Contractor Management for Media Companies",
     "metaTitle": "Contractor Management for Media Companies | Axle",
     "metaDescription": "Manage freelance journalists, editors, photographers, and contributors across your publication with structured per-piece records.",
-    "intro": "Media companies run on freelance contributors — journalists, editors, photographers, illustrators. Axle gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
+    "intro": "Media companies run on freelance contributors: journalists, editors, photographers, illustrators. Axle gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
     "painPoints": [
       "Freelance journalists with per-piece rates",
       "Photographers paid per assignment",
@@ -856,7 +856,7 @@
       },
       {
         "title": "Mixed billing models",
-        "description": "Per-piece rates for journalists, day rates for photographers, hourly for production — all handled in one tool."
+        "description": "Per-piece rates for journalists, day rates for photographers, hourly for production: all handled in one tool."
       },
       {
         "title": "Contributor roster",
@@ -993,8 +993,8 @@
     "shortName": "studios",
     "heroTitle": "Contractor Management for Photography Studios",
     "metaTitle": "Contractor Management for Photography Studios | Axle",
-    "metaDescription": "Manage second shooters, retouchers, and assistants with day-rate billing and per-shoot records — built for photography studios.",
-    "intro": "Photography studios scale capacity through second shooters, retouchers, and assistants — usually on day rates or per-shoot fees. Axle handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
+    "metaDescription": "Manage second shooters, retouchers, and assistants with day-rate billing and per-shoot records. Built for photography studios.",
+    "intro": "Photography studios scale capacity through second shooters, retouchers, and assistants, usually on day rates or per-shoot fees. Axle handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
     "painPoints": [
       "Day rates and per-shoot fees mixed",
       "Retouchers billing hourly in post",
@@ -1004,7 +1004,7 @@
     "useCases": [
       {
         "title": "Day-rate billing",
-        "description": "Track day rates for second shooters and assistants; hourly rates for retouchers — all in one tool."
+        "description": "Track day rates for second shooters and assistants; hourly rates for retouchers: all in one tool."
       },
       {
         "title": "Per-shoot tagging",

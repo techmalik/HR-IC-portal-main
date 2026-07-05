@@ -236,7 +236,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     heroTitle: "Contractor Management for Healthcare Startups",
     metaTitle: "Contractor Management for Healthcare Startups | Axle",
     metaDescription: "Manage clinical advisors, regulatory consultants, and contract clinicians with audit-ready records, built for healthcare startup ops.",
-    intro: "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. Axle gives ops a clean, audit-grade record of every contractor hour and invoice — exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
+    intro: "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. Axle gives ops a clean, audit-grade record of every contractor hour and invoice: exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
     painPoints: [
       "Clinical advisors with irregular hours",
       "Regulatory consultants on retainer",
@@ -246,7 +246,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     useCases: [
       { title: "Advisor retainers", description: "Track retainer hours per advisor; surface retainer burn rates so you don't blow through advisory budget unnoticed." },
       { title: "Compliance approvals", description: "Layered approval workflows so clinical and operational sign-offs are both required before invoice payment." },
-      { title: "Audit-ready records", description: "Every approval logged with timestamp and reviewer — the kind of paper trail VCs and regulators expect to see." },
+      { title: "Audit-ready records", description: "Every approval logged with timestamp and reviewer: the kind of paper trail VCs and regulators expect to see." },
       { title: "Multi-jurisdiction contractors", description: "Pay advisors in different countries with appropriate banking detail and currency support." },
     ],
     faqs: industryFaqsBase("healthcare startups"),
@@ -258,7 +258,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     heroTitle: "Contractor Management for E-Commerce Businesses",
     metaTitle: "Contractor Management for E-Commerce Businesses | Axle",
     metaDescription: "Manage freelance copywriters, designers, paid media buyers, and CX agents on your e-commerce team without the spreadsheet sprawl.",
-    intro: "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. Axle gives founders a single ops layer for managing that team — timesheets, invoices, and OOO without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
+    intro: "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. Axle gives founders a single ops layer for managing that team: timesheets, invoices, and OOO without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
     painPoints: [
       "Freelance creatives across copy, design, and video",
       "Paid media specialists across Meta, Google, and TikTok",
@@ -266,9 +266,9 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
       "Founder approving every invoice manually",
     ],
     useCases: [
-      { title: "Cross-functional roster", description: "One roster spans creatives, media buyers, and CX agents — each with appropriate role-based permissions and billing structures." },
+      { title: "Cross-functional roster", description: "One roster spans creatives, media buyers, and CX agents, each with appropriate role-based permissions and billing structures." },
       { title: "Founder dashboard", description: "Founders see total monthly contractor spend across the whole team in one view, drill into individuals when something looks off." },
-      { title: "OOO calendar", description: "See contractor availability at a glance — particularly useful for CX agents whose coverage gaps directly affect customer SLAs." },
+      { title: "OOO calendar", description: "See contractor availability at a glance, particularly useful for CX agents whose coverage gaps directly affect customer SLAs." },
       { title: "Quick invoicing", description: "Approved timesheets flow into invoice approval; finance sees one queue, not 12 email threads." },
     ],
     faqs: industryFaqsBase("e-commerce businesses"),
@@ -280,7 +280,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     heroTitle: "Contractor Management for Real Estate Agencies",
     metaTitle: "Contractor Management for Real Estate Agencies | Axle",
     metaDescription: "Manage transaction coordinators, photographers, virtual assistants, and contract agents with structured timesheets and invoice approvals.",
-    intro: "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. Axle gives broker-owners a clean way to manage that contractor team — structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
+    intro: "Real estate agencies run on a network of transaction coordinators, photographers, virtual assistants, and contract agents. Axle gives broker-owners a clean way to manage that contractor team: structured timesheets, invoice approvals, and a clean audit trail per-deal or per-listing.",
     painPoints: [
       "Transaction coordinators with deal-based billing",
       "Real estate photographers paid per shoot",
@@ -289,7 +289,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     ],
     useCases: [
       { title: "Per-deal tagging", description: "Tag hours and invoices to specific deals; pull deal-level cost analysis without manual reconciliation." },
-      { title: "Mixed billing models", description: "Day rates for photographers, hourly for VAs, project fees for TCs — all in one tool with one approval workflow." },
+      { title: "Mixed billing models", description: "Day rates for photographers, hourly for VAs, project fees for TCs: all in one tool with one approval workflow." },
       { title: "Broker-owner visibility", description: "One dashboard for total contractor spend, per-listing cost, and team utilization." },
       { title: "Clean records for tax season", description: "1099-ready records for every US contractor; full audit trail for state-level compliance." },
     ],
@@ -312,7 +312,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     useCases: [
       { title: "Compliance approvals", description: "Layered approval workflows ensure both operational and compliance sign-off before invoice payment." },
       { title: "Per-engagement records", description: "Tag every hour to an engagement or deal; pull engagement-level cost reports for client billing." },
-      { title: "Audit-grade trail", description: "Every approval, every edit, every change — logged with timestamp and user ID. Auditor-ready out of the box." },
+      { title: "Audit-grade trail", description: "Every approval, every edit, every change: logged with timestamp and user ID. Auditor-ready out of the box." },
       { title: "High-rate advisor management", description: "Manage advisors with significant day rates with appropriate visibility and approval gates." },
     ],
     faqs: industryFaqsBase("financial services firms"),
@@ -333,7 +333,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     ],
     useCases: [
       { title: "Per-course tagging", description: "Tag hours by course or program; pull per-course cost reports for COGS analysis." },
-      { title: "Tiered approval", description: "Curriculum lead approves content; ops lead approves invoice — both gates required before payment." },
+      { title: "Tiered approval", description: "Curriculum lead approves content; ops lead approves invoice, both gates required before payment." },
       { title: "SME roster", description: "Maintain a roster of trusted SMEs with pre-approved rate cards; reactivate them quickly for the next module." },
       { title: "Tutor scheduling", description: "OOO management makes it easy to plan tutor coverage and avoid surprise scheduling gaps." },
     ],
@@ -345,8 +345,8 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     shortName: "fintechs",
     heroTitle: "Contractor Management for Fintech Companies",
     metaTitle: "Contractor Management for Fintech Companies | Axle",
-    metaDescription: "Manage compliance consultants, contract engineers, and specialist contractors across your fintech team — audit-grade by design.",
-    intro: "Fintechs operate under intense regulatory and security scrutiny — and increasingly rely on specialist contractors for compliance, engineering, and risk. Axle gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
+    metaDescription: "Manage compliance consultants, contract engineers, and specialist contractors across your fintech team, audit-grade by design.",
+    intro: "Fintechs operate under intense regulatory and security scrutiny, and increasingly rely on specialist contractors for compliance, engineering, and risk. Axle gives fintech ops a structured, audit-grade contractor management workflow that produces records your auditors and investors actually want to see.",
     painPoints: [
       "Compliance contractors with sensitive access",
       "Engineering contractors on regulated systems",
@@ -354,7 +354,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
       "Investor-ready and audit-ready record keeping",
     ],
     useCases: [
-      { title: "Role-based access", description: "Compliance contractors only see what compliance contractors should see — no broader org-wide visibility unless explicitly granted." },
+      { title: "Role-based access", description: "Compliance contractors only see what compliance contractors should see, no broader org-wide visibility unless explicitly granted." },
       { title: "Audit-grade records", description: "Every approval and change logged with full attribution; survives regulatory inquiry and investor due diligence." },
       { title: "Tiered approvals", description: "Layered approval workflows for sensitive engagements: tech lead, compliance, and finance can all be required to sign off." },
       { title: "Multi-currency engagement", description: "Engage specialist contractors globally and keep clean records across currencies." },
@@ -368,7 +368,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     heroTitle: "Contractor Management for SaaS Startups",
     metaTitle: "Contractor Management for SaaS Startups | Axle",
     metaDescription: "Manage contract engineers, designers, and growth specialists across your SaaS team without spreadsheet chaos. Built for fast-moving SaaS ops.",
-    intro: "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. Axle is built specifically for that pattern — structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
+    intro: "SaaS startups bring on contractor specialists faster than employee headcount: contract engineers, fractional designers, growth marketers, customer ops. Axle is built specifically for that pattern, offering structured contractor management without imposing employee-style HR overhead that doesn't fit your stage.",
     painPoints: [
       "Contractor headcount growing faster than ops capacity",
       "Different rates and currencies across the team",
@@ -378,7 +378,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     useCases: [
       { title: "Lean ops setup", description: "Most SaaS teams are fully operational on Axle within a single day. Invite contractors, set up approval flows, and you're done." },
       { title: "Founder visibility", description: "One dashboard shows total contractor spend, OOO, and approval bottlenecks. Founder time spent on contractor ops drops to minutes per week." },
-      { title: "Diligence-ready", description: "Investors love clean contractor records. Axle produces them automatically — no scramble before due diligence." },
+      { title: "Diligence-ready", description: "Investors love clean contractor records. Axle produces them automatically, no scramble before due diligence." },
       { title: "Quick onboarding", description: "Send an email invite; the contractor sets up their own profile, banking, and tax info. Ready to log time same day." },
     ],
     faqs: industryFaqsBase("SaaS startups"),

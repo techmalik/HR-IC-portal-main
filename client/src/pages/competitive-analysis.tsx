@@ -377,7 +377,7 @@ function PositioningMapPage() {
         ))}
       </div>
       <p className="text-xs text-slate-500 mt-4 max-w-2xl">
-        Axle owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai
+        Axle owns the lower-left quadrant alone: contractor-only, SMB self-serve. Bonsai
         sits closest but on the freelancer side. Plane is the most likely encroacher; their
         product velocity is the key signal to monitor.
       </p>
@@ -454,7 +454,7 @@ function PositioningPage() {
         </div>
         <div className="text-base font-semibold text-slate-900 leading-snug">
           Axle is the contractor operations platform for SaaS teams that want timesheets,
-          invoices, and approvals in a day — without paying for an EOR they don't need.
+          invoices, and approvals in a day, without paying for an EOR they don't need.
         </div>
       </div>
     </div>
@@ -481,7 +481,7 @@ function RecommendationsPage() {
             <p className="text-slate-700 leading-relaxed mb-3 pl-10">{r.body}</p>
             <div className="pl-10">
               <div className="text-[10px] uppercase tracking-widest text-amber-700 font-semibold mb-1">
-                Battlecard — trap-setting questions
+                Battlecard: trap-setting questions
               </div>
               <ul className="text-xs text-slate-700 space-y-1 list-disc pl-4">
                 {r.battlecard.map((q) => (
@@ -553,7 +553,7 @@ function NewPricingModelPage() {
       <h1 className="text-3xl font-bold mb-2">Recommended pricing model</h1>
       <p className="text-sm text-slate-500 mb-6">
         Per-IC-per-month. Revenue scales directly with customer growth. Free trial converts on
-        value, not time pressure — no credit card required.
+        value, not time pressure, with no credit card required.
       </p>
       <div className="grid grid-cols-4 gap-3">
         {newPricingTiers.map((tier) => (
@@ -591,7 +591,7 @@ function NewPricingModelPage() {
           Why per-IC pricing wins
         </div>
         <p className="text-sm text-slate-800 leading-relaxed">
-          Per-IC aligns Axle's revenue directly with customer growth — orgs pay more only as they
+          Per-IC aligns Axle's revenue directly with customer growth: orgs pay more only as they
           scale. The 1-month / 3-contractor free trial converts on demonstrated value (a real
           approved invoice), not a countdown clock. This lowers CAC and reduces early churn risk.
         </p>
@@ -662,7 +662,7 @@ function MonitoringPage() {
         <li>If a change is material (pricing cut, new EOR-adjacent SKU, leadership hire), trigger an out-of-cycle review.</li>
       </ol>
 
-      <h2 className="text-base font-semibold mb-2">Activation package — pick one channel</h2>
+      <h2 className="text-base font-semibold mb-2">Activation package: pick one channel</h2>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
           {
@@ -688,7 +688,7 @@ function MonitoringPage() {
         <Bell className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
         <div className="text-sm text-amber-900">
           <strong>Owner action:</strong> tell the Axle team which channel to activate. The
-          feed bundle is ready to paste — see <code>competitor-monitoring.md</code> at the
+          feed bundle is ready to paste: see <code>competitor-monitoring.md</code> at the
           project root.
         </div>
       </div>
@@ -904,7 +904,7 @@ function generatePdf() {
     spacer(cursor, 6);
     writeSubheading(cursor, "Final competitor set");
     competitors.forEach((c2) => {
-      writeBullet(cursor, `${c2.name} — ${c2.oneLiner}`);
+      writeBullet(cursor, `${c2.name}: ${c2.oneLiner}`);
     });
     spacer(cursor, 6);
     writeText(cursor, "Excluded but tracked passively: Papaya Global, Oyster, Velocity Global, Letsdeel SMB-tier, Upwork Enterprise.", { size: 9, color: 130 });
@@ -937,7 +937,7 @@ function generatePdf() {
       c2.weaknesses.forEach((t) => writeBullet(cursor, t, "−"));
       spacer(cursor, 4);
       writeSubheading(cursor, "Citations");
-      c2.citations.forEach((cit) => writeBullet(cursor, `${cit.label} — ${cit.url}`));
+      c2.citations.forEach((cit) => writeBullet(cursor, `${cit.label}: ${cit.url}`));
     });
 
     // Matrix
@@ -1065,7 +1065,7 @@ function generatePdf() {
     plot(0.18, 0.4, "Axle", true);
     competitors.forEach((cc) => plot(cc.positioning.x, cc.positioning.y, cc.name, false));
     cursor.y = mapY + mapH + 14;
-    writeText(cursor, "Axle owns the lower-left quadrant alone — contractor-only, SMB self-serve. Bonsai sits closest but on the freelancer side. Plane is the most likely encroacher; their product velocity is the key signal to monitor.", { size: 9, color: 120 });
+    writeText(cursor, "Axle owns the lower-left quadrant alone: contractor-only, SMB self-serve. Bonsai sits closest but on the freelancer side. Plane is the most likely encroacher; their product velocity is the key signal to monitor.", { size: 9, color: 120 });
 
     // Kano + white space
     newPage(cursor);
@@ -1140,7 +1140,7 @@ function generatePdf() {
     cursor.doc.setFontSize(11);
     cursor.doc.setTextColor(20);
     const ol = cursor.doc.splitTextToSize(
-      "Axle is the contractor operations platform for SaaS teams that want timesheets, invoices, and approvals in a day — without paying for an EOR they don't need.",
+      "Axle is the contractor operations platform for SaaS teams that want timesheets, invoices, and approvals in a day, without paying for an EOR they don't need.",
       CONTENT_W - 28
     ) as string[];
     let oly = cursor.y + 36;
@@ -1177,7 +1177,7 @@ function generatePdf() {
       cursor.doc.setFontSize(8);
       cursor.doc.setTextColor(180, 83, 9);
       ensureSpace(cursor, 14);
-      cursor.doc.text("BATTLECARD — TRAP-SETTING QUESTIONS", MARGIN + 28, cursor.y + 10);
+      cursor.doc.text("BATTLECARD: TRAP-SETTING QUESTIONS", MARGIN + 28, cursor.y + 10);
       cursor.y += 14;
       r.battlecard.forEach((q) => {
         cursor.doc.setFont("helvetica", "normal");
@@ -1247,7 +1247,7 @@ function generatePdf() {
     // New pricing model
     newPage(cursor);
     writeHeading(cursor, "Recommended pricing model");
-    writeText(cursor, "Per-IC-per-month. Revenue scales with customer growth. Free trial converts on value — no credit card required.", { color: 130 });
+    writeText(cursor, "Per-IC-per-month. Revenue scales with customer growth. Free trial converts on value, with no credit card required.", { color: 130 });
     spacer(cursor, 8);
     const tierW = (CONTENT_W - 15) / 4;
     newPricingTiers.forEach((tier, ti) => {
@@ -1293,7 +1293,7 @@ function generatePdf() {
     cursor.doc.setFontSize(10);
     cursor.doc.setTextColor(30);
     const whyLines = cursor.doc.splitTextToSize(
-      "Per-IC aligns Axle's revenue directly with customer growth — orgs pay more only as they scale. This lowers CAC and reduces early churn risk versus flat-rate seat bundles.",
+      "Per-IC aligns Axle's revenue directly with customer growth: orgs pay more only as they scale. This lowers CAC and reduces early churn risk versus flat-rate seat bundles.",
       CONTENT_W - 20
     ) as string[];
     let whyy = cursor.y + 28;
@@ -1347,7 +1347,7 @@ function generatePdf() {
       "If a change is material (pricing cut, EOR-adjacent SKU, leadership hire), trigger an out-of-cycle review.",
     ].forEach((s, i) => writeBullet(cursor, s, `${i + 1}.`));
     spacer(cursor, 6);
-    writeSubheading(cursor, "Activation package — pick one channel");
+    writeSubheading(cursor, "Activation package: pick one channel");
     [
       ["Slack RSS", "Use /feed slash command to add the seven competitor blog/changelog RSS feeds into a #compete channel."],
       ["Teams RSS", "Use the RSS connector on a 'Compete' channel; paste the same feed list."],
@@ -1382,7 +1382,7 @@ function generatePdf() {
     cursor.doc.setFontSize(9);
     cursor.doc.setTextColor(60);
     const oa = cursor.doc.splitTextToSize(
-      "Tell the Axle team which channel to activate (Slack RSS / Teams RSS / Google Alerts). The feed bundle is ready to paste — see competitor-monitoring.md at the project root.",
+      "Tell the Axle team which channel to activate (Slack RSS / Teams RSS / Google Alerts). The feed bundle is ready to paste: see competitor-monitoring.md at the project root.",
       CONTENT_W - 28
     ) as string[];
     let oay = cursor.y + 32;
@@ -1408,7 +1408,7 @@ function generatePdf() {
 
 export default function CompetitiveAnalysisPage() {
   usePageMeta({
-    title: "Axle vs. Competitors — Contractor Management Comparison",
+    title: "Axle vs. Competitors | Contractor Management Comparison",
     description: "See how Axle compares to Deel, Remote, Rippling, Worksuite, and other contractor management platforms across features, pricing, and market positioning.",
     canonical: "https://axle.run/competitive-analysis",
   });
