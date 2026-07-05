@@ -169,7 +169,6 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
-
       {/* Hero */}
       <section className="relative overflow-hidden bg-white py-20 sm:py-24">
         <div
@@ -204,7 +203,7 @@ export default function LandingPage() {
                 See how it works
               </Button>
             </div>
-            <p className="text-gray-400 text-xs">No credit card required. Free for up to 3 contractors.</p>
+            <p className="text-gray-400 text-xs">No credit card required. Free for up to 3 contractors. </p>
           </div>
 
           {/* Right: app screenshot mockup */}
@@ -297,7 +296,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Social proof strip */}
       <section className="bg-gray-50 border-y border-gray-100 py-5">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-wrap items-center gap-x-10 gap-y-2">
@@ -311,7 +309,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Features */}
       <section id="features" className="bg-white py-20 sm:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -338,7 +335,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* How it works */}
       <section id="how-it-works" className="bg-gray-50 border-t border-gray-100 py-20 sm:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -370,7 +366,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Pricing */}
       <section id="pricing" className="bg-white border-t border-gray-100 py-20 sm:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -430,7 +425,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* CTA dark */}
       <section className="relative overflow-hidden bg-sidebar py-20 sm:py-24 text-center">
         <div
@@ -462,7 +456,6 @@ export default function LandingPage() {
           <p className="text-gray-600 text-xs mt-4">No credit card required. Free up to 3 contractors.</p>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="bg-[#0A0D12] border-t border-white/[0.04] py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
