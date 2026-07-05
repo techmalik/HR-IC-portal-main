@@ -139,7 +139,7 @@ export function ContractsSection({ userId, canManage }: ContractsSectionProps) {
           >
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
             <div>
-              {expiringSoon.length} contract{expiringSoon.length === 1 ? "" : "s"} approaching renewal — review and renew before expiration.
+              {expiringSoon.length} contract{expiringSoon.length === 1 ? "" : "s"} approaching renewal. Review and renew before expiration.
             </div>
           </div>
         )}

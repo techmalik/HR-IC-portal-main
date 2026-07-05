@@ -5,8 +5,8 @@
     "shortName": "agencies",
     "heroTitle": "Contractor Management for Marketing Agencies",
     "metaTitle": "Contractor Management for Marketing Agencies | Axle",
-    "metaDescription": "Run a marketing agency without spreadsheet chaos. Axle handles freelancer timesheets, retainer billing, OOO, and approvals — built for agency ops.",
-    "intro": "Marketing agencies live and die by billable hours. When 60% of your delivery capacity is freelance — copywriters, designers, paid media specialists, video editors — your timesheet and invoice process is your margin. Axle gives agency ops a single place to track contractor hours per client, gate invoices behind supervisor approval, and pull clean utilization reports without piecing together five spreadsheets.",
+    "metaDescription": "Run a marketing agency without spreadsheet chaos. Axle handles freelancer timesheets, retainer billing, OOO, and approvals. Built for agency ops.",
+    "intro": "Marketing agencies live and die by billable hours. When 60% of your delivery capacity is freelance (copywriters, designers, paid media specialists, video editors), your timesheet and invoice process is your margin. Axle gives agency ops a single place to track contractor hours per client, gate invoices behind supervisor approval, and pull clean utilization reports without piecing together five spreadsheets.",
     "painPoints": [
       "Freelancers logging hours in five different formats every month",
       "Retainer overruns nobody noticed until the client complained",
@@ -16,7 +16,7 @@
     "useCases": [
       {
         "title": "Per-client utilization tracking",
-        "description": "Tag every timesheet entry with a client or project so you can see exactly how many freelance hours a retainer is actually consuming — before you blow through the budget."
+        "description": "Tag every timesheet entry with a client or project so you can see exactly how many freelance hours a retainer is actually consuming. Catch it before you blow through the budget."
       },
       {
         "title": "Account-director approval gates",
@@ -28,17 +28,17 @@
       },
       {
         "title": "Cross-currency invoicing",
-        "description": "Pay a US copywriter, an EU designer, and a LATAM developer from the same workflow — Axle records each invoice in its native currency."
+        "description": "Pay a US copywriter, an EU designer, and a LATAM developer from the same workflow: Axle records each invoice in its native currency."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for marketing agencies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how marketing agencies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how marketing agencies actually engage and pay contractors."
       },
       {
         "q": "Can marketing agencies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -46,7 +46,7 @@
       },
       {
         "q": "Is there a free plan that fits small marketing agencies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -58,9 +58,9 @@
     "heroTitle": "Contractor Management for Software Development Firms",
     "metaTitle": "Contractor Management for Software Development Firms | Axle",
     "metaDescription": "Manage a contract dev shop without losing margin. Axle runs sprint-aligned timesheets, invoice approvals, and utilization reporting for software teams.",
-    "intro": "Software shops that bill by the hour need precise contractor records — not because clients won't trust you, but because a single ambiguous timesheet can blow up an audit or a fixed-price scope conversation. Axle gives engineering managers a clean weekly approval flow and finance a paper trail that holds up against an external review.",
+    "intro": "Software shops that bill by the hour need precise contractor records, not because clients won't trust you, but because a single ambiguous timesheet can blow up an audit or a fixed-price scope conversation. Axle gives engineering managers a clean weekly approval flow and finance a paper trail that holds up against an external review.",
     "painPoints": [
-      "Contractors logging hours in Jira, Toggl, and a Google Sheet — none reconcile",
+      "Contractors logging hours in Jira, Toggl, and a Google Sheet: none reconcile",
       "Sprint-aligned billing that doesn't match calendar months",
       "Finance manually matching invoices against approved hours",
       "No clean utilization view across active client engagements"
@@ -68,7 +68,7 @@
     "useCases": [
       {
         "title": "Sprint-aligned billing periods",
-        "description": "Configure custom billing cycles per contractor — bi-weekly for sprint-aligned work, monthly for retainers — without forcing the whole team onto one cadence."
+        "description": "Configure custom billing cycles per contractor (bi-weekly for sprint-aligned work, monthly for retainers) without forcing the whole team onto one cadence."
       },
       {
         "title": "Engineering-manager approval",
@@ -76,21 +76,21 @@
       },
       {
         "title": "Per-project hour caps",
-        "description": "Set hour caps per contractor per month — a guardrail against scope creep, with automated alerts when a cap is approached."
+        "description": "Set hour caps per contractor per month: a guardrail against scope creep, with automated alerts when a cap is approached."
       },
       {
         "title": "Audit-ready records",
-        "description": "Every approval, edit, and rejection is logged with timestamp and user — the audit trail you'll wish you had if a client ever disputes a bill."
+        "description": "Every approval, edit, and rejection is logged with timestamp and user: the audit trail you'll wish you had if a client ever disputes a bill."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for software development firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how software development firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how software development firms actually engage and pay contractors."
       },
       {
         "q": "Can software development firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -98,7 +98,7 @@
       },
       {
         "q": "Is there a free plan that fits small software development firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -109,11 +109,11 @@
     "shortName": "studios",
     "heroTitle": "Contractor Management for Design Studios",
     "metaTitle": "Contractor Management for Design Studios | Axle",
-    "metaDescription": "Track freelance designer hours, approve invoices, and manage OOO across your studio's roster — without the spreadsheet sprawl.",
-    "intro": "Design studios run on bursts of contractor capacity — illustrators, motion designers, 3D artists who come in for a project and rotate out. The ops challenge isn't tracking employees; it's tracking a constantly-shifting roster of specialists with different rates, currencies, and billing rhythms. Axle is built for exactly that.",
+    "metaDescription": "Track freelance designer hours, approve invoices, and manage OOO across your studio's roster, without the spreadsheet sprawl.",
+    "intro": "Design studios run on bursts of contractor capacity: illustrators, motion designers, 3D artists who come in for a project and rotate out. The ops challenge isn't tracking employees; it's tracking a constantly-shifting roster of specialists with different rates, currencies, and billing rhythms. Axle is built for exactly that.",
     "painPoints": [
       "Onboarding a new freelancer every other week",
-      "Different hourly rates per role — illustrator vs. motion vs. 3D",
+      "Different hourly rates per role: illustrator vs. motion vs. 3D",
       "Project-scoped engagements with no clear end date",
       "Studio leads chasing timesheets the night before client billing"
     ],
@@ -138,11 +138,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for design studios?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how design studios actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how design studios actually engage and pay contractors."
       },
       {
         "q": "Can design studios run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -150,7 +150,7 @@
       },
       {
         "q": "Is there a free plan that fits small design studios?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -161,7 +161,7 @@
     "shortName": "production teams",
     "heroTitle": "Contractor Management for Video Production Companies",
     "metaTitle": "Contractor Management for Video Production Companies | Axle",
-    "metaDescription": "Manage freelance crew, editors, and post-production talent with day rates, OOO, and per-project invoice approvals — built for video shops.",
+    "metaDescription": "Manage freelance crew, editors, and post-production talent with day rates, OOO, and per-project invoice approvals. Built for video shops.",
     "intro": "Video production runs on day rates, project-based crews, and tight delivery windows. Axle handles freelance editors, motion designers, sound engineers, and on-set crew with the kind of structured records that survive a year-end audit and a client-side production audit.",
     "painPoints": [
       "Day-rate vs. hourly contractors mixed in the same team",
@@ -172,7 +172,7 @@
     "useCases": [
       {
         "title": "Day-rate billing",
-        "description": "Track day rates alongside hourly contractors. Day-based logging on shoot days, hourly logging in post — same tool, no friction."
+        "description": "Track day rates alongside hourly contractors. Day-based logging on shoot days, hourly logging in post: same tool, no friction."
       },
       {
         "title": "Project rosters",
@@ -184,17 +184,17 @@
       },
       {
         "title": "Multi-currency crew",
-        "description": "Pay editors in the US, sound design in the UK, motion in Argentina — invoices stored in native currency for clean accounting."
+        "description": "Pay editors in the US, sound design in the UK, motion in Argentina: invoices stored in native currency for clean accounting."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for video production companies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how video production companies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how video production companies actually engage and pay contractors."
       },
       {
         "q": "Can video production companies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -202,7 +202,7 @@
       },
       {
         "q": "Is there a free plan that fits small video production companies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -213,8 +213,8 @@
     "shortName": "accounting practices",
     "heroTitle": "Contractor Management for Accounting Firms",
     "metaTitle": "Contractor Management for Accounting Firms | Axle",
-    "metaDescription": "Manage seasonal accountants, audit contractors, and per-engagement billing with audit-grade records — built for accounting practice ops.",
-    "intro": "Accounting practices know structured records — but managing your own contractor roster often happens in a spreadsheet that wouldn't survive your own audit. Axle gives partners and practice managers a clean approval workflow, per-engagement billing, and an audit trail that matches the rigor you apply to your clients.",
+    "metaDescription": "Manage seasonal accountants, audit contractors, and per-engagement billing with audit-grade records. Built for accounting practice ops.",
+    "intro": "Accounting practices know structured records, but managing your own contractor roster often happens in a spreadsheet that wouldn't survive your own audit. Axle gives partners and practice managers a clean approval workflow, per-engagement billing, and an audit trail that matches the rigor you apply to your clients.",
     "painPoints": [
       "Seasonal contractors during tax and audit busy season",
       "Per-engagement vs. per-hour billing mixed in one team",
@@ -232,21 +232,21 @@
       },
       {
         "title": "Partner approval",
-        "description": "Partners approve their direct reports' timesheets in two minutes a week — and only see their own engagements, not the whole firm."
+        "description": "Partners approve their direct reports' timesheets in two minutes a week; they see only their own engagements, not the whole firm."
       },
       {
         "title": "Audit-ready trail",
-        "description": "Every approval, every change, every invoice — all logged with timestamps and user IDs. If you're audited yourself, the records are already there."
+        "description": "Every approval, every change, every invoice: all logged with timestamps and user IDs. If you're audited yourself, the records are already there."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for accounting firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how accounting firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how accounting firms actually engage and pay contractors."
       },
       {
         "q": "Can accounting firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -254,7 +254,7 @@
       },
       {
         "q": "Is there a free plan that fits small accounting firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -288,17 +288,17 @@
       },
       {
         "title": "Compliance records",
-        "description": "Full audit trail of every approval and change — useful both for firm-internal compliance and any regulatory inquiry."
+        "description": "Full audit trail of every approval and change, useful both for firm-internal compliance and any regulatory inquiry."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for law firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how law firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how law firms actually engage and pay contractors."
       },
       {
         "q": "Can law firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -306,7 +306,7 @@
       },
       {
         "q": "Is there a free plan that fits small law firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -317,10 +317,10 @@
     "shortName": "consultancies",
     "heroTitle": "Contractor Management for Consulting Firms",
     "metaTitle": "Contractor Management for Consulting Firms | Axle",
-    "metaDescription": "Manage subject-matter experts, contract analysts, and per-engagement billing across your consulting roster — clean utilization, clean audit trail.",
+    "metaDescription": "Manage subject-matter experts, contract analysts, and per-engagement billing across your consulting roster: clean utilization, clean audit trail.",
     "intro": "Consulting firms scale by tapping a network of subject-matter experts on demand. Axle handles the operational layer: structured timesheets per engagement, invoice approval workflows, and per-engagement utilization reporting that survives partner scrutiny.",
     "painPoints": [
-      "On-demand SME network — different per project",
+      "On-demand SME network: different per project",
       "Per-engagement billing across multiple clients",
       "Engagement leads chasing timesheets at month-end",
       "Partners needing clean utilization reports"
@@ -332,7 +332,7 @@
       },
       {
         "title": "Engagement-lead approval",
-        "description": "Engagement leads approve their team's timesheets weekly — clean signal to finance, no end-of-month chaos."
+        "description": "Engagement leads approve their team's timesheets weekly: clean signal to finance, no end-of-month chaos."
       },
       {
         "title": "SME roster",
@@ -340,17 +340,17 @@
       },
       {
         "title": "Cross-currency billing",
-        "description": "Engage SMEs globally and bill in native currency — Axle keeps the records clean for your accounting team."
+        "description": "Engage SMEs globally and bill in native currency: Axle keeps the records clean for your accounting team."
       }
     ],
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for consulting firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how consulting firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how consulting firms actually engage and pay contractors."
       },
       {
         "q": "Can consulting firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -358,7 +358,7 @@
       },
       {
         "q": "Is there a free plan that fits small consulting firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -369,7 +369,7 @@
     "shortName": "architecture practices",
     "heroTitle": "Contractor Management for Architecture Firms",
     "metaTitle": "Contractor Management for Architecture Firms | Axle",
-    "metaDescription": "Track freelance designers, drafting specialists, and rendering contractors with per-project hour records — built for architecture practices.",
+    "metaDescription": "Track freelance designers, drafting specialists, and rendering contractors with per-project hour records. Built for architecture practices.",
     "intro": "Architecture firms scale capacity through freelance drafters, renderers, and BIM specialists. Axle makes it straightforward to manage that contractor capacity per project, with the kind of clean record that aligns with your existing AIA billing rigor.",
     "painPoints": [
       "Project-based contractor rosters",
@@ -384,7 +384,7 @@
       },
       {
         "title": "Phase-aligned billing",
-        "description": "Configure billing cycles to match AIA project phases — schematic, design development, construction documents, etc."
+        "description": "Configure billing cycles to match AIA project phases: schematic, design development, construction documents, etc."
       },
       {
         "title": "Principal approval",
@@ -398,11 +398,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for architecture firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how architecture firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how architecture firms actually engage and pay contractors."
       },
       {
         "q": "Can architecture firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -410,7 +410,7 @@
       },
       {
         "q": "Is there a free plan that fits small architecture firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -421,8 +421,8 @@
     "shortName": "healthcare teams",
     "heroTitle": "Contractor Management for Healthcare Startups",
     "metaTitle": "Contractor Management for Healthcare Startups | Axle",
-    "metaDescription": "Manage clinical advisors, regulatory consultants, and contract clinicians with audit-ready records — built for healthcare startup ops.",
-    "intro": "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. Axle gives ops a clean, audit-grade record of every contractor hour and invoice — exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
+    "metaDescription": "Manage clinical advisors, regulatory consultants, and contract clinicians with audit-ready records. Built for healthcare startup ops.",
+    "intro": "Healthcare startups depend on a network of clinical advisors, regulatory consultants, and part-time clinicians. Axle gives ops a clean, audit-grade record of every contractor hour and invoice: exactly the kind of paper trail that simplifies your next due diligence or regulatory inquiry.",
     "painPoints": [
       "Clinical advisors with irregular hours",
       "Regulatory consultants on retainer",
@@ -440,7 +440,7 @@
       },
       {
         "title": "Audit-ready records",
-        "description": "Every approval logged with timestamp and reviewer — the kind of paper trail VCs and regulators expect to see."
+        "description": "Every approval logged with timestamp and reviewer: the kind of paper trail VCs and regulators expect to see."
       },
       {
         "title": "Multi-jurisdiction contractors",
@@ -450,11 +450,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for healthcare startups?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how healthcare startups actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how healthcare startups actually engage and pay contractors."
       },
       {
         "q": "Can healthcare startups run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -462,7 +462,7 @@
       },
       {
         "q": "Is there a free plan that fits small healthcare startups?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -474,7 +474,7 @@
     "heroTitle": "Contractor Management for E-Commerce Businesses",
     "metaTitle": "Contractor Management for E-Commerce Businesses | Axle",
     "metaDescription": "Manage freelance copywriters, designers, paid media buyers, and CX agents on your e-commerce team without the spreadsheet sprawl.",
-    "intro": "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. Axle gives founders a single ops layer for managing that team — timesheets, invoices, and OOO without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
+    "intro": "E-commerce brands stitch together a contractor team across creative, paid media, and customer service. Axle gives founders a single ops layer for managing that team: timesheets, invoices, and OOO, without the email-and-spreadsheet chaos that scales worst exactly when revenue scales fastest.",
     "painPoints": [
       "Freelance creatives across copy, design, and video",
       "Paid media specialists across Meta, Google, and TikTok",
@@ -484,7 +484,7 @@
     "useCases": [
       {
         "title": "Cross-functional roster",
-        "description": "One roster spans creatives, media buyers, and CX agents — each with appropriate role-based permissions and billing structures."
+        "description": "One roster spans creatives, media buyers, and CX agents, each with appropriate role-based permissions and billing structures."
       },
       {
         "title": "Founder dashboard",
@@ -492,7 +492,7 @@
       },
       {
         "title": "OOO calendar",
-        "description": "See contractor availability at a glance — particularly useful for CX agents whose coverage gaps directly affect customer SLAs."
+        "description": "See contractor availability at a glance, particularly useful for CX agents whose coverage gaps directly affect customer SLAs."
       },
       {
         "title": "Quick invoicing",
@@ -502,11 +502,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for e-commerce businesses?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how e-commerce businesses actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how e-commerce businesses actually engage and pay contractors."
       },
       {
         "q": "Can e-commerce businesses run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -514,7 +514,7 @@
       },
       {
         "q": "Is there a free plan that fits small e-commerce businesses?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -554,11 +554,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for real estate agencies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how real estate agencies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how real estate agencies actually engage and pay contractors."
       },
       {
         "q": "Can real estate agencies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -566,7 +566,7 @@
       },
       {
         "q": "Is there a free plan that fits small real estate agencies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -606,11 +606,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for financial services firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how financial services firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how financial services firms actually engage and pay contractors."
       },
       {
         "q": "Can financial services firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -618,7 +618,7 @@
       },
       {
         "q": "Is there a free plan that fits small financial services firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -658,11 +658,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for education technology companies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how education technology companies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how education technology companies actually engage and pay contractors."
       },
       {
         "q": "Can education technology companies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -670,7 +670,7 @@
       },
       {
         "q": "Is there a free plan that fits small education technology companies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -710,11 +710,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for fintech companies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how fintech companies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how fintech companies actually engage and pay contractors."
       },
       {
         "q": "Can fintech companies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -722,7 +722,7 @@
       },
       {
         "q": "Is there a free plan that fits small fintech companies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -762,11 +762,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for SaaS startups?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how SaaS startups actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how SaaS startups actually engage and pay contractors."
       },
       {
         "q": "Can SaaS startups run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -774,7 +774,7 @@
       },
       {
         "q": "Is there a free plan that fits small SaaS startups?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -814,11 +814,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for nonprofits?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how nonprofits actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how nonprofits actually engage and pay contractors."
       },
       {
         "q": "Can nonprofits run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -826,7 +826,7 @@
       },
       {
         "q": "Is there a free plan that fits small nonprofits?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -866,11 +866,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for media companies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how media companies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how media companies actually engage and pay contractors."
       },
       {
         "q": "Can media companies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -878,7 +878,7 @@
       },
       {
         "q": "Is there a free plan that fits small media companies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -918,11 +918,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for advertising agencies?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how advertising agencies actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how advertising agencies actually engage and pay contractors."
       },
       {
         "q": "Can advertising agencies run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -930,7 +930,7 @@
       },
       {
         "q": "Is there a free plan that fits small advertising agencies?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -970,11 +970,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for public relations firms?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how public relations firms actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how public relations firms actually engage and pay contractors."
       },
       {
         "q": "Can public relations firms run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -982,7 +982,7 @@
       },
       {
         "q": "Is there a free plan that fits small public relations firms?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"
@@ -1022,11 +1022,11 @@
     "faqs": [
       {
         "q": "How is Axle different from generic timesheet apps for photography studios?",
-        "a": "Axle is built specifically for teams that work with independent contractors — not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how photography studios actually engage and pay contractors."
+        "a": "Axle is built specifically for teams that work with independent contractors, not employees. The approval workflow gates invoices behind approved timesheets, every action is logged for audit, and the data model fits how photography studios actually engage and pay contractors."
       },
       {
         "q": "Can photography studios run a global contractor team on Axle?",
-        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor — which is exactly what cross-border teams need at month end."
+        "a": "Yes. Axle records invoices in any currency, supports IBAN/SWIFT bank fields for international wires, and keeps a clean audit trail per contractor, which is exactly what cross-border teams need at month end."
       },
       {
         "q": "Does Axle handle leave and OOO for contractors?",
@@ -1034,7 +1034,7 @@
       },
       {
         "q": "Is there a free plan that fits small photography studios?",
-        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality — plenty to get a small engagement off spreadsheets."
+        "a": "Yes. Axle's free plan covers up to 3 contractors with full timesheet, invoice, and OOO functionality: plenty to get a small engagement off spreadsheets."
       }
     ],
     "updatedDate": "2025-04-30"

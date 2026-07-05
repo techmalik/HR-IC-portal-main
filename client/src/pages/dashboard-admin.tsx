@@ -91,7 +91,7 @@ export default function DashboardAdmin() {
         <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800" data-testid="banner-trial-expired">
           <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
           <div className="flex-1">
-            <p className="font-semibold text-sm">Free trial ended — you can no longer add users</p>
+            <p className="font-semibold text-sm">Free trial ended: you can no longer add users</p>
             <p className="text-sm mt-0.5">Upgrade to a paid plan to keep adding contractors to your team.</p>
           </div>
           <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white shrink-0" asChild>

@@ -296,7 +296,7 @@ export default function BillingPage() {
         <CardHeader>
           <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
           <CardDescription>
-            Per-contractor-per-month — you pay as your team grows
+            Per-contractor-per-month: you pay as your team grows
           </CardDescription>
         </CardHeader>
         <CardContent>

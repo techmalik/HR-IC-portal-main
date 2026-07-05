@@ -36,7 +36,7 @@ type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   usePageMeta({
-    title: "Start your free trial — Axle",
+    title: "Start your free trial | Axle",
     description: "Create your Axle account and start managing independent contractors with timesheets, invoices, and performance reviews. Free plan available.",
     canonical: "https://axle.run/signup",
   });

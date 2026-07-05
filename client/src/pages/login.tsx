@@ -29,7 +29,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   usePageMeta({
-    title: "Log in — Axle",
+    title: "Log in | Axle",
     description: "Log in to your Axle account to manage timesheets, invoices, leave requests, and more.",
     canonical: "https://axle.run/login",
   });

@@ -17,7 +17,7 @@ import {
 } from "@/data/competitorData";
 
 const REPORT_TITLE = "Axle Competitive Analysis";
-const REPORT_SUBTITLE = "Contractor Management Market — July 2026";
+const REPORT_SUBTITLE = "Contractor Management Market | July 2026";
 const REPORT_AUTHOR = "Axle Strategy";
 
 const competitorNames = ["Axle", "Deel", "Remote", "Rippling", "Worksuite", "Bonsai", "Plane", "Multiplier"];
@@ -129,7 +129,7 @@ function ExecutiveSummaryPage() {
           },
           {
             t: "5. White space: contractor performance reviews + branded portal at SMB price.",
-            b: "Only Rippling bundles performance reviews — and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves.",
+            b: "Only Rippling bundles performance reviews, and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves.",
           },
         ].map((row) => (
           <div key={row.t} className="border-l-4 border-emerald-500 pl-4 py-1">
@@ -241,7 +241,7 @@ function CompetitorPage({ index }: { index: number }) {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-emerald-700">
           {c.citations.map((cit) => (
             <span key={cit.url}>
-              {cit.label} — <span className="text-slate-500">{cit.url}</span>
+              {cit.label}: <span className="text-slate-500">{cit.url}</span>
             </span>
           ))}
         </div>
@@ -307,7 +307,7 @@ function MatrixPage() {
             ))}
             <tr className="bg-slate-100 font-semibold">
               <td className="px-2 py-2">Weighted total</td>
-              <td className="text-center px-1 py-2">—</td>
+              <td className="text-center px-1 py-2">-</td>
               {competitorNames.map((n) => {
                 const total = featureMatrix.reduce(
                   (sum, r) => sum + (r.scores[n] ?? 0) * r.weight,
@@ -862,7 +862,7 @@ function generatePdf() {
       ["2. Implementation time is the most reliable wedge.", "Every competitor over $39/seat ships with a 2–6 week onboarding. Axle's sub-day onboarding is structurally hard for them to match without cannibalizing their services revenue."],
       ["3. Buyers want approval gates and audit trails, not more features.", "G2 weaknesses cluster around 'too much UI' (Deel, Rippling) or 'no real RBAC' (Bonsai, Plane). Axle's invoice ↔ timesheet linkage and bounded supervisor view directly hit both pains."],
       ["4. Pricing transparency is now table stakes.", "Remote and Plane publish flat pricing; Deel and Worksuite do not. Buyers self-select against opaque vendors. Axle's free tier + published pricing already wins this comparison."],
-      ["5. White space: contractor performance reviews + branded portal at SMB price.", "Only Rippling bundles performance reviews — and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves."],
+      ["5. White space: contractor performance reviews + branded portal at SMB price.", "Only Rippling bundles performance reviews, and only inside its $8/user platform. Axle can own this in the 5-200 contractor band before anyone else moves."],
     ];
     for (const [h, b] of exec) {
       ensureSpace(cursor, 60);
@@ -1006,7 +1006,7 @@ function generatePdf() {
     cursor.doc.text("Weighted total", cx + 4, cursor.y + 11);
     cx += colWidths[0];
     cursor.doc.setTextColor(120);
-    cursor.doc.text("—", cx + colWidths[1] / 2, cursor.y + 11, { align: "center" });
+    cursor.doc.text("-", cx + colWidths[1] / 2, cursor.y + 11, { align: "center" });
     cx += colWidths[1];
     competitorNames.forEach((n, ni) => {
       const total = featureMatrix.reduce((s, r) => s + (r.scores[n] ?? 0) * r.weight, 0);

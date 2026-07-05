@@ -157,7 +157,7 @@ function DiscountModal({
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
               >
-                <option value="">— Select a code —</option>
+                <option value="">- Select a code -</option>
                 {activeCodes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.code} · {c.type === "percentage" ? `${c.value}%` : `$${c.value}`} off

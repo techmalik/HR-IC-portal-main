@@ -67,7 +67,7 @@ export const competitors: Competitor[] = [
     ],
     strengths: [
       "Public pricing builds buyer trust; lower contractor seat fee than Deel",
-      "Owns 100% of legal entities (no third-party partners) — cleaner liability story",
+      "Owns 100% of legal entities (no third-party partners), for a cleaner liability story",
       "Strong IP-assignment templates valued by venture-backed buyers",
     ],
     weaknesses: [
@@ -85,7 +85,7 @@ export const competitors: Competitor[] = [
   {
     name: "Rippling",
     oneLiner:
-      "Contractor module inside Rippling's unified HR/IT/Finance platform — strong if you already run Rippling.",
+      "Contractor module inside Rippling's unified HR/IT/Finance platform: strong if you already run Rippling.",
     pricingModel: "Per-employee bundled with Rippling Unity platform fee.",
     pricingTiers: [
       "Platform fee: from $8/user/month",
@@ -102,10 +102,10 @@ export const competitors: Competitor[] = [
     strengths: [
       "Best-in-class identity, device, and app provisioning bundled with contractor lifecycle",
       "Native approval workflows + custom reports rivaled only by Workday at this price",
-      "Single source of truth across HR, IT, finance — strong for 50+ employee orgs",
+      "Single source of truth across HR, IT, finance; strong for 50+ employee orgs",
     ],
     weaknesses: [
-      "Requires buying the Unity platform — not viable for contractor-only buyers",
+      "Requires buying the Unity platform, not viable for contractor-only buyers",
       "Steep learning curve; admins report 4-6 weeks to fully configure",
       "Contractor experience UI feels secondary to the employee experience",
     ],
@@ -134,7 +134,7 @@ export const competitors: Competitor[] = [
       "Localized payments in 35 currencies (2024)",
     ],
     strengths: [
-      "Built specifically for freelancer ops — workflows feel native, not bolted-on",
+      "Built specifically for freelancer ops: workflows feel native, not bolted-on",
       "Strong vendor onboarding/compliance forms (W-9, W-8BEN, NDA flows)",
       "Talent pool + ratings make repeat-hire workflows fast for agencies",
     ],
@@ -169,7 +169,7 @@ export const competitors: Competitor[] = [
       "Stripe-native global payments expansion 2025",
     ],
     strengths: [
-      "Loved by freelancers — proposal/contract templates are best-in-class",
+      "Loved by freelancers: proposal/contract templates are best-in-class",
       "Affordable for very small teams (1-10 users)",
       "Tax + accounting features bundled (US contractors)",
     ],
@@ -203,7 +203,7 @@ export const competitors: Competitor[] = [
       "Localized benefits in 12 countries (2025)",
     ],
     strengths: [
-      "Clean, fast UI — favored by ops teams at YC-stage SaaS companies",
+      "Clean, fast UI, favored by ops teams at YC-stage SaaS companies",
       "Transparent pricing and a real free tier for very small teams",
       "API-first posture appeals to technical buyers",
     ],
@@ -293,12 +293,12 @@ export const kanoAnalysis: KanoItem[] = [
 
 export const positioningStatement = {
   forWhom: "SaaS ops leaders, founders, and HR managers running 5–200 independent contractors",
-  whoNeed: "to replace spreadsheets and email threads with a single approval-driven workflow — without buying an EOR they don't need",
+  whoNeed: "to replace spreadsheets and email threads with a single approval-driven workflow, without buying an EOR they don't need",
   product: "Axle is a contractor operations platform",
   category: "(contractor management, NOT EOR/payroll)",
   benefit: "that delivers timesheets, invoices, OOO, and performance reviews in one approval-gated workflow",
   unlike: "Unlike Deel, Remote, and Multiplier (which bundle EOR you may not need) or Bonsai (built for the freelancer side, not the buyer)",
-  weAlone: "Axle gives the buying company a structured, audit-ready ops layer in under a day, with pricing that scales from 3 contractors to 200 — no implementation team required.",
+  weAlone: "Axle gives the buying company a structured, audit-ready ops layer in under a day, with pricing that scales from 3 contractors to 200, no implementation team required.",
 };
 
 export const recommendations = [
@@ -313,7 +313,7 @@ export const recommendations = [
   },
   {
     title: "Double down on approval-gated workflows as your moat",
-    body: "Every G2 weakness for Bonsai, Plane, and even Worksuite cites missing or weak approval chains. Axle's invoice ↔ timesheet linkage is already best-in-class — productize it as 'Compliance Mode' with audit exports, role-bounded supervisors, and a public security page (SOC 2 plan, encryption, access logs). This converts the silent feature into a procurement-stage differentiator.",
+    body: "Every G2 weakness for Bonsai, Plane, and even Worksuite cites missing or weak approval chains. Axle's invoice ↔ timesheet linkage is already best-in-class: productize it as 'Compliance Mode' with audit exports, role-bounded supervisors, and a public security page (SOC 2 plan, encryption, access logs). This converts the silent feature into a procurement-stage differentiator.",
     battlecard: [
       "Q to ask buyer: 'When finance audits last quarter's contractor spend, can you produce timesheet → invoice → approver → timestamp in one click today?'",
       "Q to ask buyer: 'Who can see contractor banking details in your current tool? Can a supervisor see another supervisor's team?'",
@@ -326,7 +326,7 @@ export const recommendations = [
     battlecard: [
       "Q to ask buyer: 'How many of your contractors will ever convert to EOR employees?' (Usually <10%)",
       "Q to ask buyer: 'Are you willing to pay 4x the per-seat cost for the optionality of converting that 10%?'",
-      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Axle Pro ($350/mo) — let math close.",
+      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Axle Pro ($350/mo); let math close.",
     ],
   },
 ];
@@ -336,7 +336,7 @@ export const whiteSpace = [
   "Sub-day onboarding with a self-serve free tier that produces real value",
   "Contractor-side performance reviews bundled in (only Rippling has this, and it requires the full Unity bundle)",
   "Audit-ready exports designed for finance, not HR (CSV + PDF + linked artifacts)",
-  "Transparent 'no EOR' positioning — every competitor is racing toward EOR upsell, leaving the contractor-only buyer underserved",
+  "Transparent 'no EOR' positioning: every competitor is racing toward EOR upsell, leaving the contractor-only buyer underserved",
 ];
 
 export interface PricingRow {
@@ -422,7 +422,7 @@ export interface TargetSegment {
 export const targetSegments: TargetSegment[] = [
   {
     label: "Primary: Series A–C SaaS startups",
-    description: "10–80 contractors across 3–10 countries. No dedicated HR team — the founder or ops lead manages contractors in Notion or Sheets. They need compliance and audit trails without enterprise pricing.",
+    description: "10–80 contractors across 3–10 countries. No dedicated HR team: the founder or ops lead manages contractors in Notion or Sheets. They need compliance and audit trails without enterprise pricing.",
     size: "Est. 15,000–25,000 companies globally in this band",
     channels: [
       "YC Alumni network and Slack communities",
@@ -433,7 +433,7 @@ export const targetSegments: TargetSegment[] = [
   },
   {
     label: "Secondary: Agencies and studios",
-    description: "Design, dev, and content agencies with revolving contractor rosters. They need timesheet capture and invoice approval — not payroll. Monthly churn of contractors means easy onboarding is the top priority.",
+    description: "Design, dev, and content agencies with revolving contractor rosters. They need timesheet capture and invoice approval, not payroll. Monthly churn of contractors means easy onboarding is the top priority.",
     size: "Est. 50,000+ agencies with 5+ contractors in the US/EU",
     channels: [
       "Agency-specific Slack communities (Bureau of Digital, INDIEHACKERS_AGENCY)",
