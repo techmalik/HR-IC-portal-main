@@ -1977,6 +1977,22 @@ export async function registerRoutes(
       }
       requests = await storage.getOvertimeRequestsByUser(userId as string);
     } else if (timesheetId) {
+      // Verify the timesheet belongs to a user the caller is authorized to see
+      const timesheet = await storage.getTimesheet(timesheetId as string);
+      if (!timesheet) {
+        return res.status(404).json({ error: "Timesheet not found" });
+      }
+      if (!isAdmin) {
+        // Must be own timesheet or a direct report's timesheet
+        if (timesheet.userId !== currentUser.id) {
+          const teamMemberIds = new Set(await getTeamMemberIds(currentUser.id));
+          if (!teamMemberIds.has(timesheet.userId)) {
+            return res.status(403).json({ error: "Not authorized" });
+          }
+        }
+      } else if (timesheet.organizationId !== currentUser.organizationId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       requests = await storage.getOvertimeRequestsByTimesheet(timesheetId as string);
     } else {
       // No userId filter — team approval queue, scoped to direct reports for non-admin supervisors
