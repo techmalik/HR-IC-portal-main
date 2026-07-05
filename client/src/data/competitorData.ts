@@ -83,7 +83,7 @@ export const competitors: Competitor[] = [
     positioning: { x: 0.78, y: 0.7 },
   },
   {
-    name: "Rippling Contractors",
+    name: "Rippling",
     oneLiner:
       "Contractor module inside Rippling's unified HR/IT/Finance platform — strong if you already run Rippling.",
     pricingModel: "Per-employee bundled with Rippling Unity platform fee.",
@@ -326,7 +326,7 @@ export const recommendations = [
     battlecard: [
       "Q to ask buyer: 'How many of your contractors will ever convert to EOR employees?' (Usually <10%)",
       "Q to ask buyer: 'Are you willing to pay 4x the per-seat cost for the optionality of converting that 10%?'",
-      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Axle free/Pro tier — let math close.",
+      "Trap: Have prospect price out 25 contractors on Deel ($1,225/mo) vs Axle Pro ($350/mo) — let math close.",
     ],
   },
 ];
@@ -337,4 +337,108 @@ export const whiteSpace = [
   "Contractor-side performance reviews bundled in (only Rippling has this, and it requires the full Unity bundle)",
   "Audit-ready exports designed for finance, not HR (CSV + PDF + linked artifacts)",
   "Transparent 'no EOR' positioning — every competitor is racing toward EOR upsell, leaving the contractor-only buyer underserved",
+];
+
+export interface PricingRow {
+  name: string;
+  monthlyFor25: number;
+  perSeat: string;
+  isAxle?: boolean;
+  note?: string;
+}
+
+export const pricingComparison: PricingRow[] = [
+  { name: "Worksuite", monthlyFor25: 1500, perSeat: "flat floor", note: "Minimum spend regardless of contractor count" },
+  { name: "Deel", monthlyFor25: 1225, perSeat: "$49/IC", note: "Plus implementation cost" },
+  { name: "Plane", monthlyFor25: 975, perSeat: "$39/IC" },
+  { name: "Remote", monthlyFor25: 725, perSeat: "$29/IC" },
+  { name: "Multiplier", monthlyFor25: 1000, perSeat: "$40/IC" },
+  { name: "Axle Pro (proposed)", monthlyFor25: 350, perSeat: "$14/IC", isAxle: true, note: "Saves $6,000–$15,000/year vs Deel" },
+];
+
+export interface PricingTier {
+  name: string;
+  price: string;
+  limit: string;
+  features: string[];
+  highlight?: boolean;
+}
+
+export const newPricingTiers: PricingTier[] = [
+  {
+    name: "Free",
+    price: "Free for 1 month",
+    limit: "Up to 3 contractors",
+    features: [
+      "Timesheets + invoice approval",
+      "OOO requests",
+      "1 admin seat",
+      "No credit card required",
+    ],
+  },
+  {
+    name: "Starter",
+    price: "$9 / IC / month",
+    limit: "Up to 25 contractors",
+    features: [
+      "Everything in Free",
+      "Unlimited admin + supervisor seats",
+      "CSV + PDF exports",
+      "Email notifications",
+    ],
+    highlight: true,
+  },
+  {
+    name: "Pro",
+    price: "$14 / IC / month",
+    limit: "Up to 100 contractors",
+    features: [
+      "Everything in Starter",
+      "Performance evaluations",
+      "Expense tracking + approval",
+      "Audit-ready compliance exports",
+    ],
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    limit: "100+ contractors",
+    features: [
+      "Everything in Pro",
+      "SSO / SAML",
+      "Audit API access",
+      "Dedicated CSM",
+    ],
+  },
+];
+
+export interface TargetSegment {
+  label: string;
+  description: string;
+  size: string;
+  channels: string[];
+}
+
+export const targetSegments: TargetSegment[] = [
+  {
+    label: "Primary: Series A–C SaaS startups",
+    description: "10–80 contractors across 3–10 countries. No dedicated HR team — the founder or ops lead manages contractors in Notion or Sheets. They need compliance and audit trails without enterprise pricing.",
+    size: "Est. 15,000–25,000 companies globally in this band",
+    channels: [
+      "YC Alumni network and Slack communities",
+      "Indie Hackers and Product Hunt",
+      "LinkedIn: 'Head of Operations' + 'startup' + 'remote team'",
+      "Cold outbound to founders who recently raised (Crunchbase signals)",
+    ],
+  },
+  {
+    label: "Secondary: Agencies and studios",
+    description: "Design, dev, and content agencies with revolving contractor rosters. They need timesheet capture and invoice approval — not payroll. Monthly churn of contractors means easy onboarding is the top priority.",
+    size: "Est. 50,000+ agencies with 5+ contractors in the US/EU",
+    channels: [
+      "Agency-specific Slack communities (Bureau of Digital, INDIEHACKERS_AGENCY)",
+      "Dribbble / Behance agency accounts",
+      "LinkedIn: 'Creative Director' + 'agency' + 'freelancers'",
+    ],
+  },
 ];

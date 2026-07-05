@@ -11,10 +11,13 @@ import {
   positioningStatement,
   recommendations,
   whiteSpace,
+  pricingComparison,
+  newPricingTiers,
+  targetSegments,
 } from "@/data/competitorData";
 
 const REPORT_TITLE = "Axle Competitive Analysis";
-const REPORT_SUBTITLE = "Contractor Management Market — May 2026";
+const REPORT_SUBTITLE = "Contractor Management Market — July 2026";
 const REPORT_AUTHOR = "Axle Strategy";
 
 const competitorNames = ["Axle", "Deel", "Remote", "Rippling", "Worksuite", "Bonsai", "Plane", "Multiplier"];
@@ -76,7 +79,7 @@ function CoverPage() {
         <div className="grid grid-cols-3 gap-6 text-sm">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Date</div>
-            <div className="font-medium">May 2026</div>
+            <div className="font-medium">July 2026</div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Author</div>
@@ -493,6 +496,154 @@ function RecommendationsPage() {
   );
 }
 
+function PricingComparisonPage() {
+  const max = Math.max(...pricingComparison.map((r) => r.monthlyFor25));
+  return (
+    <div className="text-sm">
+      <h1 className="text-3xl font-bold mb-2">Pricing comparison</h1>
+      <p className="text-sm text-slate-500 mb-6">
+        25-contractor team, per month. Axle's structural price advantage vs every competitor is
+        impossible to replicate without cannibalizing EOR revenue.
+      </p>
+      <div className="space-y-3">
+        {pricingComparison.map((row) => (
+          <div key={row.name}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className={`font-semibold ${row.isAxle ? "text-emerald-800" : "text-slate-800"}`}>
+                  {row.name}
+                </span>
+                <span className="text-xs text-slate-400">{row.perSeat}</span>
+              </div>
+              <span className={`font-bold tabular-nums ${row.isAxle ? "text-emerald-700" : "text-slate-700"}`}>
+                ${row.monthlyFor25.toLocaleString()}/mo
+              </span>
+            </div>
+            <div className="h-7 bg-slate-100 rounded overflow-hidden">
+              <div
+                className={`h-full rounded flex items-center px-2 text-xs font-medium text-white transition-all ${
+                  row.isAxle ? "bg-emerald-600" : "bg-slate-400"
+                }`}
+                style={{ width: `${(row.monthlyFor25 / max) * 100}%`, minWidth: "2%" }}
+              />
+            </div>
+            {row.note && (
+              <div className="text-xs text-slate-400 mt-0.5">{row.note}</div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div className="text-xs uppercase tracking-widest text-emerald-800 font-semibold mb-1">
+          Structural advantage
+        </div>
+        <p className="text-sm text-slate-800 leading-relaxed">
+          Axle at Pro tier saves a 25-contractor team <strong>$10,500–$13,800/year</strong> vs Deel or
+          Worksuite. No EOR competitor can close this gap without breaking their own margin model.
+          This is the calculator to put on the comparison landing page.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function NewPricingModelPage() {
+  return (
+    <div className="text-sm">
+      <h1 className="text-3xl font-bold mb-2">Recommended pricing model</h1>
+      <p className="text-sm text-slate-500 mb-6">
+        Per-IC-per-month. Revenue scales directly with customer growth. Free trial converts on
+        value, not time pressure — no credit card required.
+      </p>
+      <div className="grid grid-cols-4 gap-3">
+        {newPricingTiers.map((tier) => (
+          <div
+            key={tier.name}
+            className={`rounded-xl border p-4 flex flex-col ${
+              tier.highlight
+                ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-300"
+                : "border-slate-200 bg-white"
+            }`}
+          >
+            {tier.highlight && (
+              <div className="text-[9px] uppercase tracking-widest text-emerald-700 font-bold mb-2">
+                Most popular
+              </div>
+            )}
+            <div className={`font-bold text-lg mb-1 ${tier.highlight ? "text-emerald-900" : "text-slate-900"}`}>
+              {tier.name}
+            </div>
+            <div className="text-base font-semibold text-slate-700 mb-1">{tier.price}</div>
+            <div className="text-xs text-slate-400 mb-4">{tier.limit}</div>
+            <ul className="space-y-1.5 mt-auto">
+              {tier.features.map((f) => (
+                <li key={f} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <span className="text-emerald-500 font-bold mt-px">+</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 border border-amber-200 bg-amber-50 rounded-xl p-4">
+        <div className="text-xs uppercase tracking-widest text-amber-800 font-semibold mb-1">
+          Why per-IC pricing wins
+        </div>
+        <p className="text-sm text-slate-800 leading-relaxed">
+          Per-IC aligns Axle's revenue directly with customer growth — orgs pay more only as they
+          scale. The 1-month / 3-contractor free trial converts on demonstrated value (a real
+          approved invoice), not a countdown clock. This lowers CAC and reduces early churn risk.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TargetAudiencePage() {
+  return (
+    <div className="text-sm">
+      <h1 className="text-3xl font-bold mb-2">Target audience</h1>
+      <p className="text-sm text-slate-500 mb-6">
+        Two segments, prioritized. Primary is the highest-value, fastest-to-close buyer.
+        Secondary expands the TAM without changing the core product.
+      </p>
+      <div className="space-y-5">
+        {targetSegments.map((seg, i) => (
+          <div key={seg.label} className="border border-slate-200 rounded-xl p-5">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-semibold mb-1">
+                  Segment {i + 1}
+                </div>
+                <div className="font-semibold text-slate-900 text-base">{seg.label}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Market size</div>
+                <div className="text-xs font-medium text-slate-700">{seg.size}</div>
+              </div>
+            </div>
+            <p className="text-slate-600 leading-relaxed mb-3">{seg.description}</p>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-amber-700 font-semibold mb-1.5">
+                Acquisition channels
+              </div>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {seg.channels.map((ch) => (
+                  <li key={ch} className="flex items-start gap-1.5 text-xs text-slate-600">
+                    <span className="text-amber-500 font-bold mt-px">›</span>
+                    <span>{ch}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MonitoringPage() {
   return (
     <div className="text-sm">
@@ -558,6 +709,9 @@ const pages: Array<{ key: string; render: () => JSX.Element }> = [
   { key: "kano", render: () => <KanoWhiteSpacePage /> },
   { key: "positioning", render: () => <PositioningPage /> },
   { key: "recommendations", render: () => <RecommendationsPage /> },
+  { key: "pricing-compare", render: () => <PricingComparisonPage /> },
+  { key: "new-pricing", render: () => <NewPricingModelPage /> },
+  { key: "target-audience", render: () => <TargetAudiencePage /> },
   { key: "monitoring", render: () => <MonitoringPage /> },
 ];
 
@@ -677,7 +831,7 @@ function generatePdf() {
     cursor.doc.text("Contractor management, EOR & freelancer ops landscape", MARGIN, 158);
     cursor.doc.setFontSize(10);
     cursor.doc.setTextColor(120);
-    cursor.doc.text("May 2026  ·  Axle Strategy  ·  7 competitors reviewed", MARGIN, 184);
+    cursor.doc.text("July 2026  ·  Axle Strategy  ·  7 competitors reviewed", MARGIN, 184);
 
     cursor.doc.setFillColor(99, 102, 241);
     cursor.doc.roundedRect(MARGIN, 240, CONTENT_W, 220, 12, 12, "F");
@@ -1041,6 +1195,144 @@ function generatePdf() {
       spacer(cursor, 8);
     });
 
+    // Pricing comparison
+    newPage(cursor);
+    writeHeading(cursor, "Pricing comparison");
+    writeText(cursor, "25-contractor team, per month. Axle's structural price advantage is impossible to replicate without cannibalizing EOR revenue.", { color: 130 });
+    spacer(cursor, 8);
+    const maxPrice = Math.max(...pricingComparison.map((r) => r.monthlyFor25));
+    const barAreaW = CONTENT_W - 120;
+    pricingComparison.forEach((row) => {
+      ensureSpace(cursor, 28);
+      cursor.doc.setFont("helvetica", row.isAxle ? "bold" : "normal");
+      cursor.doc.setFontSize(10);
+      cursor.doc.setTextColor(row.isAxle ? 6 : 40, row.isAxle ? 95 : 40, row.isAxle ? 70 : 40);
+      cursor.doc.text(row.name, MARGIN, cursor.y + 10);
+      const barW = (row.monthlyFor25 / maxPrice) * barAreaW;
+      cursor.doc.setFillColor(row.isAxle ? 5 : 148, row.isAxle ? 150 : 163, row.isAxle ? 105 : 182);
+      cursor.doc.roundedRect(MARGIN + 120, cursor.y + 2, barW, 10, 2, 2, "F");
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(9);
+      cursor.doc.setTextColor(40);
+      cursor.doc.text(`$${row.monthlyFor25.toLocaleString()}/mo`, MARGIN + 120 + barW + 4, cursor.y + 10);
+      cursor.y += 18;
+      if (row.note) {
+        cursor.doc.setFont("helvetica", "normal");
+        cursor.doc.setFontSize(8);
+        cursor.doc.setTextColor(130);
+        cursor.doc.text(row.note, MARGIN + 120, cursor.y);
+        cursor.y += 10;
+      }
+    });
+    spacer(cursor, 6);
+    ensureSpace(cursor, 48);
+    cursor.doc.setFillColor(236, 253, 245);
+    cursor.doc.setDrawColor(167, 243, 208);
+    cursor.doc.roundedRect(MARGIN, cursor.y, CONTENT_W, 48, 6, 6, "FD");
+    cursor.doc.setFont("helvetica", "bold");
+    cursor.doc.setFontSize(8);
+    cursor.doc.setTextColor(6, 95, 70);
+    cursor.doc.text("STRUCTURAL ADVANTAGE", MARGIN + 10, cursor.y + 14);
+    cursor.doc.setFont("helvetica", "normal");
+    cursor.doc.setFontSize(10);
+    cursor.doc.setTextColor(30);
+    const advLines = cursor.doc.splitTextToSize(
+      "Axle at Pro tier saves a 25-contractor team $10,500–$13,800/year vs Deel or Worksuite. No EOR competitor can close this gap without breaking their own margin model.",
+      CONTENT_W - 20
+    ) as string[];
+    let advy = cursor.y + 28;
+    advLines.forEach((l) => { cursor.doc.text(l, MARGIN + 10, advy); advy += 13; });
+    cursor.y += 54;
+
+    // New pricing model
+    newPage(cursor);
+    writeHeading(cursor, "Recommended pricing model");
+    writeText(cursor, "Per-IC-per-month. Revenue scales with customer growth. Free trial converts on value — no credit card required.", { color: 130 });
+    spacer(cursor, 8);
+    const tierW = (CONTENT_W - 15) / 4;
+    newPricingTiers.forEach((tier, ti) => {
+      const tx = MARGIN + ti * (tierW + 5);
+      const ty = cursor.y;
+      const boxH = 130;
+      if (tier.highlight) {
+        cursor.doc.setFillColor(236, 253, 245);
+        cursor.doc.setDrawColor(52, 211, 153);
+      } else {
+        cursor.doc.setFillColor(249, 250, 251);
+        cursor.doc.setDrawColor(226, 232, 240);
+      }
+      cursor.doc.roundedRect(tx, ty, tierW, boxH, 6, 6, "FD");
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(11);
+      cursor.doc.setTextColor(tier.highlight ? 6 : 20, tier.highlight ? 95 : 20, tier.highlight ? 70 : 20);
+      cursor.doc.text(tier.name, tx + 8, ty + 18);
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(9);
+      cursor.doc.setTextColor(40);
+      cursor.doc.text(tier.price, tx + 8, ty + 32);
+      cursor.doc.setFont("helvetica", "normal");
+      cursor.doc.setFontSize(7.5);
+      cursor.doc.setTextColor(120);
+      cursor.doc.text(tier.limit, tx + 8, ty + 43);
+      cursor.doc.setFontSize(8);
+      cursor.doc.setTextColor(60);
+      tier.features.forEach((f, fi) => {
+        cursor.doc.text(`+ ${f}`, tx + 8, ty + 58 + fi * 14);
+      });
+    });
+    cursor.y += 140;
+    ensureSpace(cursor, 48);
+    cursor.doc.setFillColor(255, 251, 235);
+    cursor.doc.setDrawColor(253, 230, 138);
+    cursor.doc.roundedRect(MARGIN, cursor.y, CONTENT_W, 48, 6, 6, "FD");
+    cursor.doc.setFont("helvetica", "bold");
+    cursor.doc.setFontSize(8);
+    cursor.doc.setTextColor(180, 83, 9);
+    cursor.doc.text("WHY PER-IC PRICING WINS", MARGIN + 10, cursor.y + 14);
+    cursor.doc.setFont("helvetica", "normal");
+    cursor.doc.setFontSize(10);
+    cursor.doc.setTextColor(30);
+    const whyLines = cursor.doc.splitTextToSize(
+      "Per-IC aligns Axle's revenue directly with customer growth — orgs pay more only as they scale. This lowers CAC and reduces early churn risk versus flat-rate seat bundles.",
+      CONTENT_W - 20
+    ) as string[];
+    let whyy = cursor.y + 28;
+    whyLines.forEach((l) => { cursor.doc.text(l, MARGIN + 10, whyy); whyy += 13; });
+    cursor.y += 54;
+
+    // Target audience
+    newPage(cursor);
+    writeHeading(cursor, "Target audience");
+    writeText(cursor, "Two segments, prioritized. Primary is highest-value, fastest-to-close. Secondary expands TAM without changing the core product.", { color: 130 });
+    spacer(cursor, 6);
+    targetSegments.forEach((seg, si) => {
+      ensureSpace(cursor, 80);
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(8);
+      cursor.doc.setTextColor(99, 102, 241);
+      cursor.doc.text(`SEGMENT ${si + 1}`, MARGIN, cursor.y + 10);
+      cursor.y += 14;
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(12);
+      cursor.doc.setTextColor(20);
+      cursor.doc.text(seg.label, MARGIN, cursor.y + 12);
+      cursor.y += 16;
+      cursor.doc.setFont("helvetica", "italic");
+      cursor.doc.setFontSize(8.5);
+      cursor.doc.setTextColor(130);
+      cursor.doc.text(`Market size: ${seg.size}`, MARGIN, cursor.y + 10);
+      cursor.y += 14;
+      writeText(cursor, seg.description, { color: 70 });
+      spacer(cursor, 4);
+      cursor.doc.setFont("helvetica", "bold");
+      cursor.doc.setFontSize(8);
+      cursor.doc.setTextColor(180, 83, 9);
+      cursor.doc.text("ACQUISITION CHANNELS", MARGIN, cursor.y + 10);
+      cursor.y += 14;
+      seg.channels.forEach((ch) => writeBullet(cursor, ch, "›"));
+      spacer(cursor, 8);
+    });
+
     // Monitoring
     newPage(cursor);
     writeHeading(cursor, "Monitoring plan");
@@ -1151,7 +1443,7 @@ export default function CompetitiveAnalysisPage() {
             <div className="hidden sm:block">
               <div className="text-xs text-slate-500">Strategy report</div>
               <div className="text-sm font-semibold text-slate-900">
-                Axle Competitive Analysis · May 2026
+                Axle Competitive Analysis · July 2026
               </div>
             </div>
           </div>
@@ -1174,7 +1466,7 @@ export default function CompetitiveAnalysisPage() {
         ))}
       </main>
       <footer className="py-10 text-center text-xs text-slate-500">
-        Axle · Confidential strategy doc · Generated May 2026
+        Axle · Confidential strategy doc · Generated July 2026
       </footer>
     </div>
   );
