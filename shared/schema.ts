@@ -24,13 +24,17 @@ export const SubscriptionStatus = {
 
 export type SubscriptionStatusType = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
 
-// Plan limits
-export const PLAN_LIMITS: Record<SubscriptionPlanType, { maxSeats: number; price: number; name: string }> = {
-  free: { maxSeats: 3, price: 0, name: "Free" },
-  starter: { maxSeats: 10, price: 29, name: "Starter" },
-  pro: { maxSeats: 50, price: 79, name: "Pro" },
-  enterprise: { maxSeats: 999, price: 0, name: "Enterprise" },
+// Plan limits — per-IC-per-month model
+// unitPrice: cost per contractor seat per month (0 = free/custom)
+export const PLAN_LIMITS: Record<SubscriptionPlanType, { maxSeats: number; price: number; unitPrice: number; name: string }> = {
+  free: { maxSeats: 3, price: 0, unitPrice: 0, name: "Free" },
+  starter: { maxSeats: 25, price: 9, unitPrice: 9, name: "Starter" },
+  pro: { maxSeats: 100, price: 14, unitPrice: 14, name: "Pro" },
+  enterprise: { maxSeats: 999, price: 0, unitPrice: 0, name: "Enterprise" },
 };
+
+// Trial duration for the free plan (calendar days)
+export const FREE_TRIAL_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // Database-level enums (enforced by Postgres)
@@ -115,6 +119,7 @@ export const subscriptions = pgTable("subscriptions", {
   maxSeats: integer("max_seats").notNull().default(3),
   currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
   currentPeriodEnd: timestamp("current_period_end"),
+  trialEndsAt: timestamp("trial_ends_at"),
   appliedDiscountId: varchar("applied_discount_id"),
   discountType: text("discount_type"),
   discountValue: integer("discount_value"),

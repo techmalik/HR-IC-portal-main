@@ -92,6 +92,27 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
+  // Backfill trialEndsAt for existing free-plan orgs that predate the trial column.
+  // Sets to now + 30 days so they get a grace period before the trial enforcement kicks in.
+  try {
+    const { db: dbInstance } = await import("./db");
+    const { subscriptions: subTable } = await import("@shared/schema");
+    const { eq, isNull, and } = await import("drizzle-orm");
+    const freeOrgs = await dbInstance.select().from(subTable).where(
+      and(eq(subTable.plan, "free"), isNull(subTable.trialEndsAt))
+    );
+    if (freeOrgs.length > 0) {
+      const graceEnd = new Date();
+      graceEnd.setDate(graceEnd.getDate() + 30);
+      for (const sub of freeOrgs) {
+        await dbInstance.update(subTable).set({ trialEndsAt: graceEnd }).where(eq(subTable.id, sub.id));
+      }
+      log(`[trial-migration] Set trialEndsAt for ${freeOrgs.length} existing free-plan org(s)`);
+    }
+  } catch (e: any) {
+    log(`[trial-migration] Warning: could not backfill trialEndsAt — ${e?.message}`);
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

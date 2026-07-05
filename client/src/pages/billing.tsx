@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/status-badge";
-import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag } from "lucide-react";
+import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
+import { Link } from "wouter";
 
 interface BillingData {
   subscription: {
@@ -20,6 +21,7 @@ interface BillingData {
     maxSeats: number;
     currentPeriodStart: string;
     currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
     createdAt: string;
     updatedAt: string;
     appliedDiscountId: string | null;
@@ -46,23 +48,27 @@ interface UsageData {
   maxSeats: number;
   plan: string;
   percentUsed: number;
+  trialEndsAt: string | null;
+  trialExpired: boolean;
+  daysLeftInTrial: number | null;
+  estimatedMonthlyCost: number;
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
   free: [
-    "Up to 3 contractors",
+    "Up to 3 contractors (30-day trial)",
     "Timesheet management",
     "Leave tracking",
     "Basic invoicing",
   ],
   starter: [
-    "Up to 10 contractors",
+    "Up to 25 contractors",
     "Everything in Free",
     "Performance evaluations",
     "Priority support",
   ],
   pro: [
-    "Up to 50 contractors",
+    "Up to 100 contractors",
     "Everything in Starter",
     "Advanced analytics",
     "Custom branding",
@@ -83,9 +89,7 @@ export default function BillingPage() {
   const { data: billing, isLoading: billingLoading } = useQuery<BillingData>({
     queryKey: ["/api/billing"],
     queryFn: async () => {
-      const res = await fetch("/api/billing", {
-        credentials: "include",
-      });
+      const res = await fetch("/api/billing", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch billing data");
       return res.json();
     },
@@ -95,9 +99,7 @@ export default function BillingPage() {
   const { data: usage, isLoading: usageLoading } = useQuery<UsageData>({
     queryKey: ["/api/billing/usage"],
     queryFn: async () => {
-      const res = await fetch("/api/billing/usage", {
-        credentials: "include",
-      });
+      const res = await fetch("/api/billing/usage", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch usage data");
       return res.json();
     },
@@ -108,9 +110,7 @@ export default function BillingPage() {
     mutationFn: async (newPlan: string) => {
       const res = await fetch("/api/billing/change-plan", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ plan: newPlan }),
       });
@@ -150,6 +150,9 @@ export default function BillingPage() {
   const seatCount = usage?.currentSeats || 0;
   const maxSeats = usage?.maxSeats || planInfo?.maxSeats || 3;
   const percentUsed = maxSeats > 0 ? Math.round((seatCount / maxSeats) * 100) : 0;
+  const trialExpired = usage?.trialExpired ?? false;
+  const daysLeftInTrial = usage?.daysLeftInTrial ?? null;
+  const estimatedMonthlyCost = usage?.estimatedMonthlyCost ?? 0;
 
   const plans: SubscriptionPlanType[] = ["free", "starter", "pro", "enterprise"];
 
@@ -182,6 +185,37 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {/* Trial expired banner */}
+      {trialExpired && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800">
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Your free trial has ended</p>
+            <p className="text-sm mt-0.5">
+              You can no longer add new users. Upgrade to a paid plan to continue growing your team.
+            </p>
+          </div>
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white shrink-0" onClick={() => changePlanMutation.mutate("starter")}>
+            Upgrade now
+          </Button>
+        </div>
+      )}
+
+      {/* Trial countdown badge */}
+      {!trialExpired && daysLeftInTrial !== null && currentPlan === "free" && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border-[1.5px] border-amber-200 bg-amber-50 text-amber-800">
+          <Clock className="w-5 h-5 shrink-0 text-amber-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">
+              {daysLeftInTrial === 0 ? "Trial expires today" : `${daysLeftInTrial} day${daysLeftInTrial === 1 ? "" : "s"} left in your free trial`}
+            </p>
+            <p className="text-sm mt-0.5">
+              Trial ends {formatDate(usage?.trialEndsAt)}. Upgrade any time to keep adding contractors.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
           <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
@@ -191,15 +225,13 @@ export default function BillingPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               {getStatusBadge(billing?.subscription?.status || "active")}
-              {billing?.billing && billing.billing.basePrice > 0 && billing.billing.discountType ? (
-                <span className="text-xs text-neutral-400 line-through">${billing.billing.basePrice}/mo</span>
-              ) : planInfo?.price > 0 ? (
-                <span className="text-xs text-neutral-500">${planInfo.price}/mo</span>
-              ) : planInfo?.price === 0 && currentPlan !== "enterprise" ? (
-                <span className="text-xs text-neutral-500">Free</span>
+              {currentPlan === "free" ? (
+                <span className="text-xs text-neutral-500">Free trial</span>
               ) : currentPlan === "enterprise" ? (
                 <span className="text-xs text-neutral-500">Custom pricing</span>
-              ) : null}
+              ) : (
+                <span className="text-xs text-neutral-500">${planInfo?.unitPrice}/IC/mo</span>
+              )}
               {billing?.billing?.discountType && (
                 <span className="text-xs font-semibold text-emerald-600">
                   ${billing.billing.netPrice}/mo
@@ -233,17 +265,26 @@ export default function BillingPage() {
           <div className="text-[26px] font-bold text-neutral-900 mb-1.5">{seatCount} / {maxSeats}</div>
           <Progress value={percentUsed} className="h-1.5 mb-1" />
           <p className="text-xs text-neutral-500">{percentUsed}% of seats used</p>
+          {estimatedMonthlyCost > 0 && (
+            <p className="text-xs text-emerald-700 font-medium mt-1">
+              Est. ${estimatedMonthlyCost}/mo at current usage
+            </p>
+          )}
         </div>
 
         <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
           <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
-            <Calendar className="w-3 h-3" /> Billing period
+            <Calendar className="w-3 h-3" /> {currentPlan === "free" ? "Trial period" : "Billing period"}
           </div>
-          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">Current</div>
+          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">
+            {currentPlan === "free" ? (trialExpired ? "Expired" : "Active") : "Current"}
+          </div>
           <p className="text-xs text-neutral-500">
-            Started {formatDate(billing?.subscription?.currentPeriodStart)}
+            {currentPlan === "free"
+              ? `Trial ${trialExpired ? "ended" : "ends"} ${formatDate(billing?.subscription?.trialEndsAt)}`
+              : `Started ${formatDate(billing?.subscription?.currentPeriodStart)}`}
           </p>
-          {billing?.subscription?.currentPeriodEnd && (
+          {billing?.subscription?.currentPeriodEnd && currentPlan !== "free" && (
             <p className="text-xs text-neutral-500">
               Renews {formatDate(billing.subscription.currentPeriodEnd)}
             </p>
@@ -255,7 +296,7 @@ export default function BillingPage() {
         <CardHeader>
           <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
           <CardDescription>
-            Select the plan that best fits your team's needs
+            Per-contractor-per-month — you pay as your team grows
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -264,7 +305,6 @@ export default function BillingPage() {
               const info = PLAN_LIMITS[plan];
               const features = PLAN_FEATURES[plan] || [];
               const isCurrent = plan === currentPlan;
-              const isDowngrade = plans.indexOf(plan) < plans.indexOf(currentPlan);
               const isUpgrade = plans.indexOf(plan) > plans.indexOf(currentPlan);
 
               return (
@@ -273,6 +313,8 @@ export default function BillingPage() {
                   className={`relative rounded-lg border p-5 flex flex-col ${
                     isCurrent
                       ? "border-primary bg-primary/5 ring-2 ring-primary"
+                      : plan === "pro"
+                      ? "border-emerald-400 bg-emerald-50/40"
                       : "border-border"
                   }`}
                 >
@@ -281,18 +323,30 @@ export default function BillingPage() {
                       Current Plan
                     </Badge>
                   )}
+                  {!isCurrent && plan === "pro" && (
+                    <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white">
+                      Best value
+                    </Badge>
+                  )}
                   <h3 className="text-lg font-semibold mt-1">{info.name}</h3>
-                  <div className="mt-2 mb-4">
-                    {info.price > 0 ? (
-                      <span className="text-3xl font-bold">${info.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
+                  <div className="mt-2 mb-1">
+                    {info.unitPrice > 0 ? (
+                      <span className="text-3xl font-bold">
+                        ${info.unitPrice}
+                        <span className="text-sm font-normal text-muted-foreground">/IC/mo</span>
+                      </span>
                     ) : plan === "enterprise" ? (
                       <span className="text-3xl font-bold">Custom</span>
                     ) : (
                       <span className="text-3xl font-bold">Free</span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Up to {info.maxSeats === 999 ? "unlimited" : info.maxSeats} seats
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {plan === "free"
+                      ? "30-day trial · no credit card"
+                      : plan === "enterprise"
+                      ? "Unlimited contractors"
+                      : `Up to ${info.maxSeats} contractors`}
                   </p>
                   <ul className="space-y-2 mb-6 flex-1">
                     {features.map((feature, idx) => (
@@ -307,13 +361,13 @@ export default function BillingPage() {
                       Current Plan
                     </Button>
                   ) : plan === "enterprise" ? (
-                    <Button variant="outline" className="w-full" disabled>
-                      Contact Sales
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href="mailto:sales@axle.app">Contact Sales</a>
                     </Button>
                   ) : (
                     <Button
                       variant={isUpgrade ? "default" : "outline"}
-                      className="w-full"
+                      className={`w-full ${plan === "pro" && isUpgrade ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
                       onClick={() => changePlanMutation.mutate(plan)}
                       disabled={changePlanMutation.isPending}
                     >

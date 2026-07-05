@@ -17,10 +17,22 @@ import {
   AlertTriangle,
   Receipt,
 } from "lucide-react";
+
 import type { User, ActivityLog } from "@shared/schema";
 import type { Contract } from "@/components/contracts-section";
 import { UserRole } from "@shared/schema";
 import { format, differenceInDays } from "date-fns";
+
+interface UsageData {
+  currentSeats: number;
+  maxSeats: number;
+  plan: string;
+  percentUsed: number;
+  trialEndsAt: string | null;
+  trialExpired: boolean;
+  daysLeftInTrial: number | null;
+  estimatedMonthlyCost: number;
+}
 
 export default function DashboardAdmin() {
   const { user, isAdmin } = useAuth();
@@ -44,11 +56,19 @@ export default function DashboardAdmin() {
     enabled: isAdmin,
   });
 
+  const { data: usage } = useQuery<UsageData>({
+    queryKey: ["/api/billing/usage"],
+    enabled: isAdmin,
+  });
+
   const activeUsers = allUsers?.filter((u) => u.isActive);
   const icCount = allUsers?.filter((u) => u.role === UserRole.IC).length || 0;
   const adminCount = allUsers?.filter((u) => u.role === UserRole.ADMIN).length || 0;
 
   const recentLogs = activityLogs?.slice(0, 10);
+
+  const trialExpired = usage?.trialExpired ?? false;
+  const daysLeftInTrial = usage?.daysLeftInTrial ?? null;
 
   return (
     <div className="p-6 space-y-6">
@@ -66,6 +86,34 @@ export default function DashboardAdmin() {
           </Link>
         </Button>
       </div>
+
+      {trialExpired && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800" data-testid="banner-trial-expired">
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Free trial ended — you can no longer add users</p>
+            <p className="text-sm mt-0.5">Upgrade to a paid plan to keep adding contractors to your team.</p>
+          </div>
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white shrink-0" asChild>
+            <Link href="/billing">Upgrade now</Link>
+          </Button>
+        </div>
+      )}
+
+      {!trialExpired && daysLeftInTrial !== null && usage?.plan === "free" && daysLeftInTrial <= 7 && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-amber-200 bg-amber-50 text-amber-800" data-testid="banner-trial-ending">
+          <Clock className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">
+              {daysLeftInTrial === 0 ? "Trial expires today" : `${daysLeftInTrial} day${daysLeftInTrial === 1 ? "" : "s"} left in your free trial`}
+            </p>
+            <p className="text-sm mt-0.5">Upgrade before your trial ends to avoid disruption.</p>
+          </div>
+          <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 shrink-0" asChild>
+            <Link href="/billing">View plans</Link>
+          </Button>
+        </div>
+      )}
 
       {expiringContracts && expiringContracts.length > 0 && (
         <div

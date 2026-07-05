@@ -452,6 +452,8 @@ export async function registerRoutes(
       billingEmail: email,
     });
 
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 30);
     const subscription = await storage.createSubscription({
       organizationId: organization.id,
       plan: "free",
@@ -459,6 +461,7 @@ export async function registerRoutes(
       seatCount: 1,
       maxSeats: 3,
       currentPeriodStart: new Date(),
+      trialEndsAt: trialEnd,
     });
 
     const user = await storage.createUser({
@@ -1093,6 +1096,28 @@ export async function registerRoutes(
 
   app.post("/api/users", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+
+      // Enforce seat limit and free-trial expiry before doing anything else
+      if (currentUser.organizationId) {
+        const sub = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+        if (sub) {
+          const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
+          if (currentSeats >= sub.maxSeats) {
+            return res.status(403).json({
+              error: `Seat limit reached. Your ${sub.plan} plan allows up to ${sub.maxSeats} users. Please upgrade to add more.`,
+              code: "SEAT_LIMIT_REACHED",
+            });
+          }
+          if (sub.plan === "free" && sub.trialEndsAt && new Date() > new Date(sub.trialEndsAt)) {
+            return res.status(403).json({
+              error: "Your free trial has ended. Please upgrade to a paid plan to add more users.",
+              code: "TRIAL_EXPIRED",
+            });
+          }
+        }
+      }
+
       // Check for existing username
       const existingByUsername = await storage.getUserByUsername(req.body.username);
       if (existingByUsername) {
@@ -1100,13 +1125,11 @@ export async function registerRoutes(
       }
       
       // Check for existing email
-      const allUsers = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
+      const allUsers = await storage.getAllUsers(currentUser.organizationId ?? undefined);
       const existingByEmail = allUsers.find(u => u.email === req.body.email);
       if (existingByEmail) {
         return res.status(400).json({ error: "Email already exists" });
       }
-
-      const currentUser = req.authenticatedUser!;
 
       // Allowlist permitted fields — prevent privilege injection via req.body
       const {
@@ -1464,6 +1487,33 @@ export async function registerRoutes(
 
       const currentUser = req.authenticatedUser!;
       const callerOrgId = currentUser.organizationId;
+
+      // Enforce seat limit and trial expiry before bulk import
+      if (callerOrgId) {
+        const sub = await storage.getSubscriptionByOrganization(callerOrgId);
+        if (sub) {
+          if (sub.plan === "free" && sub.trialEndsAt && new Date() > new Date(sub.trialEndsAt)) {
+            return res.status(403).json({
+              error: "Your free trial has ended. Please upgrade to a paid plan to add more users.",
+              code: "TRIAL_EXPIRED",
+            });
+          }
+          const currentSeats = await storage.getUserCountByOrganization(callerOrgId);
+          const available = sub.maxSeats - currentSeats;
+          if (available <= 0) {
+            return res.status(403).json({
+              error: `Seat limit reached. Your ${sub.plan} plan allows up to ${sub.maxSeats} users.`,
+              code: "SEAT_LIMIT_REACHED",
+            });
+          }
+          if (users.length > available) {
+            return res.status(403).json({
+              error: `This import would exceed your seat limit. You have ${available} seat(s) available but are importing ${users.length} users.`,
+              code: "SEAT_LIMIT_REACHED",
+            });
+          }
+        }
+      }
 
       const validRoles = ["ic", "admin"];
       if (currentUser.role === "owner") validRoles.push("owner");
@@ -4247,10 +4297,22 @@ export async function registerRoutes(
     }
     const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
     const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
-    const plan = subscription?.plan || "free";
+    const plan = (subscription?.plan || "free") as import("@shared/schema").SubscriptionPlanType;
     const maxSeats = subscription?.maxSeats || 3;
     const percentUsed = maxSeats > 0 ? Math.round((currentSeats / maxSeats) * 100) : 0;
-    res.json({ currentSeats, maxSeats, plan, percentUsed });
+
+    const trialEndsAt = subscription?.trialEndsAt ?? null;
+    const now = new Date();
+    const trialExpired = plan === "free" && trialEndsAt != null && now > new Date(trialEndsAt);
+    const daysLeftInTrial = (plan === "free" && trialEndsAt)
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    const { PLAN_LIMITS: limits } = await import("@shared/schema");
+    const unitPrice = limits[plan]?.unitPrice ?? 0;
+    const estimatedMonthlyCost = unitPrice > 0 ? currentSeats * unitPrice : 0;
+
+    res.json({ currentSeats, maxSeats, plan, percentUsed, trialEndsAt, trialExpired, daysLeftInTrial, estimatedMonthlyCost });
   });
 
   app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
