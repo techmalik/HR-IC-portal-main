@@ -540,13 +540,6 @@ export async function registerRoutes(
 
   // Back-office: platform metrics (real DB data)
   app.get("/api/backoffice/metrics", asyncHandler(async (req, res) => {
-    const PLAN_PRICES: Record<string, number> = {
-      free: 0,
-      starter: 29,
-      pro: 79,
-      enterprise: 0,
-    };
-
     // Total active orgs and user count
     const [orgCountResult] = await db
       .select({ count: count() })
@@ -591,7 +584,7 @@ export async function registerRoutes(
     // Plan breakdown — using net (discounted) MRR per subscription
     const planMrrMap = new Map<string, { count: number; mrr: number }>();
     for (const sub of latestSubByOrg.values()) {
-      const base = PLAN_PRICES[sub.plan] ?? 0;
+      const base = PLAN_LIMITS[sub.plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
       const net = computeNetPrice(base, sub.discountType, sub.discountValue);
       const cur = planMrrMap.get(sub.plan) ?? { count: 0, mrr: 0 };
       planMrrMap.set(sub.plan, { count: cur.count + 1, mrr: cur.mrr + net });
@@ -662,7 +655,7 @@ export async function registerRoutes(
         if (org.createdAt <= d) {
           const sub = latestSubByOrg.get(org.id);
           const plan = sub?.plan ?? "free";
-          const base = PLAN_PRICES[plan] ?? 0;
+          const base = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
           mrrForMonth += computeNetPrice(base, sub?.discountType, sub?.discountValue);
         }
       }
@@ -826,11 +819,11 @@ export async function registerRoutes(
       .groupBy(usersTable.organizationId);
     const userCountMap = new Map(userCounts.map((r) => [r.organizationId, Number(r.cnt)]));
 
-    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
     const tenants = orgs.map((org) => {
       const sub = subByOrg.get(org.id);
       const plan = sub?.plan ?? "free";
-      const base = PLAN_PRICES[plan] ?? 0;
+      const userCount = userCountMap.get(org.id) ?? 0;
+      const base = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0) * userCount;
       const netPrice = computeNetPrice(base, sub?.discountType, sub?.discountValue);
       return {
         id: org.id,
@@ -975,9 +968,9 @@ export async function registerRoutes(
     if (!org) return res.status(404).json({ error: "Organization not found" });
     const sub = await storage.getSubscriptionByOrganization(orgId);
     const userList = await storage.getAllUsers(orgId);
-    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
     const plan = sub?.plan ?? "free";
-    const base = PLAN_PRICES[plan] ?? 0;
+    const icCount = userList.filter(u => u.role === "ic").length;
+    const base = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0) * icCount;
     const netPrice = computeNetPrice(base, sub?.discountType, sub?.discountValue);
 
     let discountCode = null;
@@ -4263,8 +4256,9 @@ export async function registerRoutes(
     if (!subscription || !organization) {
       return res.status(404).json({ error: "Billing information not found" });
     }
-    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
-    const basePrice = PLAN_PRICES[subscription.plan] ?? 0;
+    const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
+    const unitPrice = PLAN_LIMITS[subscription.plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
+    const basePrice = unitPrice * currentSeats;
     const netPrice = computeNetPrice(basePrice, subscription.discountType, subscription.discountValue);
 
     let discountCode = null;
