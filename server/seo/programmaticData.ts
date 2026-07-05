@@ -389,8 +389,8 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     shortName: "nonprofits",
     heroTitle: "Contractor Management for Nonprofits",
     metaTitle: "Contractor Management for Nonprofits | Axle",
-    metaDescription: "Manage program consultants, grant writers, and contract program staff with grant-ready records — built for nonprofit ops.",
-    intro: "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. Axle gives nonprofit ops clean per-grant or per-program contractor records — the kind that simplify financial reporting to funders.",
+    metaDescription: "Manage program consultants, grant writers, and contract program staff with grant-ready records, built for nonprofit ops.",
+    intro: "Nonprofits bring on program consultants, grant writers, and specialist contractors against tight budgets and grant-funded scope. Axle gives nonprofit ops clean per-grant or per-program contractor records, the kind that simplify financial reporting to funders.",
     painPoints: [
       "Per-grant or per-program budget tracking",
       "Grant writers and program consultants on project retainers",
@@ -400,7 +400,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     useCases: [
       { title: "Per-grant tagging", description: "Tag every contractor hour and invoice to a grant or program; pull grant-level cost reports for funder reporting." },
       { title: "Program lead approval", description: "Program leads approve their team's timesheets; ops handles the financial close. Layered controls without bureaucracy." },
-      { title: "Affordable ops layer", description: "Axle's free plan covers up to 3 contractors at zero cost — perfect for grassroots nonprofits scaling capacity carefully." },
+      { title: "Affordable ops layer", description: "Axle's free plan covers up to 3 contractors at zero cost, perfect for grassroots nonprofits scaling capacity carefully." },
       { title: "Funder-ready records", description: "Clean exports per grant period make annual funder reporting straightforward." },
     ],
     faqs: industryFaqsBase("nonprofits"),
@@ -412,7 +412,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     heroTitle: "Contractor Management for Media Companies",
     metaTitle: "Contractor Management for Media Companies | Axle",
     metaDescription: "Manage freelance journalists, editors, photographers, and contributors across your publication with structured per-piece records.",
-    intro: "Media companies run on freelance contributors — journalists, editors, photographers, illustrators. Axle gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
+    intro: "Media companies run on freelance contributors: journalists, editors, photographers, illustrators. Axle gives editorial ops a single place to manage that contributor network with structured per-piece records and clean approval workflows.",
     painPoints: [
       "Freelance journalists with per-piece rates",
       "Photographers paid per assignment",
@@ -422,7 +422,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     useCases: [
       { title: "Per-piece tagging", description: "Tag invoices to specific articles or assignments; pull per-piece cost reports for editorial budget management." },
       { title: "Editor approval", description: "Section editors approve their contributors' invoices; editors-in-chief see the full editorial spend at a glance." },
-      { title: "Mixed billing models", description: "Per-piece rates for journalists, day rates for photographers, hourly for production — all handled in one tool." },
+      { title: "Mixed billing models", description: "Per-piece rates for journalists, day rates for photographers, hourly for production, all handled in one tool." },
       { title: "Contributor roster", description: "Maintain a roster of trusted freelance contributors; reactivate them in one click when an assignment fits." },
     ],
     faqs: industryFaqsBase("media companies"),
@@ -477,8 +477,8 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
     shortName: "studios",
     heroTitle: "Contractor Management for Photography Studios",
     metaTitle: "Contractor Management for Photography Studios | Axle",
-    metaDescription: "Manage second shooters, retouchers, and assistants with day-rate billing and per-shoot records — built for photography studios.",
-    intro: "Photography studios scale capacity through second shooters, retouchers, and assistants — usually on day rates or per-shoot fees. Axle handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
+    metaDescription: "Manage second shooters, retouchers, and assistants with day-rate billing and per-shoot records, built for photography studios.",
+    intro: "Photography studios scale capacity through second shooters, retouchers, and assistants, usually on day rates or per-shoot fees. Axle handles that exact billing pattern with structured per-shoot records and clean approval workflows.",
     painPoints: [
       "Day rates and per-shoot fees mixed",
       "Retouchers billing hourly in post",
@@ -486,7 +486,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
       "Studio owner approving every invoice",
     ],
     useCases: [
-      { title: "Day-rate billing", description: "Track day rates for second shooters and assistants; hourly rates for retouchers — all in one tool." },
+      { title: "Day-rate billing", description: "Track day rates for second shooters and assistants; hourly rates for retouchers, all in one tool." },
       { title: "Per-shoot tagging", description: "Tag hours and invoices to specific shoots; pull per-shoot cost reports for client billing." },
       { title: "Studio owner dashboard", description: "Studio owners see total contractor spend, per-shoot costs, and team utilization in one view." },
       { title: "Quick onboarding", description: "Onboard a second shooter for one shoot in five minutes; archive cleanly when the engagement ends." },
@@ -498,7 +498,7 @@ const industriesData: Omit<IndustryPage, "updatedDate">[] = [
 export const defaultIndustries: IndustryPage[] = industriesData.map((d) => ({ ...d, updatedDate: today }));
 
 const competitorComparisonBase = (name: string) => [
-  { feature: "Built specifically for contractor ops", axle: "Yes — every workflow assumes contractor model", competitor: `${name} positions broadly across employee + contractor; contractor flows are a subset` },
+  { feature: "Built specifically for contractor ops", axle: "Yes, every workflow assumes contractor model", competitor: `${name} positions broadly across employee + contractor; contractor flows are a subset` },
   { feature: "Time to set up", axle: "Most teams operational in under a day", competitor: `${name} typically requires multi-day onboarding and configuration` },
   { feature: "Free plan", axle: "Free for up to 3 contractors with full features", competitor: `${name} requires a paid plan or has limited free usage` },
   { feature: "Approval workflow gating invoices", axle: "Invoice cannot be submitted unless timesheet is approved", competitor: `${name} treats timesheets and invoices as separate workflows` },
@@ -515,12 +515,12 @@ const switchHistoryFaq = (name: string) => ({
 const eorFaqs = (name: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower — it handles contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle.`,
+    a: `${name} bundles employer-of-record, global payroll, and contractor payments into one platform. Axle is narrower, handling contractor operations only: timesheets, invoice approvals, OOO, and audit trail. If you don't need EOR or payment processing through the same vendor, Axle gives you the ops layer without that bundle.`,
   },
   switchHistoryFaq(name),
   {
     q: `Does Axle process contractor payments the way ${name} does?`,
-    a: `No — and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary.`,
+    a: `No, and that's intentional. Axle approves and records the work; your finance team pays through your existing banking infrastructure. That keeps Axle lean and avoids introducing another financial intermediary.`,
   },
   {
     q: `Is Axle cheaper than ${name} for contractor-only teams?`,
@@ -531,12 +531,12 @@ const eorFaqs = (name: string) => [
 const freelancerToolFaqs = (name: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} is designed around the individual freelancer running their own business — invoicing clients, tracking their own time, managing their own contracts. Axle is designed for the company on the other side of the table: the ops, finance, and supervisor roles managing many contractors at once, with layered approvals and role-based permissions.`,
+    a: `${name} is designed around the individual freelancer running their own business: invoicing clients, tracking their own time, managing their own contracts. Axle is designed for the company on the other side of the table: the ops, finance, and supervisor roles managing many contractors at once, with layered approvals and role-based permissions.`,
   },
   switchHistoryFaq(name),
   {
     q: `Does Axle give supervisors and admins their own views?`,
-    a: `Yes. Contractors, supervisors, admins, and owners are first-class roles. Each sees only what their role needs — a structure that's awkward to retrofit on a tool built for solo freelancers.`,
+    a: `Yes. Contractors, supervisors, admins, and owners are first-class roles. Each sees only what their role needs: a structure that's awkward to retrofit on a tool built for solo freelancers.`,
   },
   {
     q: `Can a small team start free?`,
@@ -547,19 +547,19 @@ const freelancerToolFaqs = (name: string) => [
 const marketplaceFaqs = (name: string) => [
   {
     q: `How is Axle different from ${name}?`,
-    a: `${name} is a marketplace — it sources and places freelancers and takes a cut of the engagement. Axle is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both — source on ${name}, manage day-to-day on Axle — or bring contractors from any source.`,
+    a: `${name} is a marketplace: it sources and places freelancers and takes a cut of the engagement. Axle is the ops platform you use after the placement: structured timesheets, supervisor approvals, invoice gating, OOO, and audit trail. You can use both (source on ${name}, manage day-to-day on Axle) or bring contractors from any source.`,
   },
   {
     q: `Do I need to leave ${name} to use Axle?`,
-    a: `No. Axle doesn't replace ${name}'s sourcing — it sits alongside it. Many teams keep using ${name} for discovery and run Axle as the ongoing ops layer once a contractor relationship is established.`,
+    a: `No. Axle doesn't replace ${name}'s sourcing; it sits alongside it. Many teams keep using ${name} for discovery and run Axle as the ongoing ops layer once a contractor relationship is established.`,
   },
   {
     q: `Does Axle take a markup on contractor pay?`,
-    a: `No. Marketplaces typically build margin into contractor rates or charge transaction fees. Axle charges a flat per-seat platform fee — what you pay your contractor is what they receive.`,
+    a: `No. Marketplaces typically build margin into contractor rates or charge transaction fees. Axle charges a flat per-seat platform fee: what you pay your contractor is what they receive.`,
   },
   {
     q: `Can I import historical engagements from ${name}?`,
-    a: `You can import contractor records and historical timesheet/invoice data via CSV. ${name}'s in-platform messaging and reviews stay where they are — Axle focuses on the operational record from engagement onward.`,
+    a: `You can import contractor records and historical timesheet/invoice data via CSV. ${name}'s in-platform messaging and reviews stay where they are; Axle focuses on the operational record from engagement onward.`,
   },
 ];
 
