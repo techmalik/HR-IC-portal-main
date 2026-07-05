@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/status-badge";
-import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight } from "lucide-react";
+import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
 
 interface BillingData {
@@ -22,12 +22,22 @@ interface BillingData {
     currentPeriodEnd: string | null;
     createdAt: string;
     updatedAt: string;
+    appliedDiscountId: string | null;
+    discountType: string | null;
+    discountValue: number | null;
   };
   organization: {
     id: string;
     name: string;
     slug: string;
     billingEmail: string | null;
+  };
+  billing?: {
+    basePrice: number;
+    netPrice: number;
+    discountType: string | null;
+    discountValue: number | null;
+    discountCode: { code: string; description: string | null } | null;
   };
 }
 
@@ -178,16 +188,40 @@ export default function BillingPage() {
             <CreditCard className="w-3 h-3" /> Current plan
           </div>
           <div className="text-[22px] font-bold text-neutral-900 mb-1.5">{planInfo?.name || "Free"}</div>
-          <div className="flex items-center gap-2">
-            {getStatusBadge(billing?.subscription?.status || "active")}
-            {planInfo?.price > 0 && (
-              <span className="text-xs text-neutral-500">${planInfo.price}/mo</span>
-            )}
-            {planInfo?.price === 0 && currentPlan !== "enterprise" && (
-              <span className="text-xs text-neutral-500">Free</span>
-            )}
-            {currentPlan === "enterprise" && (
-              <span className="text-xs text-neutral-500">Custom pricing</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              {getStatusBadge(billing?.subscription?.status || "active")}
+              {billing?.billing && billing.billing.basePrice > 0 && billing.billing.discountType ? (
+                <span className="text-xs text-neutral-400 line-through">${billing.billing.basePrice}/mo</span>
+              ) : planInfo?.price > 0 ? (
+                <span className="text-xs text-neutral-500">${planInfo.price}/mo</span>
+              ) : planInfo?.price === 0 && currentPlan !== "enterprise" ? (
+                <span className="text-xs text-neutral-500">Free</span>
+              ) : currentPlan === "enterprise" ? (
+                <span className="text-xs text-neutral-500">Custom pricing</span>
+              ) : null}
+              {billing?.billing?.discountType && (
+                <span className="text-xs font-semibold text-emerald-600">
+                  ${billing.billing.netPrice}/mo
+                </span>
+              )}
+            </div>
+            {billing?.billing?.discountCode && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Tag className="w-3 h-3 text-emerald-600" />
+                <span className="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                  {billing.billing.discountCode.code}
+                </span>
+                {billing.billing.discountType === "percentage" ? (
+                  <span className="text-[11px] text-neutral-500">
+                    {billing.billing.discountValue}% discount applied
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-neutral-500">
+                    ${billing.billing.discountValue} discount applied
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

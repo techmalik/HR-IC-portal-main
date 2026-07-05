@@ -1,347 +1,277 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { BackofficeLayout } from "@/components/backoffice-layout";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Eye, Ban } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Tag, X, Loader2 } from "lucide-react";
+import { format } from "date-fns";
 
-const tenant = {
-  name: "Meridian Co.",
-  domain: "meridian.co",
-  id: "ten_8x2kpq",
-  createdLabel: "Jan 2026",
-  plan: "Enterprise",
-  status: "active",
-  mrr: "$1,200",
-  users: 24,
-  billingCycle: "Jul 31",
-};
-
-const tenantUsers = [
-  {
-    initials: "SC",
-    name: "Sarah Chen",
-    email: "sarah.chen@meridian.co",
-    role: "Contractor",
-    roleTone: "neutral" as const,
-    lastActive: "2 hours ago",
-    status: "active",
-    joined: "Jan 2026",
-    avatarBg: "#111827",
-  },
-  {
-    initials: "MR",
-    name: "Marcus Rivera",
-    email: "m.rivera@meridian.co",
-    role: "Supervisor",
-    roleTone: "green" as const,
-    lastActive: "5 hours ago",
-    status: "active",
-    joined: "Oct 2025",
-    avatarBg: "#065F46",
-  },
-  {
-    initials: "AT",
-    name: "Aisha Tanaka",
-    email: "a.tanaka@meridian.co",
-    role: "Contractor",
-    roleTone: "neutral" as const,
-    lastActive: "1 day ago",
-    status: "ooo",
-    joined: "Mar 2026",
-    avatarBg: "#1C2230",
-    avatarBorder: true,
-  },
-  {
-    initials: "LP",
-    name: "Leo Park",
-    email: "leo.park@meridian.co",
-    role: "Admin",
-    roleTone: "green" as const,
-    lastActive: "12 minutes ago",
-    status: "active",
-    joined: "Jan 2026",
-    avatarBg: "#111827",
-  },
-];
-
-function rolePillClass(tone: "neutral" | "green") {
-  return tone === "green" ? "bg-[#D1FAE5] text-[#065F46]" : "bg-[#F3F4F6] text-[#374151]";
+interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  status: string;
+  userCount: number;
+  createdAt: string;
+  mrr: number;
+  discountType: string | null;
+  discountValue: number | null;
+  appliedDiscountId: string | null;
+  subscriptionId: string | null;
 }
 
-const billingHistory = [
-  { date: "Jul 1, 2026", desc: "Enterprise plan · monthly", amount: "$1,200.00", status: "paid" },
-  { date: "Jun 1, 2026", desc: "Enterprise plan · monthly", amount: "$1,200.00", status: "paid" },
-  { date: "May 1, 2026", desc: "Enterprise plan · monthly", amount: "$1,200.00", status: "paid" },
-];
+interface DiscountCode {
+  id: string;
+  code: string;
+  description: string | null;
+  type: "percentage" | "fixed";
+  value: number;
+  active: boolean;
+  expiresAt: string | null;
+}
 
-const activityLog = [
-  { time: "2h ago", text: "Sarah Chen submitted timesheet for week of Jun 29" },
-  { time: "5h ago", text: "Marcus Rivera approved 3 leave requests" },
-  { time: "1d ago", text: "Aisha Tanaka set OOO status through Jul 10" },
-  { time: "2d ago", text: "Invoice #INV-2044 generated and sent" },
-  { time: "4d ago", text: "Leo Park added as workspace admin" },
-];
+function planPillClass(plan: string) {
+  switch (plan.toLowerCase()) {
+    case "enterprise": return "bg-[#111827] text-white";
+    case "pro": return "bg-[#059669] text-white";
+    case "starter": return "bg-[#F3F4F6] text-[#374151]";
+    default: return "bg-[#F3F4F6] text-[#9CA3AF]";
+  }
+}
 
-const tenantFlags = [
-  { name: "expense_management", enabled: true },
-  { name: "bulk_csv_import", enabled: true },
-  { name: "sso_saml", enabled: true },
-  { name: "ai_timesheet_fill", enabled: false },
-  { name: "evaluation_360", enabled: false },
-];
+function discountSummary(type: string | null, value: number | null) {
+  if (!type || value == null) return null;
+  return type === "percentage" ? `${value}% off` : `$${value} off`;
+}
 
-const supportNotes = [
-  {
-    author: "Krish Patel",
-    date: "Jun 20, 2026",
-    text: "Onboarded via annual enterprise contract. Primary contact is Sarah Chen (ops lead).",
-  },
-  {
-    author: "Dana Wu",
-    date: "Jun 25, 2026",
-    text: "Requested SSO setup walkthrough. Scheduled for Jul 3.",
-  },
-];
+function DiscountModal({
+  tenant,
+  discountCodes,
+  onClose,
+}: {
+  tenant: Tenant;
+  discountCodes: DiscountCode[];
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [selectedId, setSelectedId] = useState("");
 
-const tabs = ["Users", "Billing", "Activity log", "Feature flags", "Support notes"] as const;
-type Tab = (typeof tabs)[number];
+  const applyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/backoffice/tenants/${tenant.id}/discount`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discountCodeId: selectedId }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Failed to apply discount");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
+      toast({ title: "Discount applied" });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
 
-export default function BackofficeTenantDetailPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("Users");
+  const removeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/backoffice/tenants/${tenant.id}/discount`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove discount");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
+      toast({ title: "Discount removed" });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const activeCodes = discountCodes.filter((c) => c.active && (!c.expiresAt || new Date(c.expiresAt) >= new Date()));
+  const hasDiscount = Boolean(tenant.appliedDiscountId);
 
   return (
-    <BackofficeLayout
-      title={tenant.name}
-      active="/back-office/tenants"
-      topbarContent={
-        <div className="flex items-center gap-[6px] flex-1">
-          <Link href="/back-office/tenants" className="text-[12.5px] text-[#9CA3AF] no-underline">
-            Tenants
-          </Link>
-          <ChevronRight className="w-3 h-3 text-[#D1D5DB]" />
-          <span className="text-[12.5px] font-semibold text-[#374151]">{tenant.name}</span>
-        </div>
-      }
-      actions={
-        <>
-          <Button
-            variant="ghost"
-            className="h-auto gap-1.5 bg-[#FFFBEB] text-[#D97706] text-[12.5px] font-semibold px-[14px] py-[7px] border-[1.5px] border-[#FDE68A] rounded-[7px]"
-            data-testid="button-login-as-admin"
-          >
-            <Eye className="w-3 h-3" />
-            Login as admin
-          </Button>
-          <Button
-            variant="ghost"
-            className="h-auto bg-[#FEF2F2] text-[#DC2626] text-[12.5px] font-semibold px-[14px] py-[7px] border-[1.5px] border-[#FECACA] rounded-[7px]"
-            data-testid="button-suspend-tenant"
-          >
-            Suspend tenant
-          </Button>
-        </>
-      }
-    >
-      {/* Tenant header */}
-      <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-xl px-[22px] py-[18px] flex items-center justify-between">
-        <div className="flex items-center gap-[14px]">
-          <div className="w-11 h-11 bg-[#111827] rounded-[10px] flex items-center justify-center shrink-0">
-            <span className="text-white text-sm font-bold">{tenant.name[0]}</span>
-          </div>
-          <div>
-            <div className="text-[17px] font-bold text-[#111827] mb-0.5">{tenant.name}</div>
-            <div className="text-[12.5px] text-[#9CA3AF]">
-              {tenant.domain} · tenant ID: {tenant.id} · created {tenant.createdLabel}
-            </div>
-          </div>
-          <span className="text-xs font-bold bg-[#111827] text-white px-[11px] py-1 rounded-full ml-1.5">
-            {tenant.plan}
-          </span>
-          <StatusBadge status={tenant.status} />
-        </div>
-        <div className="flex gap-8 text-right">
-          <div>
-            <div className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-[0.08em] mb-[3px]">
-              MRR
-            </div>
-            <div className="text-lg font-bold text-[#111827]">{tenant.mrr}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-[0.08em] mb-[3px]">
-              Users
-            </div>
-            <div className="text-lg font-bold text-[#111827]">{tenant.users}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-[0.08em] mb-[3px]">
-              Billing cycle
-            </div>
-            <div className="text-sm font-semibold text-[#111827]">{tenant.billingCycle}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-[1.5px] border-[#E5E7EB] border-b-0 bg-white rounded-t-xl overflow-hidden">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-[11px] text-[13px] cursor-pointer border-b-2 ${
-              activeTab === tab
-                ? "border-[#059669] text-[#059669] font-semibold"
-                : "border-transparent text-[#9CA3AF]"
-            }`}
-            data-testid={`tab-${tab.toLowerCase().replace(/\s+/g, "-")}`}
-          >
-            {tab}
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-[#111827]">Manage discount — {tenant.name}</h2>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151]">
+            <X className="w-4 h-4" />
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* Tab content */}
-      <div className="bg-white border-[1.5px] border-t-0 border-[#E5E7EB] rounded-b-xl overflow-hidden flex-1 min-h-0 overflow-y-auto">
-        {activeTab === "Users" && (
-          <div>
-            <div className="grid grid-cols-[1fr_100px_120px_100px_110px_130px] px-5 py-[9px] bg-[#F9FAFB] border-t border-b border-[#E5E7EB]">
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
-                User
-              </span>
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
-                Role
-              </span>
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
-                Last active
-              </span>
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
-                Status
-              </span>
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
-                Joined
-              </span>
-              <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase text-right">
-                Actions
-              </span>
+        {hasDiscount && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-emerald-600" />
+              <div>
+                <div className="text-[12.5px] font-semibold text-emerald-800">
+                  {discountSummary(tenant.discountType, tenant.discountValue)} discount active
+                </div>
+                <div className="text-[11.5px] text-emerald-700">Net MRR: ${tenant.mrr}/mo</div>
+              </div>
             </div>
-            {tenantUsers.map((u, i) => (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[11.5px] text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 px-3"
+              onClick={() => removeMutation.mutate()}
+              disabled={removeMutation.isPending}
+            >
+              {removeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Remove"}
+            </Button>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-[12px] font-medium text-[#374151]">
+            {hasDiscount ? "Replace with a different code" : "Apply a discount code"}
+          </label>
+          {activeCodes.length === 0 ? (
+            <p className="text-[12.5px] text-[#9CA3AF]">No active discount codes available. Create one in the Discounts page first.</p>
+          ) : (
+            <>
+              <select
+                className="w-full h-9 rounded-md border border-[#E5E7EB] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#059669]"
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+              >
+                <option value="">— Select a code —</option>
+                {activeCodes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} · {c.type === "percentage" ? `${c.value}%` : `$${c.value}`} off
+                    {c.description ? ` · ${c.description}` : ""}
+                  </option>
+                ))}
+              </select>
+              <Button
+                className="w-full text-[13px]"
+                disabled={!selectedId || applyMutation.isPending}
+                onClick={() => applyMutation.mutate()}
+              >
+                {applyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Tag className="w-4 h-4 mr-2" />
+                )}
+                Apply discount
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function BackofficeTenantDetailPage() {
+  const { toast } = useToast();
+  const [managingTenant, setManagingTenant] = useState<Tenant | null>(null);
+
+  const { data: tenants = [], isLoading } = useQuery<Tenant[]>({
+    queryKey: ["/api/backoffice/tenants"],
+    staleTime: 15_000,
+  });
+
+  const { data: discountCodes = [] } = useQuery<DiscountCode[]>({
+    queryKey: ["/api/backoffice/discount-codes"],
+    staleTime: 30_000,
+  });
+
+  return (
+    <BackofficeLayout title="All tenants">
+      {managingTenant && (
+        <DiscountModal
+          tenant={managingTenant}
+          discountCodes={discountCodes}
+          onClose={() => setManagingTenant(null)}
+        />
+      )}
+
+      <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-xl overflow-hidden">
+        <div className="grid grid-cols-[1fr_90px_70px_90px_160px_120px] px-5 py-2.5 bg-[#F9FAFB] border-b border-[#E5E7EB]">
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Organization</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Plan</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Users</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">MRR</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">Discount</span>
+          <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase text-right">Actions</span>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-[#9CA3AF]" />
+          </div>
+        ) : tenants.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-[12.5px] text-[#9CA3AF]">
+            No tenants yet.
+          </div>
+        ) : (
+          tenants.map((t, i) => {
+            const summary = discountSummary(t.discountType, t.discountValue);
+            return (
               <div
-                key={u.email}
-                className={`grid grid-cols-[1fr_100px_120px_100px_110px_130px] px-5 py-[11px] border-b border-[#F9FAFB] items-center ${
+                key={t.id}
+                className={`grid grid-cols-[1fr_90px_70px_90px_160px_120px] px-5 py-3 border-b border-[#F9FAFB] items-center ${
                   i % 2 === 1 ? "bg-[#FAFAFA]" : ""
                 }`}
-                data-testid={`row-tenant-user-${u.initials.toLowerCase()}`}
+                data-testid={`row-tenant-${t.slug}`}
               >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-[26px] h-[26px] rounded-full shrink-0 flex items-center justify-center"
-                    style={{
-                      background: u.avatarBg,
-                      border: u.avatarBorder ? "1px solid #2A3545" : undefined,
-                    }}
-                  >
-                    <span
-                      className="text-[9px] font-bold"
-                      style={{ color: u.avatarBorder ? "#8DAFC8" : "white" }}
-                    >
-                      {u.initials}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="text-[12.5px] font-medium text-[#111827]">{u.name}</div>
-                    <div className="text-[11px] text-[#9CA3AF]">{u.email}</div>
+                <div>
+                  <div className="text-[13px] font-medium text-[#111827]">{t.name}</div>
+                  <div className="text-[11px] text-[#9CA3AF]">
+                    {t.slug} · joined {format(new Date(t.createdAt), "MMM yyyy")}
                   </div>
                 </div>
-                <span
-                  className={`text-[11.5px] px-2 py-0.5 rounded-full font-medium w-fit ${rolePillClass(
-                    u.roleTone
-                  )}`}
-                >
-                  {u.role}
+                <span className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-full w-fit ${planPillClass(t.plan)}`}>
+                  {t.plan.charAt(0).toUpperCase() + t.plan.slice(1)}
                 </span>
-                <span className="text-xs text-[#6B7280]">{u.lastActive}</span>
+                <span className="text-[12.5px] text-[#374151] tabular-nums">
+                  {t.userCount}
+                </span>
+                <span className="text-[12.5px] font-semibold text-[#111827] tabular-nums">
+                  {t.mrr > 0 ? `$${t.mrr}` : "—"}
+                </span>
                 <div>
-                  <StatusBadge status={u.status} />
+                  {summary ? (
+                    <div className="flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-[11.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        {summary}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-[12px] text-[#9CA3AF]">—</span>
+                  )}
                 </div>
-                <span className="text-xs text-[#6B7280]">{u.joined}</span>
-                <div className="flex gap-[5px] justify-end">
+                <div className="flex gap-1.5 justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto text-[11px] text-[#059669] bg-[#ECFDF5] px-2 py-[3px] rounded-md"
+                    className="h-7 text-[11.5px] text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] px-2.5"
+                    onClick={() => setManagingTenant(t)}
                   >
-                    Impersonate
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto text-[11px] text-[#DC2626] bg-[#FEF2F2] px-2 py-[3px] rounded-md"
-                  >
-                    Suspend
+                    <Tag className="w-3 h-3 mr-1" />
+                    Discount
                   </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "Billing" && (
-          <div className="p-5 flex flex-col gap-2">
-            {billingHistory.map((row) => (
-              <div
-                key={row.date}
-                className="flex items-center justify-between border-b border-[#F9FAFB] py-2.5 last:border-b-0"
-              >
-                <div>
-                  <div className="text-[12.5px] font-medium text-[#111827]">{row.desc}</div>
-                  <div className="text-[11.5px] text-[#9CA3AF]">{row.date}</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[12.5px] text-[#374151] tabular-nums">{row.amount}</span>
-                  <StatusBadge status={row.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "Activity log" && (
-          <div className="p-5 flex flex-col gap-3">
-            {activityLog.map((item, i) => (
-              <div key={i} className="flex items-baseline gap-3">
-                <span className="text-[11.5px] text-[#9CA3AF] w-14 shrink-0">{item.time}</span>
-                <span className="text-[12.5px] text-[#374151]">{item.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "Feature flags" && (
-          <div className="p-5 flex flex-col gap-2">
-            {tenantFlags.map((flag) => (
-              <div
-                key={flag.name}
-                className="flex items-center justify-between border-b border-[#F9FAFB] py-2.5 last:border-b-0"
-              >
-                <span className="text-[12.5px] font-medium text-[#111827]">{flag.name}</span>
-                <StatusBadge status={flag.enabled ? "active" : "declined"} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "Support notes" && (
-          <div className="p-5 flex flex-col gap-3">
-            {supportNotes.map((note, i) => (
-              <div key={i} className="border border-[#F3F4F6] rounded-lg p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12.5px] font-semibold text-[#111827]">{note.author}</span>
-                  <span className="text-[11px] text-[#9CA3AF]">{note.date}</span>
-                </div>
-                <p className="text-[12.5px] text-[#374151]">{note.text}</p>
-              </div>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
     </BackofficeLayout>

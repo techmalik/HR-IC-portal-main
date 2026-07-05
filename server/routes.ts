@@ -15,6 +15,7 @@ import {
   subscriptions as subscriptionsTable,
   users as usersTable,
   PLAN_LIMITS,
+  computeNetPrice,
 } from "@shared/schema";
 import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
@@ -519,20 +520,49 @@ export async function registerRoutes(
       .from(usersTable)
       .where(eq(usersTable.isActive, true));
 
-    // Plan breakdown from subscriptions
-    const planRows = await db
+    // Latest active subscription per org (one row per org) — include discount fields
+    const allActiveSubs = await db
       .select({
+        organizationId: subscriptionsTable.organizationId,
         plan: subscriptionsTable.plan,
-        cnt: count(),
+        createdAt: subscriptionsTable.createdAt,
+        discountType: subscriptionsTable.discountType,
+        discountValue: subscriptionsTable.discountValue,
       })
       .from(subscriptionsTable)
-      .where(eq(subscriptionsTable.status, "active"))
-      .groupBy(subscriptionsTable.plan);
+      .where(eq(subscriptionsTable.status, "active"));
 
-    const planBreakdown = planRows.map((row) => ({
-      plan: row.plan,
-      count: Number(row.cnt),
-      mrr: Number(row.cnt) * (PLAN_PRICES[row.plan] ?? 0),
+    // Keep latest subscription per org (by createdAt)
+    const latestSubByOrg = new Map<string, {
+      plan: string;
+      createdAt: Date;
+      discountType: string | null;
+      discountValue: number | null;
+    }>();
+    for (const sub of allActiveSubs) {
+      const existing = latestSubByOrg.get(sub.organizationId);
+      if (!existing || sub.createdAt > existing.createdAt) {
+        latestSubByOrg.set(sub.organizationId, {
+          plan: sub.plan,
+          createdAt: sub.createdAt,
+          discountType: sub.discountType,
+          discountValue: sub.discountValue,
+        });
+      }
+    }
+
+    // Plan breakdown — using net (discounted) MRR per subscription
+    const planMrrMap = new Map<string, { count: number; mrr: number }>();
+    for (const sub of latestSubByOrg.values()) {
+      const base = PLAN_PRICES[sub.plan] ?? 0;
+      const net = computeNetPrice(base, sub.discountType, sub.discountValue);
+      const cur = planMrrMap.get(sub.plan) ?? { count: 0, mrr: 0 };
+      planMrrMap.set(sub.plan, { count: cur.count + 1, mrr: cur.mrr + net });
+    }
+    const planBreakdown = Array.from(planMrrMap.entries()).map(([plan, data]) => ({
+      plan,
+      count: data.count,
+      mrr: data.mrr,
     }));
 
     const totalMrr = planBreakdown.reduce((sum, r) => sum + r.mrr, 0);
@@ -549,25 +579,6 @@ export async function registerRoutes(
       .from(organizationsTable)
       .orderBy(desc(organizationsTable.createdAt))
       .limit(10);
-
-    // Latest active subscription per org (one row per org)
-    const allActiveSubs = await db
-      .select({
-        organizationId: subscriptionsTable.organizationId,
-        plan: subscriptionsTable.plan,
-        createdAt: subscriptionsTable.createdAt,
-      })
-      .from(subscriptionsTable)
-      .where(eq(subscriptionsTable.status, "active"));
-
-    // Keep latest subscription per org (by createdAt)
-    const latestSubByOrg = new Map<string, { plan: string; createdAt: Date }>();
-    for (const sub of allActiveSubs) {
-      const existing = latestSubByOrg.get(sub.organizationId);
-      if (!existing || sub.createdAt > existing.createdAt) {
-        latestSubByOrg.set(sub.organizationId, { plan: sub.plan, createdAt: sub.createdAt });
-      }
-    }
 
     // User count per org
     const orgUserCounts = await db
@@ -591,15 +602,10 @@ export async function registerRoutes(
       createdAt: org.createdAt,
     }));
 
-    // Monthly MRR for the past 6 months, derived from subscription data.
-    // For each month we compute cumulative MRR: sum of plan prices for all
-    // active subscriptions whose org existed before the end of that month.
-    // We use org creation date as the proxy for when the subscription started
-    // (no historical billing table exists).
+    // Monthly MRR for the past 6 months — net of discounts
     const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const now = new Date();
 
-    // Fetch all orgs with their subscription plan (using latestSubByOrg built above)
     const allOrgsForMrr = await db
       .select({
         id: organizationsTable.id,
@@ -614,12 +620,13 @@ export async function registerRoutes(
       const y = d.getFullYear();
       const m = d.getMonth() + 1;
 
-      // Sum MRR for all orgs created on or before end of this month
       let mrrForMonth = 0;
       for (const org of allOrgsForMrr) {
         if (org.createdAt <= d) {
-          const plan = latestSubByOrg.get(org.id)?.plan ?? "free";
-          mrrForMonth += PLAN_PRICES[plan] ?? 0;
+          const sub = latestSubByOrg.get(org.id);
+          const plan = sub?.plan ?? "free";
+          const base = PLAN_PRICES[plan] ?? 0;
+          mrrForMonth += computeNetPrice(base, sub?.discountType, sub?.discountValue);
         }
       }
 
@@ -638,6 +645,171 @@ export async function registerRoutes(
       planBreakdown,
       recentSignups,
       monthlyMrr,
+    });
+  }));
+
+  // Back-office: discount code CRUD
+  app.get("/api/backoffice/discount-codes", asyncHandler(async (_req, res) => {
+    const codes = await storage.getAllDiscountCodes();
+    res.json(codes);
+  }));
+
+  app.post("/api/backoffice/discount-codes", asyncHandler(async (req, res) => {
+    const { code, description, type, value, active, expiresAt } = req.body;
+    if (!code || typeof code !== "string" || !code.trim()) {
+      return res.status(400).json({ error: "code is required" });
+    }
+    if (!["percentage", "fixed"].includes(type)) {
+      return res.status(400).json({ error: "type must be 'percentage' or 'fixed'" });
+    }
+    const numValue = Number(value);
+    if (!Number.isInteger(numValue) || numValue < 0) {
+      return res.status(400).json({ error: "value must be a non-negative integer" });
+    }
+    if (type === "percentage" && numValue > 100) {
+      return res.status(400).json({ error: "percentage value cannot exceed 100" });
+    }
+    const normalizedCode = code.trim().toUpperCase();
+    const existing = await storage.getDiscountCodeByCode(normalizedCode);
+    if (existing) {
+      return res.status(409).json({ error: "A discount code with that code already exists" });
+    }
+    const created = await storage.createDiscountCode({
+      code: normalizedCode,
+      description: description ?? null,
+      type,
+      value: numValue,
+      active: active !== false,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+    });
+    res.status(201).json(created);
+  }));
+
+  app.patch("/api/backoffice/discount-codes/:id", asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { description, type, value, active, expiresAt } = req.body;
+    const existing = await storage.getDiscountCode(id);
+    if (!existing) return res.status(404).json({ error: "Discount code not found" });
+
+    const updates: Record<string, unknown> = {};
+    if (description !== undefined) updates.description = description;
+    if (active !== undefined) updates.active = Boolean(active);
+    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (type !== undefined) {
+      if (!["percentage", "fixed"].includes(type)) {
+        return res.status(400).json({ error: "type must be 'percentage' or 'fixed'" });
+      }
+      updates.type = type;
+    }
+    if (value !== undefined) {
+      const numValue = Number(value);
+      if (!Number.isInteger(numValue) || numValue < 0) {
+        return res.status(400).json({ error: "value must be a non-negative integer" });
+      }
+      const checkType = (updates.type as string) ?? existing.type;
+      if (checkType === "percentage" && numValue > 100) {
+        return res.status(400).json({ error: "percentage value cannot exceed 100" });
+      }
+      updates.value = numValue;
+    }
+    const updated = await storage.updateDiscountCode(id, updates as any);
+    res.json(updated);
+  }));
+
+  app.delete("/api/backoffice/discount-codes/:id", asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const existing = await storage.getDiscountCode(id);
+    if (!existing) return res.status(404).json({ error: "Discount code not found" });
+    await storage.deleteDiscountCode(id);
+    res.json({ ok: true });
+  }));
+
+  // Back-office: apply / remove discount on a tenant's subscription
+  app.post("/api/backoffice/tenants/:orgId/discount", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const { discountCodeId } = req.body;
+    if (!discountCodeId) return res.status(400).json({ error: "discountCodeId is required" });
+    const discountCode = await storage.getDiscountCode(discountCodeId);
+    if (!discountCode) return res.status(404).json({ error: "Discount code not found" });
+    if (!discountCode.active) return res.status(400).json({ error: "Discount code is inactive" });
+    if (discountCode.expiresAt && discountCode.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Discount code has expired" });
+    }
+    const subscription = await storage.getSubscriptionByOrganization(orgId);
+    if (!subscription) return res.status(404).json({ error: "Subscription not found for this tenant" });
+    const updated = await storage.applyDiscountToSubscription(
+      subscription.id, discountCode.id, discountCode.type, discountCode.value
+    );
+    res.json({ subscription: updated, discountCode });
+  }));
+
+  app.delete("/api/backoffice/tenants/:orgId/discount", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const subscription = await storage.getSubscriptionByOrganization(orgId);
+    if (!subscription) return res.status(404).json({ error: "Subscription not found for this tenant" });
+    const updated = await storage.removeDiscountFromSubscription(subscription.id);
+    res.json({ subscription: updated });
+  }));
+
+  // Back-office: list all tenants (orgs + subscription summary)
+  app.get("/api/backoffice/tenants", asyncHandler(async (req, res) => {
+    const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt));
+    const allSubs = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.status, "active"));
+    const subByOrg = new Map(allSubs.map((s) => [s.organizationId, s]));
+    const userCounts = await db
+      .select({ organizationId: usersTable.organizationId, cnt: count() })
+      .from(usersTable)
+      .where(eq(usersTable.isActive, true))
+      .groupBy(usersTable.organizationId);
+    const userCountMap = new Map(userCounts.map((r) => [r.organizationId, Number(r.cnt)]));
+
+    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
+    const tenants = orgs.map((org) => {
+      const sub = subByOrg.get(org.id);
+      const plan = sub?.plan ?? "free";
+      const base = PLAN_PRICES[plan] ?? 0;
+      const netPrice = computeNetPrice(base, sub?.discountType, sub?.discountValue);
+      return {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        plan,
+        status: sub?.status ?? "active",
+        userCount: userCountMap.get(org.id) ?? 0,
+        createdAt: org.createdAt,
+        mrr: netPrice,
+        discountType: sub?.discountType ?? null,
+        discountValue: sub?.discountValue ?? null,
+        appliedDiscountId: sub?.appliedDiscountId ?? null,
+        subscriptionId: sub?.id ?? null,
+      };
+    });
+    res.json(tenants);
+  }));
+
+  // Back-office: single tenant detail
+  app.get("/api/backoffice/tenants/:orgId", asyncHandler(async (req, res) => {
+    const { orgId } = req.params;
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found" });
+    const sub = await storage.getSubscriptionByOrganization(orgId);
+    const userList = await storage.getAllUsers(orgId);
+    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
+    const plan = sub?.plan ?? "free";
+    const base = PLAN_PRICES[plan] ?? 0;
+    const netPrice = computeNetPrice(base, sub?.discountType, sub?.discountValue);
+
+    let discountCode = null;
+    if (sub?.appliedDiscountId) {
+      discountCode = await storage.getDiscountCode(sub.appliedDiscountId);
+    }
+
+    res.json({
+      organization: org,
+      subscription: sub ?? null,
+      netPrice,
+      discountCode,
+      users: userList.map(({ password: _, ...u }) => u),
     });
   }));
 
@@ -3578,6 +3750,15 @@ export async function registerRoutes(
     if (!subscription || !organization) {
       return res.status(404).json({ error: "Billing information not found" });
     }
+    const PLAN_PRICES: Record<string, number> = { free: 0, starter: 29, pro: 79, enterprise: 0 };
+    const basePrice = PLAN_PRICES[subscription.plan] ?? 0;
+    const netPrice = computeNetPrice(basePrice, subscription.discountType, subscription.discountValue);
+
+    let discountCode = null;
+    if (subscription.appliedDiscountId) {
+      discountCode = await storage.getDiscountCode(subscription.appliedDiscountId);
+    }
+
     res.json({
       subscription,
       organization: {
@@ -3585,6 +3766,13 @@ export async function registerRoutes(
         name: organization.name,
         slug: organization.slug,
         billingEmail: organization.billingEmail,
+      },
+      billing: {
+        basePrice,
+        netPrice,
+        discountType: subscription.discountType ?? null,
+        discountValue: subscription.discountValue ?? null,
+        discountCode: discountCode ? { code: discountCode.code, description: discountCode.description } : null,
       },
     });
   });

@@ -10,6 +10,7 @@ import {
   BookOpen,
   Layers,
   Upload,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const sections: NavSection[] = [
     label: "Tenants",
     items: [
       { label: "All tenants", href: "/back-office/tenants", icon: Home },
+      { label: "Discounts", href: "/back-office/discounts", icon: Tag },
       { label: "Billing", href: "/back-office/billing", icon: DollarSign },
     ],
   },

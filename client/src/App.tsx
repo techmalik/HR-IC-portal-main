@@ -47,6 +47,7 @@ import ExpensesPage from "@/pages/expenses";
 import CompetitiveAnalysisPage from "@/pages/competitive-analysis";
 import BackofficeOverviewPage from "@/pages/backoffice-overview";
 import BackofficeTenantDetailPage from "@/pages/backoffice-tenant-detail";
+import BackofficeDiscountsPage from "@/pages/backoffice-discounts";
 import BackofficeLogsPage from "@/pages/backoffice-logs";
 import BackofficeFlagsPage from "@/pages/backoffice-flags";
 import BackofficeTicketsPage from "@/pages/backoffice-tickets";
@@ -523,6 +524,7 @@ function BackOfficeRoutes() {
     <Switch>
       <Route path="/back-office" component={BackofficeOverviewPage} />
       <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
+      <Route path="/back-office/discounts" component={BackofficeDiscountsPage} />
       <Route path="/back-office/logs" component={BackofficeLogsPage} />
       <Route path="/back-office/flags" component={BackofficeFlagsPage} />
       <Route path="/back-office/tickets" component={BackofficeTicketsPage} />

@@ -37,6 +37,8 @@ import {
   type InsertContract,
   type Expense,
   type InsertExpense,
+  type DiscountCode,
+  type InsertDiscountCode,
   contracts,
   expenses,
   users,
@@ -56,6 +58,7 @@ import {
   notificationPreferences,
   organizations,
   subscriptions,
+  discountCodes,
   UserRole,
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
@@ -204,6 +207,15 @@ export interface IStorage {
   updateExpense(id: string, updates: Partial<Expense>): Promise<Expense | undefined>;
   deleteExpense(id: string): Promise<boolean>;
   linkExpensesToInvoice(expenseIds: string[], invoiceId: string, userId: string): Promise<Expense[]>;
+
+  getAllDiscountCodes(): Promise<DiscountCode[]>;
+  getDiscountCode(id: string): Promise<DiscountCode | undefined>;
+  getDiscountCodeByCode(code: string): Promise<DiscountCode | undefined>;
+  createDiscountCode(data: InsertDiscountCode): Promise<DiscountCode>;
+  updateDiscountCode(id: string, updates: Partial<DiscountCode>): Promise<DiscountCode | undefined>;
+  deleteDiscountCode(id: string): Promise<boolean>;
+  applyDiscountToSubscription(subscriptionId: string, discountCodeId: string, discountType: string, discountValue: number): Promise<Subscription | undefined>;
+  removeDiscountFromSubscription(subscriptionId: string): Promise<Subscription | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -838,6 +850,51 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return result;
+  }
+
+  async getAllDiscountCodes(): Promise<DiscountCode[]> {
+    return db.select().from(discountCodes).orderBy(desc(discountCodes.createdAt));
+  }
+
+  async getDiscountCode(id: string): Promise<DiscountCode | undefined> {
+    const result = await db.select().from(discountCodes).where(eq(discountCodes.id, id));
+    return result[0];
+  }
+
+  async getDiscountCodeByCode(code: string): Promise<DiscountCode | undefined> {
+    const result = await db.select().from(discountCodes).where(eq(discountCodes.code, code));
+    return result[0];
+  }
+
+  async createDiscountCode(data: InsertDiscountCode): Promise<DiscountCode> {
+    const result = await db.insert(discountCodes).values(data).returning();
+    return result[0];
+  }
+
+  async updateDiscountCode(id: string, updates: Partial<DiscountCode>): Promise<DiscountCode | undefined> {
+    const result = await db.update(discountCodes).set({ ...updates, updatedAt: new Date() }).where(eq(discountCodes.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteDiscountCode(id: string): Promise<boolean> {
+    const result = await db.delete(discountCodes).where(eq(discountCodes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async applyDiscountToSubscription(subscriptionId: string, discountCodeId: string, discountType: string, discountValue: number): Promise<Subscription | undefined> {
+    const result = await db.update(subscriptions)
+      .set({ appliedDiscountId: discountCodeId, discountType, discountValue, updatedAt: new Date() })
+      .where(eq(subscriptions.id, subscriptionId))
+      .returning();
+    return result[0];
+  }
+
+  async removeDiscountFromSubscription(subscriptionId: string): Promise<Subscription | undefined> {
+    const result = await db.update(subscriptions)
+      .set({ appliedDiscountId: null, discountType: null, discountValue: null, updatedAt: new Date() })
+      .where(eq(subscriptions.id, subscriptionId))
+      .returning();
+    return result[0];
   }
 }
 

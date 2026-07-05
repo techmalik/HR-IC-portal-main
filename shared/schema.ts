@@ -79,6 +79,30 @@ export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
 
 // ---------------------------------------------------------------------------
+// Discount codes table (platform-admin managed)
+// ---------------------------------------------------------------------------
+export const discountCodes = pgTable("discount_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  type: text("type").notNull(), // 'percentage' | 'fixed'
+  value: integer("value").notNull(), // 0-100 for percentage, whole dollars for fixed
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
+export type DiscountCode = typeof discountCodes.$inferSelect;
+
+// ---------------------------------------------------------------------------
 // Subscriptions table
 // ---------------------------------------------------------------------------
 export const subscriptions = pgTable("subscriptions", {
@@ -90,6 +114,9 @@ export const subscriptions = pgTable("subscriptions", {
   maxSeats: integer("max_seats").notNull().default(3),
   currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
   currentPeriodEnd: timestamp("current_period_end"),
+  appliedDiscountId: varchar("applied_discount_id"),
+  discountType: text("discount_type"),
+  discountValue: integer("discount_value"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -907,3 +934,21 @@ export const sessions = pgTable("sessions", {
 export const insertSessionSchema = createInsertSchema(sessions);
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Shared price helper — used by both server metrics and billing display
+// ---------------------------------------------------------------------------
+export function computeNetPrice(
+  basePrice: number,
+  discountType: string | null | undefined,
+  discountValue: number | null | undefined,
+): number {
+  if (!discountType || discountValue == null) return basePrice;
+  if (discountType === "percentage") {
+    return Math.max(0, Math.round(basePrice * (1 - discountValue / 100)));
+  }
+  if (discountType === "fixed") {
+    return Math.max(0, basePrice - discountValue);
+  }
+  return basePrice;
+}
