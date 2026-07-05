@@ -138,6 +138,17 @@ export default function EvaluationsPage() {
     queryKey: ["/api/evaluations"],
   });
 
+  // IC supervisors need a separate query for team evaluations (scoped to direct reports)
+  const { data: teamEvaluations, isLoading: teamEvalsLoading } = useQuery<Evaluation[]>({
+    queryKey: ["/api/evaluations", { managerId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/evaluations?managerId=${user?.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch team evaluations");
+      return res.json();
+    },
+    enabled: !!(isSupervisor && !isAdmin && user?.id),
+  });
+
   const { data: teamMembers } = useQuery<UserType[]>({
     queryKey: ["/api/team/members"],
   });
@@ -168,6 +179,13 @@ export default function EvaluationsPage() {
     },
   });
 
+  const invalidateEvaluations = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+    if (isSupervisor && !isAdmin && user?.id) {
+      queryClient.invalidateQueries({ queryKey: ["/api/evaluations", { managerId: user.id }] });
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: CreateEvaluationFormData) => {
       return apiRequest("POST", "/api/evaluations", {
@@ -177,7 +195,7 @@ export default function EvaluationsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+      invalidateEvaluations();
       toast({
         title: "Evaluation created",
         description: "Performance evaluation has been created.",
@@ -203,7 +221,7 @@ export default function EvaluationsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+      invalidateEvaluations();
       toast({
         title: "Self-evaluation started",
         description: "Your self-evaluation has been created. Fill it out and submit it to your supervisor.",
@@ -234,7 +252,10 @@ export default function EvaluationsPage() {
   };
 
   const myEvaluations = evaluations?.filter((e) => e.icId === user?.id) || [];
-  const managedEvaluations = evaluations?.filter((e) => e.managerId === user?.id) || [];
+  // For IC supervisors use the separate team-scoped query; admins use the org-wide list
+  const managedEvaluations = (isSupervisor && !isAdmin)
+    ? (teamEvaluations || [])
+    : (evaluations?.filter((e) => e.managerId === user?.id) || []);
   const allEvaluationsList = isManager ? (evaluations || []) : myEvaluations;
 
   const pendingICAction = myEvaluations.filter((e) => e.status === "draft");

@@ -1960,9 +1960,9 @@ export async function registerRoutes(
       } else {
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (teamMemberIds.length > 0) {
-          // IC supervisor: show own + direct reports
+          // IC supervisor: team approval queue — direct reports only
           const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
-          const allowedIds = new Set([...teamMemberIds, currentUser.id]);
+          const allowedIds = new Set(teamMemberIds);
           requests = status === "pending"
             ? all.filter(r => allowedIds.has(r.userId) && r.status === "pending")
             : all.filter(r => allowedIds.has(r.userId));
@@ -3143,8 +3143,9 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
 
+    const { managerId, icId } = req.query;
+
     if (isAdmin) {
-      const { managerId, icId } = req.query;
       if (managerId) {
         return res.json(await storage.getEvaluationsByManager(managerId as string));
       } else if (icId) {
@@ -3154,17 +3155,18 @@ export async function registerRoutes(
       }
     }
 
-    // IC role — may also be a supervisor (IC with direct reports)
-    // Always include the IC's own evaluations; if also a supervisor, add team evaluations
-    const myEvals = await storage.getEvaluationsByIC(currentUser.id);
-    const teamMemberIds = await getTeamMemberIds(currentUser.id);
-    if (teamMemberIds.length > 0) {
-      // IC supervisor: merge own + team evaluations (deduplicated by id)
-      const teamEvals = await storage.getEvaluationsByManager(currentUser.id);
-      const merged = new Map([...myEvals, ...teamEvals].map(e => [e.id, e]));
-      return res.json(Array.from(merged.values()));
+    // Non-admin IC (including IC supervisors)
+    // ?icId=self → own evaluations only (used by "My Evaluations" view)
+    // ?managerId=self → team evaluations only (used by "Team Evaluations" view)
+    // no params → default to own evaluations
+    if (managerId && String(managerId) === currentUser.id) {
+      // Supervisor requesting their team queue — direct reports only
+      const teamMemberIds = await getTeamMemberIds(currentUser.id);
+      if (teamMemberIds.length === 0) return res.json([]);
+      return res.json(await storage.getEvaluationsByManager(currentUser.id));
     }
-    res.json(myEvals);
+    // Own evaluations (default or explicit ?icId=self)
+    res.json(await storage.getEvaluationsByIC(currentUser.id));
   });
 
   app.get("/api/evaluations/pending-count", authMiddleware, async (req, res) => {
@@ -3172,22 +3174,21 @@ export async function registerRoutes(
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
 
     if (!isAdmin && currentUser.role === "ic") {
-      // Self-evaluation drafts pending completion
-      const myEvals = await storage.getEvaluationsByIC(currentUser.id);
-      let count = myEvals.filter(e => e.status === "draft").length;
-
-      // If also a supervisor, add team evaluations pending manager review
+      // For IC supervisors: badge reflects team's pending manager reviews only
+      // (own draft self-evals are personal items, not a "team action queue")
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length > 0) {
         const teamEvals = await storage.getEvaluationsByManager(currentUser.id);
-        count += teamEvals.filter(e => e.status === "ic_submitted").length;
+        return res.json({ count: teamEvals.filter(e => e.status === "ic_submitted").length });
       }
-      return res.json({ count });
+      // Pure IC: count own draft self-evaluations pending completion
+      const myEvals = await storage.getEvaluationsByIC(currentUser.id);
+      return res.json({ count: myEvals.filter(e => e.status === "draft").length });
     }
 
-    // Admin/owner: count evaluations pending their review as manager
-    const evaluations = await storage.getEvaluationsByManager(currentUser.id);
-    res.json({ count: evaluations.filter(e => e.status === "ic_submitted").length });
+    // Admin/owner: org-wide count of evaluations pending any manager review
+    const allEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+    res.json({ count: allEvals.filter(e => e.status === "ic_submitted").length });
   });
 
   app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {
