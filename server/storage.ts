@@ -220,7 +220,7 @@ export interface IStorage {
   applyDiscountToSubscription(subscriptionId: string, discountCodeId: string, discountType: string, discountValue: number): Promise<Subscription | undefined>;
   removeDiscountFromSubscription(subscriptionId: string): Promise<Subscription | undefined>;
 
-  getBackofficeActivityLogs(limit?: number): Promise<BackofficeActivityLog[]>;
+  getBackofficeActivityLogs(opts?: { limit?: number; orgId?: string; action?: string }): Promise<BackofficeActivityLog[]>;
   createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog>;
 }
 
@@ -903,8 +903,16 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getBackofficeActivityLogs(limit = 200): Promise<BackofficeActivityLog[]> {
-    return db.select().from(backofficeActivityLogs).orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
+  async getBackofficeActivityLogs(opts: { limit?: number; orgId?: string; action?: string } = {}): Promise<BackofficeActivityLog[]> {
+    const { limit = 200, orgId, action } = opts;
+    const conditions = [];
+    if (orgId) conditions.push(eq(backofficeActivityLogs.targetOrgId, orgId));
+    if (action) conditions.push(eq(backofficeActivityLogs.action, action));
+    const query = db.select().from(backofficeActivityLogs);
+    if (conditions.length > 0) {
+      return query.where(and(...conditions)).orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
+    }
+    return query.orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
   }
 
   async createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog> {

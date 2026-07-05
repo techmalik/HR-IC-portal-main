@@ -174,6 +174,23 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
       return res.status(403).json({ error: "Password change required", mustChangePassword: true });
     }
   }
+
+  // Block access for users whose org subscription is suspended.
+  // Platform admins are exempt so they can still manage/reactivate.
+  if (user.organizationId) {
+    const allowedAdminEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isPlatformAdmin = allowedAdminEmails.includes(user.email.toLowerCase());
+    if (!isPlatformAdmin) {
+      const sub = await storage.getSubscriptionByOrganization(user.organizationId);
+      if (sub?.status === "suspended") {
+        return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+      }
+    }
+  }
+
   req.authenticatedUser = user;
   next();
 }
@@ -340,11 +357,18 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Account is disabled" });
     }
 
-    // Block login if the organization's subscription is suspended
+    // Block login if the organization's subscription is suspended (platform admins are exempt)
     if (user.organizationId) {
-      const sub = await storage.getSubscriptionByOrganization(user.organizationId);
-      if (sub?.status === "suspended") {
-        return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+      const platformAdminEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      const isPlatformAdmin = platformAdminEmails.includes(user.email.toLowerCase());
+      if (!isPlatformAdmin) {
+        const sub = await storage.getSubscriptionByOrganization(user.organizationId);
+        if (sub?.status === "suspended") {
+          return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+        }
       }
     }
 
@@ -736,6 +760,7 @@ export async function registerRoutes(
   // Back-office: apply / remove discount on a tenant's subscription
   app.post("/api/backoffice/tenants/:orgId/discount", asyncHandler(async (req, res) => {
     const { orgId } = req.params;
+    const adminUser = req.authenticatedUser!;
     const { discountCodeId } = req.body;
     if (!discountCodeId) return res.status(400).json({ error: "discountCodeId is required" });
     const discountCode = await storage.getDiscountCode(discountCodeId);
@@ -749,22 +774,47 @@ export async function registerRoutes(
     const updated = await storage.applyDiscountToSubscription(
       subscription.id, discountCode.id, discountCode.type, discountCode.value
     );
+    const org = await storage.getOrganization(orgId);
+    await storage.createBackofficeActivityLog({
+      adminEmail: adminUser.email,
+      action: "discount_apply",
+      targetOrgId: orgId,
+      targetOrgName: org?.name ?? null,
+      details: `Code: ${discountCode.code} (${discountCode.type === "percentage" ? `${discountCode.value}%` : `$${discountCode.value}`} off)`,
+    });
     res.json({ subscription: updated, discountCode });
   }));
 
   app.delete("/api/backoffice/tenants/:orgId/discount", asyncHandler(async (req, res) => {
     const { orgId } = req.params;
+    const adminUser = req.authenticatedUser!;
     const subscription = await storage.getSubscriptionByOrganization(orgId);
     if (!subscription) return res.status(404).json({ error: "Subscription not found for this tenant" });
     const updated = await storage.removeDiscountFromSubscription(subscription.id);
+    const org = await storage.getOrganization(orgId);
+    await storage.createBackofficeActivityLog({
+      adminEmail: adminUser.email,
+      action: "discount_remove",
+      targetOrgId: orgId,
+      targetOrgName: org?.name ?? null,
+      details: null,
+    });
     res.json({ subscription: updated });
   }));
 
   // Back-office: list all tenants (orgs + subscription summary)
   app.get("/api/backoffice/tenants", asyncHandler(async (req, res) => {
     const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt));
-    const allSubs = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.status, "active"));
-    const subByOrg = new Map(allSubs.map((s) => [s.organizationId, s]));
+    // Fetch ALL subscriptions (not just active) so suspended orgs appear correctly
+    const allSubs = await db.select().from(subscriptionsTable);
+    // Keep latest subscription per org (by createdAt)
+    const subByOrg = new Map<string, typeof allSubs[number]>();
+    for (const s of allSubs) {
+      const existing = subByOrg.get(s.organizationId);
+      if (!existing || s.createdAt > existing.createdAt) {
+        subByOrg.set(s.organizationId, s);
+      }
+    }
     const userCounts = await db
       .select({ organizationId: usersTable.organizationId, cnt: count() })
       .from(usersTable)
@@ -784,6 +834,7 @@ export async function registerRoutes(
         slug: org.slug,
         plan,
         status: sub?.status ?? "active",
+        maxSeats: sub?.maxSeats ?? 3,
         userCount: userCountMap.get(org.id) ?? 0,
         createdAt: org.createdAt,
         mrr: netPrice,
@@ -902,9 +953,14 @@ export async function registerRoutes(
     res.json({ subscription: updated });
   }));
 
-  // Back-office: audit log
-  app.get("/api/backoffice/audit-log", asyncHandler(async (_req, res) => {
-    const logs = await storage.getBackofficeActivityLogs(500);
+  // Back-office: audit log (supports ?orgId=&action= filters)
+  app.get("/api/backoffice/audit-log", asyncHandler(async (req, res) => {
+    const { orgId, action } = req.query as { orgId?: string; action?: string };
+    const logs = await storage.getBackofficeActivityLogs({
+      limit: 500,
+      orgId: orgId || undefined,
+      action: action || undefined,
+    });
     res.json(logs);
   }));
 
