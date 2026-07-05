@@ -7,6 +7,9 @@ import {
   MessageSquare,
   Activity,
   Shield,
+  BookOpen,
+  Layers,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +36,13 @@ const sections: NavSection[] = [
     ],
   },
   {
+    label: "Content",
+    items: [
+      { label: "Blog articles", href: "/back-office/blog", icon: BookOpen },
+      { label: "SEO pages", href: "/back-office/seo", icon: Layers },
+    ],
+  },
+  {
     label: "Support",
     items: [
       { label: "User lookup", href: "/back-office/support", icon: UserSearch },
@@ -44,6 +54,7 @@ const sections: NavSection[] = [
     items: [
       { label: "System logs", href: "/back-office/logs", icon: Activity },
       { label: "Feature flags", href: "/back-office/flags", icon: Shield },
+      { label: "File migration", href: "/back-office/migrate", icon: Upload },
     ],
   },
 ];

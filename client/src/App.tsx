@@ -51,6 +51,7 @@ import BackofficeLogsPage from "@/pages/backoffice-logs";
 import BackofficeFlagsPage from "@/pages/backoffice-flags";
 import BackofficeTicketsPage from "@/pages/backoffice-tickets";
 import BackofficeSupportPage from "@/pages/backoffice-support";
+import { BackofficeLayout } from "@/components/backoffice-layout";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -453,13 +454,6 @@ function AdminOnlyRoute({ component: Component }: { component: () => JSX.Element
   return <Component />;
 }
 
-function PlatformAdminOnlyRoute({ component: Component }: { component: () => JSX.Element }) {
-  const { isPlatformAdmin } = useAuth();
-  if (!isPlatformAdmin) {
-    return <AccessDenied />;
-  }
-  return <Component />;
-}
 
 function PortalTourWrapper() {
   const { user } = useAuth();
@@ -533,6 +527,9 @@ function BackOfficeRoutes() {
       <Route path="/back-office/flags" component={BackofficeFlagsPage} />
       <Route path="/back-office/tickets" component={BackofficeTicketsPage} />
       <Route path="/back-office/support" component={BackofficeSupportPage} />
+      <Route path="/back-office/blog">{() => <BackofficeLayout title="Blog articles"><AdminBlogPage /></BackofficeLayout>}</Route>
+      <Route path="/back-office/seo">{() => <BackofficeLayout title="SEO pages"><AdminSeoPage /></BackofficeLayout>}</Route>
+      <Route path="/back-office/migrate">{() => <BackofficeLayout title="File migration"><MigrateFilesPage /></BackofficeLayout>}</Route>
       <Route component={BackofficeOverviewPage} />
     </Switch>
   );
@@ -611,9 +608,6 @@ function ProtectedRoutes() {
                 <Route path="/roles">{() => <AdminOnlyRoute component={UsersPage} />}</Route>
                 <Route path="/billing">{() => <AdminOnlyRoute component={BillingPage} />}</Route>
                 <Route path="/activity-logs">{() => <AdminOnlyRoute component={ActivityLogsPage} />}</Route>
-                <Route path="/admin/migrate-files">{() => <AdminOnlyRoute component={MigrateFilesPage} />}</Route>
-                <Route path="/admin/blog">{() => <PlatformAdminOnlyRoute component={AdminBlogPage} />}</Route>
-                <Route path="/admin/seo">{() => <PlatformAdminOnlyRoute component={AdminSeoPage} />}</Route>
                 <Route path="/profile" component={ProfilePage} />
                 <Route path="/timesheets-overview" component={TimesheetsOverviewPage} />
                 <Route path="/approved-timesheets" component={ApprovedTimesheetsPage} />

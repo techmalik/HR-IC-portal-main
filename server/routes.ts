@@ -274,7 +274,7 @@ export async function registerRoutes(
   registerObjectStorageRoutes(app, authMiddleware, storage);
 
   // Migration file upload route - admin only
-  app.use(createMigrateFilesRouter(authMiddleware, requireRole("admin")));
+  app.use(createMigrateFilesRouter(authMiddleware, requirePlatformAdmin));
 
   // Public health check endpoint — returns DB and storage connectivity status
   app.get("/api/health", asyncHandler(async (req, res) => {
