@@ -6,6 +6,7 @@ interface SsrShellOptions {
   canonicalPath: string;
   ogTitle?: string;
   ogDescription?: string;
+  ogImage?: string;
   jsonLd?: object | null;
   bodyHtml: string;
 }
@@ -17,6 +18,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     canonicalPath,
     ogTitle,
     ogDescription,
+    ogImage,
     jsonLd,
     bodyHtml,
   } = opts;
@@ -43,9 +45,11 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
   <meta property="og:url" content="${escAttr(canonical)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Axle">
+  <meta property="og:image" content="${escAttr(ogImage || `${baseUrl}/og-default.png`)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escAttr(ogTitle || title)}">
   <meta name="twitter:description" content="${escAttr(ogDescription || metaDescription)}">
+  <meta name="twitter:image" content="${escAttr(ogImage || `${baseUrl}/og-default.png`)}">
   ${jsonLdScript}
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
