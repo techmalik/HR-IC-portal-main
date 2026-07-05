@@ -2,6 +2,12 @@ import { db } from "./db";
 import { users, UserRole } from "@shared/schema";
 import { hashPassword } from "./storage";
 
+if (process.env.NODE_ENV === "production") {
+  console.warn("⚠️  seed.ts refused to run: NODE_ENV is 'production'.");
+  console.warn("   This script is a dev-only tool. Run it only in development.");
+  process.exit(0);
+}
+
 async function seedDatabase() {
   console.log("Checking for existing users...");
   const existingUsers = await db.select().from(users);

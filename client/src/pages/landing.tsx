@@ -299,11 +299,17 @@ export default function LandingPage() {
       {/* Social proof strip */}
       <section className="bg-gray-50 border-y border-gray-100 py-5">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-wrap items-center gap-x-10 gap-y-2">
-          <span className="text-gray-400 text-xs font-medium whitespace-nowrap">Used by teams at</span>
-          <div className="flex flex-wrap items-center gap-x-10 gap-y-2 opacity-40">
-            {["Meridian", "NorthStar", "Vertex Labs", "Corelink", "Acme Corp"].map((name) => (
-              <span key={name} className="text-gray-700 text-sm font-bold tracking-tight">
-                {name}
+          <span className="text-gray-400 text-xs font-medium whitespace-nowrap">Built for teams that run on contractors</span>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            {[
+              { icon: Clock, label: "Timesheets" },
+              { icon: FileText, label: "Invoices" },
+              { icon: Calendar, label: "Leave tracking" },
+              { icon: Award, label: "Evaluations" },
+            ].map(({ icon: Icon, label }) => (
+              <span key={label} className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
+                <Icon className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />
+                {label}
               </span>
             ))}
           </div>
@@ -436,7 +442,7 @@ export default function LandingPage() {
             Ready to bring order to contractor ops?
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed mb-9 max-w-lg mx-auto">
-            Join hundreds of teams using Axle to run their contractor operations without the spreadsheet chaos.
+            Run your contractor operations without the spreadsheet chaos.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3.5">
             <Button size="lg" onClick={() => setLocation("/signup")} data-testid="button-cta-signup">
