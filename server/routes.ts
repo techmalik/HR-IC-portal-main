@@ -1801,11 +1801,24 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Timesheet not found" });
     }
 
+    // Org boundary check
+    if (existingTimesheet.organizationId !== currentUser.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     // Derive reviewedBy from the authenticated user — never trust the client-supplied value
     const isApprovalAction = req.body.status === "approved" || req.body.status === "rejected";
     if (isApprovalAction) {
       if (currentUser.id === existingTimesheet.userId) {
         return res.status(403).json({ error: "You cannot approve or reject your own timesheet" });
+      }
+      const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdminOrOwner) {
+        // Non-admin supervisors may only approve/reject their direct reports' timesheets
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(existingTimesheet.userId)) {
+          return res.status(403).json({ error: "You may only review timesheets for your direct reports" });
+        }
       }
     }
 
@@ -2388,10 +2401,26 @@ export async function registerRoutes(
       return res.status(403).json({ error: "You cannot approve or reject your own invoice" });
     }
 
+    // Org boundary check
+    if (invoice.organizationId !== user.organizationId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     // Check if user has supervisor privileges
     const isSupervisor = await hasSupervisorPrivileges(user.id);
     if (!isSupervisor && status) {
       return res.status(403).json({ error: "Insufficient permissions to review invoices" });
+    }
+
+    // Non-admin supervisors may only review their direct reports' invoices
+    if (status) {
+      const isAdminOrOwner = user.role === "admin" || user.role === "owner";
+      if (!isAdminOrOwner) {
+        const teamMemberIds = await getTeamMemberIds(user.id);
+        if (!teamMemberIds.includes(invoice.userId)) {
+          return res.status(403).json({ error: "You may only review invoices for your direct reports" });
+        }
+      }
     }
 
     // Prevent re-reviewing approved invoices
@@ -3323,10 +3352,33 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Evaluation not found" });
     }
     
-    if (currentUser.role === "ic" && existingEvaluation.icId !== currentUser.id) {
+    // Org boundary check
+    if (existingEvaluation.organizationId !== currentUser.organizationId) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isManagerAction = req.body.status === "manager_submitted" || req.body.status === "completed";
+
+    if (currentUser.role === "ic") {
+      // IC may only act on their own evaluation (self-assessment side)
+      if (existingEvaluation.icId !== currentUser.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      // IC supervisors acting as managers (manager_submitted/completed) must be direct supervisor
+      if (isManagerAction) {
+        if (existingEvaluation.managerId !== currentUser.id) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(existingEvaluation.icId)) {
+          return res.status(403).json({ error: "You may only review evaluations for your direct reports" });
+        }
+      }
+    } else if (!isAdminOrOwner) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const updates = { ...req.body };
     
     if (req.body.status === "ic_submitted") {
@@ -3450,19 +3502,35 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Evaluation not found" });
     }
     
-    const isIC = currentUser.role === "ic";
-    const isManager = await hasSupervisorPrivileges(currentUser.id);
-    
-    if (isIC && existingEvaluation.icId !== currentUser.id) {
+    // Org boundary check
+    if (existingEvaluation.organizationId !== currentUser.organizationId) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
-    if (!isIC && !isManager) {
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isIC = currentUser.role === "ic";
+    const isManager = await hasSupervisorPrivileges(currentUser.id);
+    const { sections, evaluationUpdates, finalizeAs } = req.body;
+
+    if (isIC) {
+      if (finalizeAs === "ic" && existingEvaluation.icId !== currentUser.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (finalizeAs === "manager") {
+        // IC supervisor acting as manager: must be the assigned manager and a direct supervisor
+        if (existingEvaluation.managerId !== currentUser.id) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(existingEvaluation.icId)) {
+          return res.status(403).json({ error: "You may only review evaluations for your direct reports" });
+        }
+      }
+    } else if (!isAdminOrOwner && !isManager) {
       return res.status(403).json({ error: "Forbidden" });
     }
     
     try {
-      const { sections, evaluationUpdates, finalizeAs } = req.body;
       
       // Save all sections first
       if (sections && sections.length > 0) {
