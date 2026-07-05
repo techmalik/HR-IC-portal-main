@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
 import { db } from "./db";
 import { parseBulkBody, runBulk } from "./bulkReview";
-import { eq } from "drizzle-orm";
+import { eq, desc, gte, sql, count, and } from "drizzle-orm";
 import {
   timesheets as timesheetsTable,
   oooRequests as oooRequestsTable,
@@ -11,6 +11,10 @@ import {
   expenses as expensesTable,
   invoices as invoicesTable,
   activityLogs as activityLogsTable,
+  organizations as organizationsTable,
+  subscriptions as subscriptionsTable,
+  users as usersTable,
+  PLAN_LIMITS,
 } from "@shared/schema";
 import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
@@ -272,6 +276,39 @@ export async function registerRoutes(
   // Migration file upload route - admin only
   app.use(createMigrateFilesRouter(authMiddleware, requireRole("admin")));
 
+  // Public health check endpoint — returns DB and storage connectivity status
+  app.get("/api/health", asyncHandler(async (req, res) => {
+    let dbOk = false;
+    try {
+      await db.execute(sql`SELECT 1`);
+      dbOk = true;
+    } catch {
+      dbOk = false;
+    }
+
+    let storageOk = false;
+    try {
+      const { Client } = await import("@replit/object-storage");
+      const client = new Client();
+      const listResult = await client.list({ prefix: ".private/" });
+      storageOk = listResult.ok;
+    } catch {
+      storageOk = false;
+    }
+
+    const allOk = dbOk && storageOk;
+    // Always return 200 so clients can read the JSON body even when degraded.
+    // Callers should inspect `status` rather than the HTTP status code.
+    res.status(200).json({
+      status: allOk ? "ok" : "degraded",
+      services: {
+        database: dbOk ? "ok" : "error",
+        storage: storageOk ? "ok" : "error",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }));
+
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
     const clientIp = req.socket?.remoteAddress || req.ip || 'unknown';
@@ -462,6 +499,147 @@ export async function registerRoutes(
 
   // Back-office API namespace — platform admins only
   app.use("/api/backoffice", authMiddleware, requirePlatformAdmin);
+
+  // Back-office: platform metrics (real DB data)
+  app.get("/api/backoffice/metrics", asyncHandler(async (req, res) => {
+    const PLAN_PRICES: Record<string, number> = {
+      free: 0,
+      starter: 29,
+      pro: 79,
+      enterprise: 0,
+    };
+
+    // Total active orgs and user count
+    const [orgCountResult] = await db
+      .select({ count: count() })
+      .from(organizationsTable);
+
+    const [userCountResult] = await db
+      .select({ count: count() })
+      .from(usersTable)
+      .where(eq(usersTable.isActive, true));
+
+    // Plan breakdown from subscriptions
+    const planRows = await db
+      .select({
+        plan: subscriptionsTable.plan,
+        cnt: count(),
+      })
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.status, "active"))
+      .groupBy(subscriptionsTable.plan);
+
+    const planBreakdown = planRows.map((row) => ({
+      plan: row.plan,
+      count: Number(row.cnt),
+      mrr: Number(row.cnt) * (PLAN_PRICES[row.plan] ?? 0),
+    }));
+
+    const totalMrr = planBreakdown.reduce((sum, r) => sum + r.mrr, 0);
+    const totalOrgs = Number(orgCountResult.count);
+
+    // Recent signups — fetch orgs and subscriptions separately to avoid
+    // duplicate rows when an org has multiple subscription records.
+    const recentOrgsRaw = await db
+      .select({
+        id: organizationsTable.id,
+        name: organizationsTable.name,
+        createdAt: organizationsTable.createdAt,
+      })
+      .from(organizationsTable)
+      .orderBy(desc(organizationsTable.createdAt))
+      .limit(10);
+
+    // Latest active subscription per org (one row per org)
+    const allActiveSubs = await db
+      .select({
+        organizationId: subscriptionsTable.organizationId,
+        plan: subscriptionsTable.plan,
+        createdAt: subscriptionsTable.createdAt,
+      })
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.status, "active"));
+
+    // Keep latest subscription per org (by createdAt)
+    const latestSubByOrg = new Map<string, { plan: string; createdAt: Date }>();
+    for (const sub of allActiveSubs) {
+      const existing = latestSubByOrg.get(sub.organizationId);
+      if (!existing || sub.createdAt > existing.createdAt) {
+        latestSubByOrg.set(sub.organizationId, { plan: sub.plan, createdAt: sub.createdAt });
+      }
+    }
+
+    // User count per org
+    const orgUserCounts = await db
+      .select({
+        organizationId: usersTable.organizationId,
+        cnt: count(),
+      })
+      .from(usersTable)
+      .where(eq(usersTable.isActive, true))
+      .groupBy(usersTable.organizationId);
+
+    const userCountMap = new Map(
+      orgUserCounts.map((r) => [r.organizationId, Number(r.cnt)])
+    );
+
+    const recentSignups = recentOrgsRaw.map((org) => ({
+      id: org.id,
+      name: org.name,
+      plan: latestSubByOrg.get(org.id)?.plan ?? "free",
+      userCount: userCountMap.get(org.id) ?? 0,
+      createdAt: org.createdAt,
+    }));
+
+    // Monthly MRR for the past 6 months, derived from subscription data.
+    // For each month we compute cumulative MRR: sum of plan prices for all
+    // active subscriptions whose org existed before the end of that month.
+    // We use org creation date as the proxy for when the subscription started
+    // (no historical billing table exists).
+    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const now = new Date();
+
+    // Fetch all orgs with their subscription plan (using latestSubByOrg built above)
+    const allOrgsForMrr = await db
+      .select({
+        id: organizationsTable.id,
+        createdAt: organizationsTable.createdAt,
+      })
+      .from(organizationsTable);
+
+    const monthlyMrr: { label: string; year: number; month: number; mrr: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i + 1, 0); // last day of month
+      d.setHours(23, 59, 59, 999);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+
+      // Sum MRR for all orgs created on or before end of this month
+      let mrrForMonth = 0;
+      for (const org of allOrgsForMrr) {
+        if (org.createdAt <= d) {
+          const plan = latestSubByOrg.get(org.id)?.plan ?? "free";
+          mrrForMonth += PLAN_PRICES[plan] ?? 0;
+        }
+      }
+
+      monthlyMrr.push({
+        label: MONTH_NAMES[m - 1],
+        year: y,
+        month: m,
+        mrr: mrrForMonth,
+      });
+    }
+
+    res.json({
+      orgCount: totalOrgs,
+      userCount: Number(userCountResult.count),
+      mrr: totalMrr,
+      planBreakdown,
+      recentSignups,
+      monthlyMrr,
+    });
+  }));
 
   // User routes - protected with auth middleware
   app.get("/api/users", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {

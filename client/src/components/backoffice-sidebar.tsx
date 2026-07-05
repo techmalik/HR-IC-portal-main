@@ -36,7 +36,7 @@ const sections: NavSection[] = [
     label: "Support",
     items: [
       { label: "User lookup", href: "/back-office/support", icon: UserSearch },
-      { label: "Tickets", href: "/back-office/tickets", icon: MessageSquare, badge: 3 },
+      { label: "Tickets", href: "/back-office/tickets", icon: MessageSquare },
     ],
   },
   {

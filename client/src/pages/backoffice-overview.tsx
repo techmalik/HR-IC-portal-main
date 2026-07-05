@@ -1,96 +1,127 @@
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { BackofficeLayout } from "@/components/backoffice-layout";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronDown } from "lucide-react";
+import { Calendar, ChevronDown, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { format } from "date-fns";
 
-const kpis = [
-  { label: "MRR", value: "$14,820", delta: "+12% vs last month", tone: "up" as const },
-  { label: "Active tenants", value: "47", delta: "+3 this month", tone: "up" as const },
-  { label: "Total users", value: "612", delta: "across all tenants", tone: "neutral" as const },
-  { label: "Churn rate", value: "1.8%", delta: "-0.4% vs last month", tone: "up" as const },
-];
+interface PlanBreakdownItem {
+  plan: string;
+  count: number;
+  mrr: number;
+}
 
-const openTicketsKpi = { label: "Open tickets", value: "3", delta: "1 urgent" };
+interface RecentSignup {
+  id: string;
+  name: string;
+  plan: string;
+  userCount: number;
+  createdAt: string;
+}
 
-const mrrChart = [
-  { month: "Jan", height: 54, color: "#D1FAE5" },
-  { month: "Feb", height: 66, color: "#A7F3D0" },
-  { month: "Mar", height: 72, color: "#6EE7B7" },
-  { month: "Apr", height: 82, color: "#34D399" },
-  { month: "May", height: 90, color: "#10B981" },
-  { month: "Jun", height: 96, color: "#059669" },
-  { month: "Jul", height: 96, color: "#059669", current: true },
-];
+interface MonthlyMrrItem {
+  label: string;
+  year: number;
+  month: number;
+  mrr: number;
+}
 
-const planBreakdown = [
-  { plan: "Enterprise", tenants: 6, pct: 13, color: "#111827", detail: "$7,200 MRR · custom" },
-  { plan: "Pro", tenants: 19, pct: 40, color: "#059669", detail: "$6,320 MRR · $79/mo" },
-  { plan: "Starter", tenants: 14, pct: 30, color: "#34D399", detail: "$1,300 MRR · $29/mo" },
-  { plan: "Free", tenants: 8, pct: 17, color: "#D1FAE5", detail: "$0 MRR" },
-];
+interface BackofficeMetrics {
+  orgCount: number;
+  userCount: number;
+  mrr: number;
+  planBreakdown: PlanBreakdownItem[];
+  recentSignups: RecentSignup[];
+  monthlyMrr: MonthlyMrrItem[];
+}
 
-const recentSignups = [
-  {
-    org: "Meridian Co.",
-    domain: "meridian.co",
-    plan: "Enterprise",
-    users: "24 users",
-    signedUp: "Jul 1, 2026",
-  },
-  {
-    org: "NorthStar Labs",
-    domain: "northstarlabs.io",
-    plan: "Pro",
-    users: "11 users",
-    signedUp: "Jun 28, 2026",
-  },
-  {
-    org: "Vertex Labs",
-    domain: "vertexlabs.com",
-    plan: "Starter",
-    users: "6 users",
-    signedUp: "Jun 22, 2026",
-  },
-  {
-    org: "Corelink Systems",
-    domain: "corelink.io",
-    plan: "Pro",
-    users: "9 users",
-    signedUp: "Jun 15, 2026",
-  },
-  {
-    org: "Acme Corp",
-    domain: "acmecorp.com",
-    plan: "Free",
-    users: "3 users",
-    signedUp: "Jun 9, 2026",
-  },
-];
+interface HealthStatus {
+  status: "ok" | "degraded";
+  services: {
+    database: "ok" | "error";
+    storage: "ok" | "error";
+  };
+  timestamp: string;
+}
 
 function planPillClass(plan: string) {
-  switch (plan) {
-    case "Enterprise":
+  switch (plan.toLowerCase()) {
+    case "enterprise":
       return "bg-[#111827] text-white";
-    case "Pro":
+    case "pro":
       return "bg-[#059669] text-white";
-    case "Starter":
+    case "starter":
       return "bg-[#F3F4F6] text-[#374151]";
     default:
       return "bg-[#F3F4F6] text-[#9CA3AF]";
   }
 }
 
-const systemHealth = [
-  { label: "API", value: "99.98%", ok: true },
-  { label: "Database", value: "99.99%", ok: true },
-  { label: "File storage", value: "100%", ok: true },
-  { label: "Email delivery", value: "96.2%", ok: false },
-  { label: "Auth service", value: "100%", ok: true },
-];
+function planDisplayName(plan: string) {
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
 
-const latencyBars = [60, 55, 70, 50, 80, 100, 65, 60, 70, 55];
+const PLAN_ORDER = ["enterprise", "pro", "starter", "free"];
+const PLAN_COLORS: Record<string, string> = {
+  enterprise: "#111827",
+  pro: "#059669",
+  starter: "#34D399",
+  free: "#D1FAE5",
+};
+const PLAN_DETAIL: Record<string, string> = {
+  enterprise: "custom",
+  pro: "$79/mo",
+  starter: "$29/mo",
+  free: "$0 MRR",
+};
+
+function KpiSkeleton() {
+  return (
+    <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px] animate-pulse">
+      <div className="h-2 w-16 bg-[#F3F4F6] rounded mb-[14px]" />
+      <div className="h-7 w-20 bg-[#F3F4F6] rounded mb-2" />
+      <div className="h-2 w-24 bg-[#F3F4F6] rounded" />
+    </div>
+  );
+}
 
 export default function BackofficeOverviewPage() {
+  const { data: metrics, isLoading: metricsLoading } = useQuery<BackofficeMetrics>({
+    queryKey: ["/api/backoffice/metrics"],
+    staleTime: 30_000,
+  });
+
+  const { data: health, isLoading: healthLoading } = useQuery<HealthStatus>({
+    queryKey: ["/api/health"],
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const mrrFormatted = metrics
+    ? `$${metrics.mrr.toLocaleString()}`
+    : "—";
+
+  const sortedPlanBreakdown = metrics
+    ? [...metrics.planBreakdown].sort(
+        (a, b) =>
+          PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan)
+      )
+    : [];
+
+  const totalOrgs = metrics?.orgCount ?? 0;
+
+  const maxMonthMrr = metrics
+    ? Math.max(...metrics.monthlyMrr.map((m) => m.mrr), 1)
+    : 1;
+
+  const systemServices = health
+    ? [
+        { label: "Database", ok: health.services.database === "ok" },
+        { label: "File storage", ok: health.services.storage === "ok" },
+        { label: "API", ok: health.status === "ok" },
+      ]
+    : [];
+
   return (
     <BackofficeLayout
       title="Platform Overview"
@@ -101,48 +132,94 @@ export default function BackofficeOverviewPage() {
             Last 30 days
             <ChevronDown className="w-[11px] h-[11px] text-[#9CA3AF]" />
           </div>
-          <div className="w-2 h-2 bg-[#10B981] rounded-full" />
-          <span className="text-[12px] text-[#6B7280]">All systems operational</span>
+          {!healthLoading && health && (
+            <>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  health.status === "ok" ? "bg-[#10B981]" : "bg-[#D97706]"
+                }`}
+              />
+              <span className="text-[12px] text-[#6B7280]">
+                {health.status === "ok" ? "All systems operational" : "Degraded"}
+              </span>
+            </>
+          )}
         </>
       }
     >
       {/* KPI row */}
-      <div className="grid grid-cols-5 gap-3">
-        {kpis.map((kpi) => (
-          <div
-            key={kpi.label}
-            className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px]"
-            data-testid={`card-kpi-${kpi.label.toLowerCase().replace(/\s+/g, "-")}`}
-          >
-            <div className="text-[9.5px] font-bold text-[#9CA3AF] tracking-[0.1em] uppercase mb-[10px]">
-              {kpi.label}
-            </div>
-            <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
-              {kpi.value}
+      <div className="grid grid-cols-4 gap-3">
+        {metricsLoading ? (
+          <>
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+          </>
+        ) : (
+          <>
+            <div
+              className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px]"
+              data-testid="card-kpi-mrr"
+            >
+              <div className="text-[9.5px] font-bold text-[#9CA3AF] tracking-[0.1em] uppercase mb-[10px]">
+                MRR
+              </div>
+              <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
+                {mrrFormatted}
+              </div>
+              <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
+                from active subscriptions
+              </div>
             </div>
             <div
-              className={`text-[11.5px] font-medium mt-1 ${
-                kpi.tone === "up" ? "text-[#059669]" : "text-[#6B7280]"
-              }`}
+              className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px]"
+              data-testid="card-kpi-active-tenants"
             >
-              {kpi.delta}
+              <div className="text-[9.5px] font-bold text-[#9CA3AF] tracking-[0.1em] uppercase mb-[10px]">
+                Active tenants
+              </div>
+              <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
+                {metrics?.orgCount ?? "—"}
+              </div>
+              <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
+                organizations
+              </div>
             </div>
-          </div>
-        ))}
-        <div
-          className="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-[11px] px-4 py-[14px]"
-          data-testid="card-kpi-open-tickets"
-        >
-          <div className="text-[9.5px] font-bold text-[#92400E] tracking-[0.1em] uppercase mb-[10px]">
-            {openTicketsKpi.label}
-          </div>
-          <div className="text-[26px] font-bold text-[#92400E] tracking-[-0.03em] tabular-nums">
-            {openTicketsKpi.value}
-          </div>
-          <div className="text-[11.5px] font-medium mt-1 text-[#B45309]">
-            {openTicketsKpi.delta}
-          </div>
-        </div>
+            <div
+              className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px]"
+              data-testid="card-kpi-total-users"
+            >
+              <div className="text-[9.5px] font-bold text-[#9CA3AF] tracking-[0.1em] uppercase mb-[10px]">
+                Total users
+              </div>
+              <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
+                {metrics?.userCount ?? "—"}
+              </div>
+              <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
+                across all tenants
+              </div>
+            </div>
+            <div
+              className="bg-white border-[1.5px] border-[#E5E7EB] rounded-[11px] px-4 py-[14px]"
+              data-testid="card-kpi-paid-orgs"
+            >
+              <div className="text-[9.5px] font-bold text-[#9CA3AF] tracking-[0.1em] uppercase mb-[10px]">
+                Paid tenants
+              </div>
+              <div className="text-[26px] font-bold text-[#111827] tracking-[-0.03em] tabular-nums">
+                {metrics
+                  ? metrics.planBreakdown
+                      .filter((p) => p.plan !== "free")
+                      .reduce((sum, p) => sum + p.count, 0)
+                  : "—"}
+              </div>
+              <div className="text-[11.5px] font-medium mt-1 text-[#6B7280]">
+                starter + pro + enterprise
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* MRR chart + plan breakdown */}
@@ -153,56 +230,101 @@ export default function BackofficeOverviewPage() {
               <div className="text-[13.5px] font-semibold text-[#111827]">
                 Monthly recurring revenue
               </div>
-              <div className="text-xs text-[#9CA3AF] mt-0.5">Jan 2026 to Jul 2026</div>
+              <div className="text-xs text-[#9CA3AF] mt-0.5">Cumulative MRR · past 6 months</div>
             </div>
-            <span className="text-[13px] font-semibold text-[#059669]">$14,820</span>
+            <span className="text-[13px] font-semibold text-[#059669]">{mrrFormatted}</span>
           </div>
-          <div className="flex items-end gap-[10px] h-[120px] pb-6 border-b border-[#F3F4F6]">
-            {mrrChart.map((bar) => (
-              <div key={bar.month} className="flex-1 flex flex-col items-center gap-1.5">
-                <div
-                  className="w-full rounded-t"
-                  style={{
-                    height: `${bar.height}px`,
-                    background: bar.color,
-                    boxShadow: bar.current
-                      ? "0 0 0 2px #059669, 0 0 0 4px rgba(5,150,105,0.2)"
-                      : undefined,
-                  }}
-                />
-                <span
-                  className={`text-[10px] ${
-                    bar.current ? "text-[#059669] font-semibold" : "text-[#9CA3AF]"
-                  }`}
-                >
-                  {bar.month}
-                </span>
-              </div>
-            ))}
-          </div>
+          {metricsLoading ? (
+            <div className="flex items-end gap-[10px] h-[120px] pb-6 border-b border-[#F3F4F6] animate-pulse">
+              {[60, 45, 70, 55, 80, 90].map((h, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                  <div className="w-full rounded-t bg-[#F3F4F6]" style={{ height: `${h}px` }} />
+                  <div className="h-2 w-6 bg-[#F3F4F6] rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-end gap-[10px] h-[120px] pb-6 border-b border-[#F3F4F6]">
+              {metrics?.monthlyMrr.map((bar, idx) => {
+                const pct = maxMonthMrr > 0 ? (bar.mrr / maxMonthMrr) : 0;
+                const heightPx = Math.max(pct * 96, bar.mrr > 0 ? 8 : 4);
+                const isLast = idx === (metrics.monthlyMrr.length - 1);
+                const GREENS = ["#D1FAE5", "#A7F3D0", "#6EE7B7", "#34D399", "#10B981", "#059669"];
+                const barColor = GREENS[Math.min(idx, GREENS.length - 1)];
+                return (
+                  <div key={bar.label + bar.year} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div
+                      className="w-full rounded-t"
+                      style={{
+                        height: `${heightPx}px`,
+                        background: barColor,
+                        boxShadow: isLast
+                          ? "0 0 0 2px #059669, 0 0 0 4px rgba(5,150,105,0.2)"
+                          : undefined,
+                      }}
+                      title={`$${bar.mrr.toLocaleString()} MRR`}
+                    />
+                    <span
+                      className={`text-[10px] ${
+                        isLast ? "text-[#059669] font-semibold" : "text-[#9CA3AF]"
+                      }`}
+                    >
+                      {bar.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-xl p-[18px]">
           <div className="text-[13.5px] font-semibold text-[#111827] mb-4">Plan breakdown</div>
-          <div className="flex flex-col gap-3">
-            {planBreakdown.map((row) => (
-              <div key={row.plan}>
-                <div className="flex justify-between mb-[5px]">
-                  <span className="text-[12.5px] font-medium text-[#374151]">{row.plan}</span>
-                  <span className="text-[12.5px] font-semibold text-[#111827] tabular-nums">
-                    {row.tenants} tenants
-                  </span>
+          {metricsLoading ? (
+            <div className="flex flex-col gap-3 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                  <div className="flex justify-between mb-[5px]">
+                    <div className="h-3 w-16 bg-[#F3F4F6] rounded" />
+                    <div className="h-3 w-16 bg-[#F3F4F6] rounded" />
+                  </div>
+                  <div className="h-1.5 bg-[#F3F4F6] rounded-full" />
                 </div>
-                <div className="h-1.5 bg-[#F3F4F6] rounded-full">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${row.pct}%`, background: row.color }}
-                  />
-                </div>
-                <div className="text-[11px] text-[#9CA3AF] mt-[3px]">{row.detail}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {sortedPlanBreakdown.map((row) => {
+                const pct = totalOrgs > 0 ? Math.round((row.count / totalOrgs) * 100) : 0;
+                const color = PLAN_COLORS[row.plan] ?? "#D1FAE5";
+                const detail = row.plan === "free"
+                  ? "$0 MRR"
+                  : `$${row.mrr.toLocaleString()} MRR · ${PLAN_DETAIL[row.plan] ?? ""}`;
+                return (
+                  <div key={row.plan}>
+                    <div className="flex justify-between mb-[5px]">
+                      <span className="text-[12.5px] font-medium text-[#374151]">
+                        {planDisplayName(row.plan)}
+                      </span>
+                      <span className="text-[12.5px] font-semibold text-[#111827] tabular-nums">
+                        {row.count} tenant{row.count !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-[#F3F4F6] rounded-full">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: color }}
+                      />
+                    </div>
+                    <div className="text-[11px] text-[#9CA3AF] mt-[3px]">{detail}</div>
+                  </div>
+                );
+              })}
+              {sortedPlanBreakdown.length === 0 && (
+                <p className="text-[12.5px] text-[#9CA3AF]">No subscriptions found.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -220,7 +342,7 @@ export default function BackofficeOverviewPage() {
             </Link>
           </div>
           <div className="flex-1 overflow-auto">
-            <div className="grid grid-cols-[1fr_90px_100px_110px_120px] px-[18px] py-2 bg-[#F9FAFB] border-b border-[#E5E7EB]">
+            <div className="grid grid-cols-[1fr_90px_80px_110px_120px] px-[18px] py-2 bg-[#F9FAFB] border-b border-[#E5E7EB]">
               <span className="text-[10px] font-bold text-[#9CA3AF] tracking-[0.08em] uppercase">
                 Organization
               </span>
@@ -237,91 +359,122 @@ export default function BackofficeOverviewPage() {
                 Actions
               </span>
             </div>
-            {recentSignups.map((row, i) => (
-              <div
-                key={row.org}
-                className={`grid grid-cols-[1fr_90px_100px_110px_120px] px-[18px] py-[11px] border-b border-[#F9FAFB] items-center ${
-                  i % 2 === 1 ? "bg-[#FAFAFA]" : ""
-                }`}
-                data-testid={`row-tenant-${row.org.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-              >
-                <div>
-                  <div className="text-[13px] font-medium text-[#111827]">{row.org}</div>
-                  <div className="text-[11.5px] text-[#9CA3AF]">{row.domain}</div>
-                </div>
-                <span
-                  className={`text-[11.5px] font-semibold px-[9px] py-[3px] rounded-full whitespace-nowrap w-fit ${planPillClass(
-                    row.plan
-                  )}`}
-                >
-                  {row.plan}
-                </span>
-                <span className="text-[12.5px] text-[#374151] tabular-nums">{row.users}</span>
-                <span className="text-[12.5px] text-[#6B7280]">{row.signedUp}</span>
-                <div className="flex gap-[5px] justify-end">
-                  <Link href="/back-office/tenants/meridian">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto text-[11.5px] text-[#6B7280] bg-[#F9FAFB] border border-[#E5E7EB] px-[9px] py-[3px]"
-                    >
-                      View
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto text-[11.5px] text-[#059669] bg-[#ECFDF5] px-[9px] py-[3px]"
+            {metricsLoading ? (
+              <div className="animate-pulse">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[1fr_90px_80px_110px_120px] px-[18px] py-[11px] border-b border-[#F9FAFB] items-center"
                   >
-                    Login as
-                  </Button>
-                </div>
+                    <div className="space-y-1">
+                      <div className="h-3 w-32 bg-[#F3F4F6] rounded" />
+                      <div className="h-2 w-24 bg-[#F3F4F6] rounded" />
+                    </div>
+                    <div className="h-4 w-16 bg-[#F3F4F6] rounded-full" />
+                    <div className="h-3 w-12 bg-[#F3F4F6] rounded" />
+                    <div className="h-3 w-20 bg-[#F3F4F6] rounded" />
+                    <div className="flex gap-[5px] justify-end">
+                      <div className="h-6 w-10 bg-[#F3F4F6] rounded" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : metrics?.recentSignups.length === 0 ? (
+              <div className="flex items-center justify-center py-10 text-[12.5px] text-[#9CA3AF]">
+                No organizations yet.
+              </div>
+            ) : (
+              metrics?.recentSignups.map((row, i) => (
+                <div
+                  key={row.id}
+                  className={`grid grid-cols-[1fr_90px_80px_110px_120px] px-[18px] py-[11px] border-b border-[#F9FAFB] items-center ${
+                    i % 2 === 1 ? "bg-[#FAFAFA]" : ""
+                  }`}
+                  data-testid={`row-tenant-${row.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                >
+                  <div>
+                    <div className="text-[13px] font-medium text-[#111827]">{row.name}</div>
+                  </div>
+                  <span
+                    className={`text-[11.5px] font-semibold px-[9px] py-[3px] rounded-full whitespace-nowrap w-fit ${planPillClass(
+                      row.plan
+                    )}`}
+                  >
+                    {planDisplayName(row.plan)}
+                  </span>
+                  <span className="text-[12.5px] text-[#374151] tabular-nums">
+                    {row.userCount} user{row.userCount !== 1 ? "s" : ""}
+                  </span>
+                  <span className="text-[12.5px] text-[#6B7280]">
+                    {format(new Date(row.createdAt), "MMM d, yyyy")}
+                  </span>
+                  <div className="flex gap-[5px] justify-end">
+                    <Link href="/back-office/tenants">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto text-[11.5px] text-[#6B7280] bg-[#F9FAFB] border border-[#E5E7EB] px-[9px] py-[3px]"
+                      >
+                        View
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
+        {/* System health */}
         <div className="bg-white border-[1.5px] border-[#E5E7EB] rounded-xl p-[18px] flex flex-col gap-[14px]">
           <div className="text-[13.5px] font-semibold text-[#111827]">System health</div>
-          <div className="flex flex-col gap-[9px]">
-            {systemHealth.map((row) => (
-              <div key={row.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-[7px] h-[7px] rounded-full"
-                    style={{ background: row.ok ? "#059669" : "#D97706" }}
-                  />
-                  <span className="text-[13px] text-[#374151]">{row.label}</span>
+          {healthLoading ? (
+            <div className="flex flex-col gap-[9px] animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-[7px] h-[7px] rounded-full bg-[#F3F4F6]" />
+                    <div className="h-3 w-20 bg-[#F3F4F6] rounded" />
+                  </div>
+                  <div className="h-3 w-16 bg-[#F3F4F6] rounded" />
                 </div>
-                <span
-                  className="text-xs font-semibold"
-                  style={{ color: row.ok ? "#059669" : "#D97706" }}
-                >
-                  {row.value}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-[#F3F4F6] pt-3">
-            <div className="text-xs font-medium text-[#374151] mb-2">API latency (p95)</div>
-            <div className="flex items-end gap-[3px] h-10">
-              {latencyBars.map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t-sm"
-                  style={{
-                    height: `${h}%`,
-                    background: h === 100 ? "#FDE68A" : i === latencyBars.length - 1 ? "#059669" : "#D1FAE5",
-                  }}
-                />
               ))}
             </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-[#D1D5DB]">7 days ago</span>
-              <span className="text-[11px] font-semibold text-[#111827]">142ms avg</span>
-              <span className="text-[10px] text-[#D1D5DB]">today</span>
+          ) : (
+            <div className="flex flex-col gap-[9px]">
+              {systemServices.map((svc) => (
+                <div key={svc.label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-[7px] h-[7px] rounded-full"
+                      style={{ background: svc.ok ? "#059669" : "#D97706" }}
+                    />
+                    <span className="text-[13px] text-[#374151]">{svc.label}</span>
+                  </div>
+                  {svc.ok ? (
+                    <span className="text-xs font-semibold text-[#059669] flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Connected
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-[#D97706] flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Error
+                    </span>
+                  )}
+                </div>
+              ))}
+              {!health && (
+                <p className="text-[12px] text-[#9CA3AF]">Could not reach health endpoint.</p>
+              )}
             </div>
-          </div>
+          )}
+          {health && (
+            <div className="border-t border-[#F3F4F6] pt-3">
+              <p className="text-[11px] text-[#9CA3AF]">
+                Last checked{" "}
+                {format(new Date(health.timestamp), "MMM d, HH:mm:ss")}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </BackofficeLayout>

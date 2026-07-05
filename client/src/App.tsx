@@ -49,6 +49,8 @@ import BackofficeOverviewPage from "@/pages/backoffice-overview";
 import BackofficeTenantDetailPage from "@/pages/backoffice-tenant-detail";
 import BackofficeLogsPage from "@/pages/backoffice-logs";
 import BackofficeFlagsPage from "@/pages/backoffice-flags";
+import BackofficeTicketsPage from "@/pages/backoffice-tickets";
+import BackofficeSupportPage from "@/pages/backoffice-support";
 
 type TourId = "portal" | "timesheets" | "invoices" | "ooo" | "supervisor" | "owner";
 
@@ -521,6 +523,8 @@ function BackOfficeRoutes() {
       <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
       <Route path="/back-office/logs" component={BackofficeLogsPage} />
       <Route path="/back-office/flags" component={BackofficeFlagsPage} />
+      <Route path="/back-office/tickets" component={BackofficeTicketsPage} />
+      <Route path="/back-office/support" component={BackofficeSupportPage} />
       <Route component={BackofficeOverviewPage} />
     </Switch>
   );
