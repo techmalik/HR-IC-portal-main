@@ -32,11 +32,6 @@ function softwareApplicationJsonLd() {
       priceCurrency: "USD",
       description: "Free plan for up to 3 contractors",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      reviewCount: "127",
-    },
   };
 }
 
