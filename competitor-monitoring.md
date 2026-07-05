@@ -1,4 +1,4 @@
-# Mentalyc — Competitor Monitoring
+# Axle — Competitor Monitoring
 
 **Owner:** Strategy / Product Marketing
 **Cadence:** 30 minutes, first Monday of every month
@@ -18,7 +18,7 @@
 
 ## Bookmark bundle
 
-Save these as a folder in your browser. Drag-drop into your bookmarks bar as **Compete · Mentalyc**.
+Save these as a folder in your browser. Drag-drop into your bookmarks bar as **Compete · Axle**.
 
 ### Pricing & changelog
 - Deel — pricing: https://www.deel.com/pricing  ·  changelog: https://www.deel.com/changelog
@@ -76,7 +76,7 @@ Pick the channel your team already lives in. Don't create a new home for this. *
 ### Option C — Google Alerts (zero-tool option)
 1. Visit https://www.google.com/alerts
 2. Create one alert per competitor, with query: `"<Competitor Name>" (pricing OR launches OR funding OR layoffs)`
-3. Frequency: weekly digest. Deliver to: ops@mentalyc.com (or owner's address).
+3. Frequency: weekly digest. Deliver to: ops@axlehq.app (or owner's address).
 
 ### RSS feed bundle (paste into Slack/Teams)
 ```
@@ -104,7 +104,7 @@ Treat **any** of the following as a P1 — escalate same-day, don't wait for the
 - Layoffs > 10% of headcount
 - Funding round (new round → likely category push)
 - Public security incident or data breach
-- Negative G2 trend: sustained 1-3 star reviews on a feature where Mentalyc is strong (timesheet approvals, OOO, RBAC) — opportunity to land air cover content
+- Negative G2 trend: sustained 1-3 star reviews on a feature where Axle is strong (timesheet approvals, OOO, RBAC) — opportunity to land air cover content
 
 ---
 
@@ -130,7 +130,7 @@ Paste this at the top of the monthly Linear issue:
 ### Material changes (escalate)
 - None / [details]
 
-### Action items for Mentalyc
+### Action items for Axle
 - [ ]
 ```
 
