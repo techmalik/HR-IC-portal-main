@@ -54,7 +54,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
@@ -532,6 +532,7 @@ export default function UsersPage() {
           {isEditMode && editData ? (
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
+                <AvatarImage src={(u as any).avatarUrl || undefined} alt={`${editData.firstName} ${editData.lastName}`} />
                 <AvatarFallback className="bg-[#111827] text-white text-xs font-semibold">
                   {editData.firstName?.[0]}{editData.lastName?.[0]}
                 </AvatarFallback>
@@ -587,6 +588,7 @@ export default function UsersPage() {
           ) : (
             <div className="flex items-center gap-2.5">
               <Avatar className="h-7 w-7">
+                <AvatarImage src={(u as any).avatarUrl || undefined} alt={`${u.firstName} ${u.lastName}`} />
                 <AvatarFallback className="bg-[#111827] text-white text-[9px] font-bold">
                   {u.firstName?.[0]}{u.lastName?.[0]}
                 </AvatarFallback>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Bell, User, Lock, FileSignature } from "lucide-react";
+import { Loader2, Save, Bell, User, Lock, FileSignature, Camera, X } from "lucide-react";
 import type { NotificationPreferences } from "@shared/schema";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractsSection } from "@/components/contracts-section";
@@ -77,6 +77,74 @@ export default function ProfilePage() {
   const { user, updateUser, isAdmin } = useAuth();
   const { toast } = useToast();
   const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (imageData: string) => {
+      const res = await apiRequest("POST", "/api/users/me/avatar", { imageData });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to upload avatar");
+      }
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      updateUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setAvatarPreview(null);
+      toast({ title: "Profile picture updated", description: "Your new avatar is now visible across the app." });
+    },
+    onError: (err: Error) => {
+      setAvatarPreview(null);
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const removeAvatarMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/users/me/avatar", undefined);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to remove avatar");
+      }
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      updateUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Profile picture removed" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!e.target) return;
+    e.target.value = "";
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Please choose a JPEG, PNG, GIF, or WebP image.", variant: "destructive" });
+      return;
+    }
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast({ title: "File too large", description: "Image must be 5 MB or smaller.", variant: "destructive" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setAvatarPreview(dataUrl);
+      uploadAvatarMutation.mutate(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -170,15 +238,65 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex items-center gap-4 px-5 py-4 rounded-xl border-[1.5px] border-card-border bg-card">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="bg-[#111827] text-white text-xl font-semibold">
-            {getInitials()}
-          </AvatarFallback>
-        </Avatar>
-        <div>
+        <div className="relative group shrink-0">
+          <Avatar className="h-16 w-16">
+            <AvatarImage
+              src={avatarPreview ?? (user?.avatarUrl || undefined)}
+              alt={`${user?.firstName} ${user?.lastName}`}
+            />
+            <AvatarFallback className="bg-[#111827] text-white text-xl font-semibold">
+              {getInitials()}
+            </AvatarFallback>
+          </Avatar>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadAvatarMutation.isPending || removeAvatarMutation.isPending}
+            className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+            title="Upload profile picture"
+          >
+            {uploadAvatarMutation.isPending ? (
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            ) : (
+              <Camera className="w-5 h-5 text-white" />
+            )}
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={handleAvatarFileChange}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
           <p className="font-semibold text-lg text-foreground">{user?.firstName} {user?.lastName}</p>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
           <p className="text-xs text-muted-foreground capitalize">{user?.role === "ic" ? "Independent Contractor" : "Administrator"}</p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadAvatarMutation.isPending || removeAvatarMutation.isPending}
+              className="text-[11.5px] text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {user?.avatarUrl ? "Change photo" : "Upload photo"}
+            </button>
+            {user?.avatarUrl && (
+              <>
+                <span className="text-muted-foreground text-[11px]">·</span>
+                <button
+                  type="button"
+                  onClick={() => removeAvatarMutation.mutate()}
+                  disabled={uploadAvatarMutation.isPending || removeAvatarMutation.isPending}
+                  className="text-[11.5px] text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-0.5"
+                >
+                  {removeAvatarMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                  Remove
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -340,6 +340,7 @@ export function AppSidebar() {
               data-testid="button-user-menu"
             >
               <Avatar className="h-[30px] w-[30px] border border-[#2A3545]">
+                <AvatarImage src={user?.avatarUrl || undefined} alt={`${user?.firstName} ${user?.lastName}`} />
                 <AvatarFallback className="bg-[#1C2230] text-[#8DAFC8] text-[10.5px] font-bold">
                   {getInitials()}
                 </AvatarFallback>

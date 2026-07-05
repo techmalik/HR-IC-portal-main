@@ -1265,6 +1265,63 @@ export async function registerRoutes(
     res.json(userWithoutPassword);
   }));
 
+  // Upload avatar for the authenticated user
+  app.post("/api/users/me/avatar", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const { imageData } = req.body;
+
+    if (!imageData || typeof imageData !== "string") {
+      return res.status(400).json({ error: "imageData is required" });
+    }
+
+    const matches = imageData.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: "Invalid image format. Must be a base64 data URL." });
+    }
+
+    const mimeType = matches[1];
+    if (!mimeType.startsWith("image/")) {
+      return res.status(400).json({ error: "Only image files are allowed." });
+    }
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(mimeType)) {
+      return res.status(400).json({ error: "Unsupported image type. Use JPEG, PNG, GIF, or WebP." });
+    }
+
+    const base64Data = matches[2];
+    const byteSize = Math.ceil((base64Data.length * 3) / 4);
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+    if (byteSize > MAX_BYTES) {
+      return res.status(400).json({ error: "Image too large. Maximum size is 5 MB." });
+    }
+
+    const ext = mimeType.split("/")[1].replace("jpeg", "jpg");
+    const fileName = `avatar-${currentUser.id}.${ext}`;
+    const objectPath = await uploadBase64ToObjectStorage(imageData, fileName);
+    if (!objectPath) {
+      return res.status(500).json({ error: "Failed to upload image. Please try again." });
+    }
+
+    const updated = await storage.updateUser(currentUser.id, { avatarUrl: objectPath });
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const { password: _, ...userWithoutPassword } = updated;
+    res.json(userWithoutPassword);
+  }));
+
+  // Remove avatar for the authenticated user
+  app.delete("/api/users/me/avatar", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const updated = await storage.updateUser(currentUser.id, { avatarUrl: null } as any);
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const { password: _, ...userWithoutPassword } = updated;
+    res.json(userWithoutPassword);
+  }));
+
   app.patch("/api/users/:id/password", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const targetUserId = req.params.id;

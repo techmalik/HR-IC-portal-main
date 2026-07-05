@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, getDaysInMonth, startOfMonth, getDay, addMonths, subMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -336,6 +336,7 @@ export default function ICDetailPage() {
         </Button>
         <div className="flex items-center gap-3.5">
           <Avatar className="h-11 w-11">
+            <AvatarImage src={(icUser as any).avatarUrl || undefined} alt={`${icUser.firstName} ${icUser.lastName}`} />
             <AvatarFallback className="bg-[#111827] text-white text-[13px] font-bold">
               {icUser.firstName?.[0]}
               {icUser.lastName?.[0]}

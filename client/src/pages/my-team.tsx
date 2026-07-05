@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth-context";
@@ -52,6 +52,7 @@ export default function MyTeamPage() {
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar className="h-8 w-8">
+                  <AvatarImage src={(member as any).avatarUrl || undefined} alt={`${member.firstName} ${member.lastName}`} />
                   <AvatarFallback className="bg-[#111827] text-white text-[10px] font-bold">
                     {getInitials(member.firstName, member.lastName)}
                   </AvatarFallback>
