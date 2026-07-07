@@ -269,6 +269,29 @@ app.use((req, res, next) => {
               updatedAt: new Date(),
             });
             log(`[billing] Downgraded org ${sub.organizationId} to free (scheduled downgrade)`);
+
+            // Notify admins + owners that the plan has reverted to free
+            try {
+              const [admins, owners] = await Promise.all([
+                storage.getUsersByRole("admin", sub.organizationId),
+                storage.getUsersByRole("owner", sub.organizationId),
+              ]);
+              const recipients = new Map<string, (typeof admins)[0]>();
+              [...admins, ...owners].forEach(u => recipients.set(u.id, u));
+              const { createNotification } = await import("./notificationService");
+            for (const u of recipients.values()) {
+                await createNotification(u.id, {
+                  type: "subscription_plan_changed",
+                  title: "Subscription Downgraded to Free",
+                  message:
+                    "Your Axle subscription period has ended and your account has been moved to the Free plan.",
+                  entityType: "subscription",
+                  entityId: sub.id,
+                });
+              }
+            } catch (notifyErr) {
+              console.error("[billing] downgrade notification error:", notifyErr);
+            }
           }
         } catch (e) {
           console.error("Scheduled downgrade check error:", e);

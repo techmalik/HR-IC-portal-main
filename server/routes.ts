@@ -4526,7 +4526,7 @@ export async function registerRoutes(
 
     const expected = createHmac("sha512", secretKey).update(rawBody).digest("hex");
     if (signature !== expected) {
-      return res.status(401).json({ error: "Invalid signature" });
+      return res.status(400).json({ error: "Invalid signature" });
     }
 
     let event: { event: string; data: any };
@@ -4539,7 +4539,7 @@ export async function registerRoutes(
     const { PLAN_LIMITS } = await import("@shared/schema");
     const { createNotification } = await import("./notificationService");
 
-    // Helper — find the subscription and org by Paystack customer code
+    // Helper — find the subscription by Paystack customer code
     async function getSubByCustomer(customerCode: string) {
       if (!customerCode) return null;
       return storage.getSubscriptionByPaystackCustomerCode(customerCode);
@@ -4569,6 +4569,7 @@ export async function registerRoutes(
         // -----------------------------------------------------------------
         // charge.success — a one-time or recurring charge succeeded.
         // Activate / renew the subscription plan.
+        // Idempotent: skip if already active on the same plan.
         // -----------------------------------------------------------------
         case "charge.success": {
           const sub = await getSubByCustomer(customerCode);
@@ -4579,31 +4580,55 @@ export async function registerRoutes(
           if (!planKey) break;
 
           const limits = PLAN_LIMITS[planKey];
-          const subscriptionCode: string | null =
-            data?.subscription?.subscription_code ??
-            sub.paystackSubscriptionCode ??
-            null;
+          const incomingSubCode: string | null =
+            data?.subscription?.subscription_code ?? null;
 
-          await storage.updateSubscription(sub.id, {
-            plan: planKey,
-            status: "active",
-            maxSeats: limits.maxSeats,
-            paystackSubscriptionCode: subscriptionCode ?? sub.paystackSubscriptionCode,
-            scheduledDowngradeAt: null,
-            updatedAt: new Date(),
-          });
+          const alreadyActive =
+            sub.status === "active" &&
+            sub.plan === planKey &&
+            (!incomingSubCode || sub.paystackSubscriptionCode === incomingSubCode);
+
+          if (!alreadyActive) {
+            const previousPlan = sub.plan;
+            await storage.updateSubscription(sub.id, {
+              plan: planKey,
+              status: "active",
+              maxSeats: limits.maxSeats,
+              paystackSubscriptionCode: incomingSubCode ?? sub.paystackSubscriptionCode,
+              scheduledDowngradeAt: null,
+              updatedAt: new Date(),
+            });
+
+            // Notify admins/owners when the plan actually changes
+            if (previousPlan !== planKey) {
+              const isUpgrade =
+                (previousPlan === "free" || previousPlan === "starter") &&
+                (planKey === "starter" || planKey === "pro") &&
+                planKey !== previousPlan;
+              await notifyOrgAdmins(sub.organizationId, {
+                type: "subscription_plan_changed",
+                title: isUpgrade ? "Subscription Upgraded" : "Subscription Plan Changed",
+                message: isUpgrade
+                  ? `Your Axle subscription has been upgraded to the ${limits.name} plan.`
+                  : `Your Axle subscription has been updated to the ${limits.name} plan.`,
+                entityType: "subscription",
+                entityId: sub.id,
+              });
+            }
+          }
           break;
         }
 
         // -----------------------------------------------------------------
         // subscription.create — Paystack created a subscription; store code.
+        // Idempotent: skip if we already hold this subscription code.
         // -----------------------------------------------------------------
         case "subscription.create": {
           const sub = await getSubByCustomer(customerCode);
           if (!sub) break;
 
           const subCode: string = data?.subscription_code ?? "";
-          if (!subCode) break;
+          if (!subCode || sub.paystackSubscriptionCode === subCode) break;
 
           await storage.updateSubscription(sub.id, {
             paystackSubscriptionCode: subCode,
@@ -4615,52 +4640,55 @@ export async function registerRoutes(
         // -----------------------------------------------------------------
         // invoice.payment_failed — a recurring charge failed.
         // Mark past_due and notify org admins/owners.
+        // Idempotent: skip notification if already past_due.
         // -----------------------------------------------------------------
         case "invoice.payment_failed": {
           const sub = await getSubByCustomer(customerCode);
           if (!sub) break;
 
-          await storage.updateSubscription(sub.id, {
-            status: "past_due",
-            updatedAt: new Date(),
-          });
-
-          await notifyOrgAdmins(sub.organizationId, {
-            type: "invoice_payment_failed",
-            title: "Subscription Payment Failed",
-            message:
-              "Your Axle subscription payment failed. Please update your payment method to avoid losing access.",
-            entityType: "subscription",
-            entityId: sub.id,
-          });
+          const alreadyPastDue = sub.status === "past_due";
+          if (!alreadyPastDue) {
+            await storage.updateSubscription(sub.id, {
+              status: "past_due",
+              updatedAt: new Date(),
+            });
+            await notifyOrgAdmins(sub.organizationId, {
+              type: "invoice_payment_failed",
+              title: "Subscription Payment Failed",
+              message:
+                "Your Axle subscription payment failed. Please update your payment method to avoid losing access.",
+              entityType: "subscription",
+              entityId: sub.id,
+            });
+          }
           break;
         }
 
         // -----------------------------------------------------------------
-        // subscription.disable — subscription was cancelled/disabled.
-        // Mark as canceled and revoke paid-plan access.
+        // subscription.disable — subscription was disabled by Paystack.
+        // Suspend the org (existing auth middleware blocks login for suspended).
+        // Do NOT immediately revert to free — let the org contact support
+        // or wait for the scheduled downgrade / subscription.not_renew flow.
+        // Idempotent: skip if already suspended.
         // -----------------------------------------------------------------
         case "subscription.disable": {
           const sub = await getSubByCustomer(customerCode);
           if (!sub) break;
 
-          await storage.updateSubscription(sub.id, {
-            plan: "free",
-            status: "canceled",
-            maxSeats: PLAN_LIMITS.free.maxSeats,
-            paystackSubscriptionCode: null,
-            scheduledDowngradeAt: null,
-            updatedAt: new Date(),
-          });
-
-          await notifyOrgAdmins(sub.organizationId, {
-            type: "subscription_canceled",
-            title: "Subscription Cancelled",
-            message:
-              "Your Axle subscription has been cancelled. Your account has been moved to the Free plan.",
-            entityType: "subscription",
-            entityId: sub.id,
-          });
+          if (sub.status !== "suspended") {
+            await storage.updateSubscription(sub.id, {
+              status: "suspended",
+              updatedAt: new Date(),
+            });
+            await notifyOrgAdmins(sub.organizationId, {
+              type: "subscription_suspended",
+              title: "Subscription Suspended",
+              message:
+                "Your Axle subscription has been suspended. Please contact support or update your payment method to restore access.",
+              entityType: "subscription",
+              entityId: sub.id,
+            });
+          }
           break;
         }
 
@@ -4668,6 +4696,7 @@ export async function registerRoutes(
         // subscription.not_renew — subscription set to not renew at period end.
         // Schedule a downgrade at the next payment date so access continues
         // until the end of the already-paid period.
+        // Idempotent: skip if scheduledDowngradeAt already matches.
         // -----------------------------------------------------------------
         case "subscription.not_renew": {
           const sub = await getSubByCustomer(customerCode);
@@ -4676,20 +4705,23 @@ export async function registerRoutes(
           const nextPaymentDate: string | undefined = data?.next_payment_date;
           const downgradeAt = nextPaymentDate ? new Date(nextPaymentDate) : null;
 
-          await storage.updateSubscription(sub.id, {
-            scheduledDowngradeAt: downgradeAt,
-            updatedAt: new Date(),
-          });
-
-          await notifyOrgAdmins(sub.organizationId, {
-            type: "subscription_not_renew",
-            title: "Subscription Will Not Renew",
-            message: downgradeAt
-              ? `Your subscription will not renew. Access continues until ${downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.`
-              : "Your subscription is set to not renew at the end of the current period.",
-            entityType: "subscription",
-            entityId: sub.id,
-          });
+          const existingTs = sub.scheduledDowngradeAt?.getTime();
+          const incomingTs = downgradeAt?.getTime();
+          if (existingTs !== incomingTs) {
+            await storage.updateSubscription(sub.id, {
+              scheduledDowngradeAt: downgradeAt,
+              updatedAt: new Date(),
+            });
+            await notifyOrgAdmins(sub.organizationId, {
+              type: "subscription_not_renew",
+              title: "Subscription Will Not Renew",
+              message: downgradeAt
+                ? `Your subscription will not renew. Access continues until ${downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.`
+                : "Your subscription is set to not renew at the end of the current period.",
+              entityType: "subscription",
+              entityId: sub.id,
+            });
+          }
           break;
         }
 
