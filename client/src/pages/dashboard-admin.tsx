@@ -109,8 +109,8 @@ export default function DashboardAdmin() {
             </p>
             <p className="text-sm mt-0.5">Upgrade before your trial ends to avoid disruption.</p>
           </div>
-          <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 shrink-0" asChild>
-            <Link href="/billing">View plans</Link>
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white shrink-0" asChild>
+            <Link href="/billing">Upgrade now</Link>
           </Button>
         </div>
       )}

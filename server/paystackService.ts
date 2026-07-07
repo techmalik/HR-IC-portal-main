@@ -189,3 +189,40 @@ export async function listPlans(): Promise<PaystackPlan[]> {
   const result = await paystackRequest<PaystackPlan[]>("GET", "/plan?perPage=50");
   return result.data ?? [];
 }
+
+// ---------------------------------------------------------------------------
+// Subscription helpers — used by billing status, cancel, and reauth flows
+// ---------------------------------------------------------------------------
+
+export interface PaystackSubscriptionDetail {
+  id: number;
+  subscription_code: string;
+  status: string;           // "active" | "non-renewing" | "attention" | "cancelled" | "completed"
+  next_payment_date: string | null;
+  email_token: string;
+  amount: number;
+  currency: string;
+  plan: { plan_code: string; name: string };
+  customer: { email: string; customer_code: string };
+}
+
+export async function fetchSubscription(subscriptionCode: string): Promise<PaystackSubscriptionDetail> {
+  const result = await paystackRequest<PaystackSubscriptionDetail>(
+    "GET",
+    `/subscription/${encodeURIComponent(subscriptionCode)}`,
+  );
+  return result.data;
+}
+
+export async function disableSubscription(code: string, token: string): Promise<void> {
+  await paystackRequest("POST", "/subscription/disable", { code, token });
+}
+
+export async function generateManageLink(subscriptionCode: string, emailToken: string): Promise<string> {
+  const result = await paystackRequest<{ link: string }>(
+    "POST",
+    "/subscription/manage/link",
+    { subscription_code: subscriptionCode, email_token: emailToken },
+  );
+  return result.data.link;
+}

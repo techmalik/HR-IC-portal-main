@@ -4752,6 +4752,124 @@ export async function registerRoutes(
     return res.status(200).json({ received: true });
   }));
 
+  // GET /api/billing/subscription-status — live Paystack subscription data
+  // Returns null fields gracefully when org has no Paystack subscription yet.
+  app.get("/api/billing/subscription-status", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (!subscription?.paystackSubscriptionCode) {
+      return res.json({
+        nextPaymentDate: null,
+        status: subscription?.status ?? "active",
+        planCode: null,
+        currency: subscription?.billingCurrency ?? null,
+        emailToken: null,
+        scheduledDowngradeAt: subscription?.scheduledDowngradeAt ?? null,
+      });
+    }
+
+    try {
+      const { fetchSubscription } = await import("./paystackService");
+      const live = await fetchSubscription(subscription.paystackSubscriptionCode);
+      return res.json({
+        nextPaymentDate: live.next_payment_date,
+        status: live.status,
+        planCode: live.plan?.plan_code ?? null,
+        currency: live.currency ?? subscription.billingCurrency,
+        emailToken: live.email_token,
+        scheduledDowngradeAt: subscription.scheduledDowngradeAt ?? null,
+      });
+    } catch (err: any) {
+      console.error("[subscription-status] Paystack fetch failed:", err?.message);
+      // Fall back to DB state rather than returning an error
+      return res.json({
+        nextPaymentDate: null,
+        status: subscription.status,
+        planCode: null,
+        currency: subscription.billingCurrency,
+        emailToken: null,
+        scheduledDowngradeAt: subscription.scheduledDowngradeAt ?? null,
+      });
+    }
+  }));
+
+  // POST /api/billing/cancel-subscription — disables the Paystack subscription
+  // and records the end-of-period downgrade date.
+  app.post("/api/billing/cancel-subscription", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (!subscription?.paystackSubscriptionCode) {
+      return res.status(400).json({ error: "No active Paystack subscription to cancel" });
+    }
+
+    // Fetch the live subscription to get the email_token needed for disable
+    const { fetchSubscription, disableSubscription } = await import("./paystackService");
+    const live = await fetchSubscription(subscription.paystackSubscriptionCode);
+
+    await disableSubscription(subscription.paystackSubscriptionCode, live.email_token);
+
+    // Record when the plan will revert to free (end of paid period)
+    const downgradeAt = live.next_payment_date ? new Date(live.next_payment_date) : null;
+    await storage.updateSubscription(subscription.id, {
+      scheduledDowngradeAt: downgradeAt,
+      updatedAt: new Date(),
+    });
+
+    // Notify admins/owners
+    const { createNotification } = await import("./notificationService");
+    const [admins, owners] = await Promise.all([
+      storage.getUsersByRole("admin", currentUser.organizationId),
+      storage.getUsersByRole("owner", currentUser.organizationId),
+    ]);
+    const recipients = new Map<string, (typeof admins)[0]>();
+    [...admins, ...owners].forEach(u => recipients.set(u.id, u));
+    for (const u of recipients.values()) {
+      await createNotification(u.id, {
+        type: "subscription_not_renew",
+        title: "Subscription Cancelled",
+        message: downgradeAt
+          ? `Your subscription has been cancelled. Access continues until ${downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.`
+          : "Your subscription has been cancelled.",
+        entityType: "subscription",
+        entityId: subscription.id,
+        actorId: currentUser.id,
+      });
+    }
+
+    return res.json({
+      scheduledDowngradeAt: downgradeAt?.toISOString() ?? null,
+      message: "Subscription cancelled. Your plan will revert to Free at the end of the current billing period.",
+    });
+  }));
+
+  // POST /api/billing/reauth-link — generates a Paystack manage link so the
+  // admin can update their payment method when the subscription is past_due.
+  app.post("/api/billing/reauth-link", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (!subscription?.paystackSubscriptionCode) {
+      return res.status(400).json({ error: "No active Paystack subscription found" });
+    }
+
+    const { fetchSubscription, generateManageLink } = await import("./paystackService");
+    const live = await fetchSubscription(subscription.paystackSubscriptionCode);
+    const link = await generateManageLink(subscription.paystackSubscriptionCode, live.email_token);
+
+    return res.json({ url: link });
+  }));
+
   // ── SEO / Public content routes ──────────────────────────────────────────
   // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
   // so that Googlebot receives fully server-rendered HTML.

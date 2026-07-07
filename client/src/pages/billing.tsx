@@ -7,7 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/status-badge";
-import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock, XCircle, RefreshCw } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useEffect } from "react";
@@ -31,6 +42,7 @@ interface BillingData {
     paystackCustomerCode: string | null;
     paystackSubscriptionCode: string | null;
     billingCurrency: string | null;
+    scheduledDowngradeAt: string | null;
   };
   organization: {
     id: string;
@@ -61,6 +73,15 @@ interface UsageData {
 interface CurrencyData {
   currency: "NGN" | "USD" | "EUR";
   prices: Record<string, Record<string, string>>;
+}
+
+interface SubscriptionStatusData {
+  nextPaymentDate: string | null;
+  status: string | null;
+  planCode: string | null;
+  currency: string | null;
+  emailToken: string | null;
+  scheduledDowngradeAt: string | null;
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -98,7 +119,6 @@ export default function BillingPage() {
   const { toast } = useToast();
   const [location] = useLocation();
 
-  // Show toast based on Paystack redirect result
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
@@ -109,7 +129,7 @@ export default function BillingPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
       queryClient.invalidateQueries({ queryKey: ["/api/billing/usage"] });
-      // Clean up URL
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription-status"] });
       window.history.replaceState({}, "", "/billing");
     } else if (payment === "failed") {
       toast({
@@ -149,12 +169,26 @@ export default function BillingPage() {
       return res.json();
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 60,
   });
 
-  // Use the org's existing billing currency if set, otherwise use detected
+  const hasPaystackSub = !!billing?.subscription?.paystackSubscriptionCode;
+
+  const { data: subStatus } = useQuery<SubscriptionStatusData>({
+    queryKey: ["/api/billing/subscription-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/billing/subscription-status", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch subscription status");
+      return res.json();
+    },
+    enabled: !!user && hasPaystackSub,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: true,
+  });
+
   const activeCurrency: "NGN" | "USD" | "EUR" =
     (billing?.subscription?.billingCurrency as "NGN" | "USD" | "EUR") ||
+    (subStatus?.currency as "NGN" | "USD" | "EUR") ||
     currencyData?.currency ||
     "USD";
 
@@ -215,6 +249,59 @@ export default function BillingPage() {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/billing/cancel-subscription", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to cancel subscription");
+      }
+      return res.json() as Promise<{ scheduledDowngradeAt: string | null; message: string }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription-status"] });
+      toast({
+        title: "Subscription cancelled",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Cancellation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reauthMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/billing/reauth-link", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to generate payment link");
+      }
+      return res.json() as Promise<{ url: string }>;
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not generate payment link",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (billingLoading || usageLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -231,7 +318,11 @@ export default function BillingPage() {
   const trialExpired = usage?.trialExpired ?? false;
   const daysLeftInTrial = usage?.daysLeftInTrial ?? null;
   const estimatedMonthlyCost = usage?.estimatedMonthlyCost ?? 0;
-  const hasPaystackSub = !!billing?.subscription?.paystackSubscriptionCode;
+
+  const subDbStatus = billing?.subscription?.status || "active";
+  const isPastDue = subDbStatus === "past_due";
+  const isSuspended = subDbStatus === "suspended";
+  const scheduledDowngradeAt = billing?.subscription?.scheduledDowngradeAt || subStatus?.scheduledDowngradeAt || null;
 
   const plans: SubscriptionPlanType[] = ["free", "starter", "pro", "enterprise"];
 
@@ -247,15 +338,18 @@ export default function BillingPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "canceled":
+      case "non-renewing":
         return <StatusBadge status="declined" />;
       case "past_due":
+      case "attention":
         return <StatusBadge status="pending" />;
+      case "suspended":
+        return <StatusBadge status="declined" />;
       default:
         return <StatusBadge status={status} />;
     }
   };
 
-  // Returns localized price label for a paid plan, e.g. "$9/IC/mo" or "₦15,000/IC/mo"
   const getPriceLabel = (plan: string) => {
     const prices = currencyData?.prices;
     if (prices && prices[plan] && prices[plan][activeCurrency]) {
@@ -273,7 +367,10 @@ export default function BillingPage() {
     changePlanMutation.mutate(plan);
   };
 
-  const isMutating = subscribeMutation.isPending || changePlanMutation.isPending;
+  const isMutating = subscribeMutation.isPending || changePlanMutation.isPending || cancelMutation.isPending;
+
+  const nextPaymentDate = subStatus?.nextPaymentDate || null;
+  const liveStatus = subStatus?.status || null;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -284,8 +381,64 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {/* Past-due payment warning */}
+      {isPastDue && hasPaystackSub && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800">
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Payment failed — your account is past due</p>
+            <p className="text-sm mt-0.5">
+              We couldn't charge your card. Update your payment method to restore full access.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+            onClick={() => reauthMutation.mutate()}
+            disabled={reauthMutation.isPending}
+          >
+            {reauthMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update payment method"}
+          </Button>
+        </div>
+      )}
+
+      {/* Suspended account warning */}
+      {isSuspended && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800">
+          <XCircle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Account suspended</p>
+            <p className="text-sm mt-0.5">
+              Your subscription has been suspended. Please contact support to restore access.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled downgrade notice */}
+      {scheduledDowngradeAt && !isSuspended && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-amber-200 bg-amber-50 text-amber-800">
+          <Clock className="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Subscription ending</p>
+            <p className="text-sm mt-0.5">
+              Your plan will revert to Free on {formatDate(scheduledDowngradeAt)}. You keep full access until then.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-400 text-amber-800 shrink-0"
+            onClick={() => handleUpgrade(currentPlan)}
+            disabled={isMutating}
+          >
+            Reactivate
+          </Button>
+        </div>
+      )}
+
       {/* Trial expired banner */}
-      {trialExpired && (
+      {trialExpired && !hasPaystackSub && (
         <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-red-200 bg-red-50 text-red-800">
           <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 text-red-500" />
           <div className="flex-1">
@@ -321,6 +474,7 @@ export default function BillingPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Current plan card */}
         <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
           <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
             <CreditCard className="w-3 h-3" /> Current plan
@@ -328,7 +482,7 @@ export default function BillingPage() {
           <div className="text-[22px] font-bold text-neutral-900 mb-1.5">{planInfo?.name || "Free"}</div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              {getStatusBadge(billing?.subscription?.status || "active")}
+              {getStatusBadge(liveStatus || subDbStatus)}
               {currentPlan === "free" ? (
                 <span className="text-xs text-neutral-500">Free trial</span>
               ) : currentPlan === "enterprise" ? (
@@ -365,6 +519,7 @@ export default function BillingPage() {
           </div>
         </div>
 
+        {/* Seat usage card */}
         <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
           <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
             <Users className="w-3 h-3" /> Seat usage
@@ -379,26 +534,139 @@ export default function BillingPage() {
           )}
         </div>
 
+        {/* Billing period / next payment card */}
         <div className="bg-white border-[1.5px] border-neutral-200 rounded-xl px-[18px] py-3.5">
           <div className="text-[9.5px] font-semibold text-neutral-400 tracking-[0.1em] uppercase mb-2 flex items-center gap-1.5">
-            <Calendar className="w-3 h-3" /> {currentPlan === "free" ? "Trial period" : "Billing period"}
+            <Calendar className="w-3 h-3" /> {currentPlan === "free" ? "Trial period" : "Next payment"}
           </div>
-          <div className="text-[22px] font-bold text-neutral-900 mb-1.5">
-            {currentPlan === "free" ? (trialExpired ? "Expired" : "Active") : "Current"}
-          </div>
-          <p className="text-xs text-neutral-500">
-            {currentPlan === "free"
-              ? `Trial ${trialExpired ? "ended" : "ends"} ${formatDate(billing?.subscription?.trialEndsAt)}`
-              : `Started ${formatDate(billing?.subscription?.currentPeriodStart)}`}
-          </p>
-          {billing?.subscription?.currentPeriodEnd && currentPlan !== "free" && (
-            <p className="text-xs text-neutral-500">
-              Renews {formatDate(billing.subscription.currentPeriodEnd)}
-            </p>
+          {currentPlan === "free" ? (
+            <>
+              <div className="text-[22px] font-bold text-neutral-900 mb-1.5">
+                {trialExpired ? "Expired" : "Active"}
+              </div>
+              <p className="text-xs text-neutral-500">
+                Trial {trialExpired ? "ended" : "ends"} {formatDate(billing?.subscription?.trialEndsAt)}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="text-[22px] font-bold text-neutral-900 mb-1.5">
+                {nextPaymentDate ? formatDate(nextPaymentDate) : (scheduledDowngradeAt ? "Cancelled" : "—")}
+              </div>
+              {nextPaymentDate && !scheduledDowngradeAt && (
+                <p className="text-xs text-neutral-500">Auto-renews on this date</p>
+              )}
+              {scheduledDowngradeAt && (
+                <p className="text-xs text-amber-600 font-medium">Reverts to Free on {formatDate(scheduledDowngradeAt)}</p>
+              )}
+              {billing?.subscription?.currentPeriodStart && !nextPaymentDate && (
+                <p className="text-xs text-neutral-500">
+                  Started {formatDate(billing.subscription.currentPeriodStart)}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
 
+      {/* Live subscription panel — shown when org has an active Paystack subscription */}
+      {hasPaystackSub && currentPlan !== "free" && (
+        <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Current subscription</CardTitle>
+              {!scheduledDowngradeAt && !isPastDue && !isSuspended && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      disabled={cancelMutation.isPending}
+                    >
+                      {cancelMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                      ) : (
+                        <XCircle className="w-4 h-4 mr-1.5" />
+                      )}
+                      Cancel subscription
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You'll keep access to your current plan until the end of the billing period.
+                        After that, your account will automatically revert to the Free plan (max 3 contractors).
+                        You can resubscribe at any time.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep subscription</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => cancelMutation.mutate()}
+                      >
+                        Yes, cancel
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Plan</p>
+                <p className="font-semibold text-sm">{planInfo?.name || currentPlan}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Billing currency</p>
+                <p className="font-semibold text-sm">{activeCurrency}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
+                <div>{getStatusBadge(liveStatus || subDbStatus)}</div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {scheduledDowngradeAt ? "Reverts to Free on" : "Next payment"}
+                </p>
+                <p className="font-semibold text-sm">
+                  {scheduledDowngradeAt
+                    ? formatDate(scheduledDowngradeAt)
+                    : nextPaymentDate
+                    ? formatDate(nextPaymentDate)
+                    : "—"}
+                </p>
+              </div>
+            </div>
+
+            {isPastDue && (
+              <div className="mt-4 flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-sm text-red-700 flex-1">
+                  Payment failed. Update your card to avoid losing access.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100 shrink-0"
+                  onClick={() => reauthMutation.mutate()}
+                  disabled={reauthMutation.isPending}
+                >
+                  {reauthMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                    <><RefreshCw className="w-3.5 h-3.5 mr-1" /> Update card</>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plan cards */}
       <Card className="border-[1.5px] border-neutral-200 rounded-xl">
         <CardHeader>
           <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
@@ -532,7 +800,7 @@ export default function BillingPage() {
               {billing.subscription.paystackCustomerCode && (
                 <div>
                   <p className="text-sm text-muted-foreground">Payment processor</p>
-                  <p className="font-medium text-sm text-neutral-600">Paystack · {billing.subscription.billingCurrency}</p>
+                  <p className="font-medium text-sm text-neutral-600">Paystack · {activeCurrency}</p>
                 </div>
               )}
             </div>
