@@ -242,6 +242,40 @@ app.use((req, res, next) => {
       };
       setTimeout(checkTimesheetReminders, 60 * 1000);
       setInterval(checkTimesheetReminders, 12 * 60 * 60 * 1000);
+
+      // Scheduled-downgrade check: when subscription.not_renew fires we store
+      // scheduledDowngradeAt. Once that date passes we revert the org to free.
+      const checkScheduledDowngrades = async () => {
+        try {
+          const now = new Date();
+          const { db } = await import("./db");
+          const { subscriptions, PLAN_LIMITS } = await import("@shared/schema");
+          const { lte } = await import("drizzle-orm");
+          const pending = await db
+            .select()
+            .from(subscriptions)
+            .where(
+              lte(subscriptions.scheduledDowngradeAt, now),
+            );
+          for (const sub of pending) {
+            if (!sub.scheduledDowngradeAt) continue;
+            if (sub.plan === "free") continue;
+            await storage.updateSubscription(sub.id, {
+              plan: "free",
+              status: "active",
+              maxSeats: PLAN_LIMITS.free.maxSeats,
+              paystackSubscriptionCode: null,
+              scheduledDowngradeAt: null,
+              updatedAt: new Date(),
+            });
+            log(`[billing] Downgraded org ${sub.organizationId} to free (scheduled downgrade)`);
+          }
+        } catch (e) {
+          console.error("Scheduled downgrade check error:", e);
+        }
+      };
+      setTimeout(checkScheduledDowngrades, 5 * 60 * 1000);
+      setInterval(checkScheduledDowngrades, 6 * 60 * 60 * 1000);
     },
   );
 })();

@@ -186,6 +186,7 @@ export interface IStorage {
 
   createSubscription(sub: InsertSubscription): Promise<Subscription>;
   getSubscriptionByOrganization(organizationId: string): Promise<Subscription | undefined>;
+  getSubscriptionByPaystackCustomerCode(customerCode: string): Promise<Subscription | undefined>;
   updateSubscription(id: string, updates: Partial<Subscription>): Promise<Subscription | undefined>;
 
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -725,6 +726,11 @@ export class DatabaseStorage implements IStorage {
 
   async getSubscriptionByOrganization(organizationId: string): Promise<Subscription | undefined> {
     const result = await db.select().from(subscriptions).where(eq(subscriptions.organizationId, organizationId));
+    return result[0];
+  }
+
+  async getSubscriptionByPaystackCustomerCode(customerCode: string): Promise<Subscription | undefined> {
+    const result = await db.select().from(subscriptions).where(eq(subscriptions.paystackCustomerCode, customerCode));
     return result[0];
   }
 

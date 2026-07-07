@@ -4510,6 +4510,201 @@ export async function registerRoutes(
     }
   }));
 
+  // POST /api/billing/paystack-webhook — receives Paystack events
+  // Must be a PUBLIC route (no authMiddleware). HMAC-SHA512 signature is
+  // verified against the raw request body before any processing occurs.
+  app.post("/api/billing/paystack-webhook", asyncHandler(async (req, res) => {
+    const { createHmac } = await import("crypto");
+    const secretKey = process.env.PAYSTACK_TEST_API_KEY || "";
+
+    const signature = req.headers["x-paystack-signature"] as string | undefined;
+    const rawBody = (req as any).rawBody as Buffer | undefined;
+
+    if (!signature || !rawBody) {
+      return res.status(400).json({ error: "Missing signature or body" });
+    }
+
+    const expected = createHmac("sha512", secretKey).update(rawBody).digest("hex");
+    if (signature !== expected) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    let event: { event: string; data: any };
+    try {
+      event = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
+
+    const { PLAN_LIMITS } = await import("@shared/schema");
+    const { createNotification } = await import("./notificationService");
+
+    // Helper — find the subscription and org by Paystack customer code
+    async function getSubByCustomer(customerCode: string) {
+      if (!customerCode) return null;
+      return storage.getSubscriptionByPaystackCustomerCode(customerCode);
+    }
+
+    // Helper — notify all admins + owners in an org
+    async function notifyOrgAdmins(
+      organizationId: string,
+      payload: Parameters<typeof createNotification>[1],
+    ) {
+      const [admins, owners] = await Promise.all([
+        storage.getUsersByRole("admin", organizationId),
+        storage.getUsersByRole("owner", organizationId),
+      ]);
+      const recipients = new Map<string, (typeof admins)[0]>();
+      [...admins, ...owners].forEach(u => recipients.set(u.id, u));
+      for (const u of recipients.values()) {
+        await createNotification(u.id, payload);
+      }
+    }
+
+    const { event: eventType, data } = event;
+    const customerCode: string = data?.customer?.customer_code ?? "";
+
+    try {
+      switch (eventType) {
+        // -----------------------------------------------------------------
+        // charge.success — a one-time or recurring charge succeeded.
+        // Activate / renew the subscription plan.
+        // -----------------------------------------------------------------
+        case "charge.success": {
+          const sub = await getSubByCustomer(customerCode);
+          if (!sub) break;
+
+          const planName: string = data?.metadata?.plan ?? data?.plan_object?.name ?? "";
+          const planKey = (planName === "starter" || planName === "pro") ? planName : null;
+          if (!planKey) break;
+
+          const limits = PLAN_LIMITS[planKey];
+          const subscriptionCode: string | null =
+            data?.subscription?.subscription_code ??
+            sub.paystackSubscriptionCode ??
+            null;
+
+          await storage.updateSubscription(sub.id, {
+            plan: planKey,
+            status: "active",
+            maxSeats: limits.maxSeats,
+            paystackSubscriptionCode: subscriptionCode ?? sub.paystackSubscriptionCode,
+            scheduledDowngradeAt: null,
+            updatedAt: new Date(),
+          });
+          break;
+        }
+
+        // -----------------------------------------------------------------
+        // subscription.create — Paystack created a subscription; store code.
+        // -----------------------------------------------------------------
+        case "subscription.create": {
+          const sub = await getSubByCustomer(customerCode);
+          if (!sub) break;
+
+          const subCode: string = data?.subscription_code ?? "";
+          if (!subCode) break;
+
+          await storage.updateSubscription(sub.id, {
+            paystackSubscriptionCode: subCode,
+            updatedAt: new Date(),
+          });
+          break;
+        }
+
+        // -----------------------------------------------------------------
+        // invoice.payment_failed — a recurring charge failed.
+        // Mark past_due and notify org admins/owners.
+        // -----------------------------------------------------------------
+        case "invoice.payment_failed": {
+          const sub = await getSubByCustomer(customerCode);
+          if (!sub) break;
+
+          await storage.updateSubscription(sub.id, {
+            status: "past_due",
+            updatedAt: new Date(),
+          });
+
+          await notifyOrgAdmins(sub.organizationId, {
+            type: "invoice_payment_failed",
+            title: "Subscription Payment Failed",
+            message:
+              "Your Axle subscription payment failed. Please update your payment method to avoid losing access.",
+            entityType: "subscription",
+            entityId: sub.id,
+          });
+          break;
+        }
+
+        // -----------------------------------------------------------------
+        // subscription.disable — subscription was cancelled/disabled.
+        // Mark as canceled and revoke paid-plan access.
+        // -----------------------------------------------------------------
+        case "subscription.disable": {
+          const sub = await getSubByCustomer(customerCode);
+          if (!sub) break;
+
+          await storage.updateSubscription(sub.id, {
+            plan: "free",
+            status: "canceled",
+            maxSeats: PLAN_LIMITS.free.maxSeats,
+            paystackSubscriptionCode: null,
+            scheduledDowngradeAt: null,
+            updatedAt: new Date(),
+          });
+
+          await notifyOrgAdmins(sub.organizationId, {
+            type: "subscription_canceled",
+            title: "Subscription Cancelled",
+            message:
+              "Your Axle subscription has been cancelled. Your account has been moved to the Free plan.",
+            entityType: "subscription",
+            entityId: sub.id,
+          });
+          break;
+        }
+
+        // -----------------------------------------------------------------
+        // subscription.not_renew — subscription set to not renew at period end.
+        // Schedule a downgrade at the next payment date so access continues
+        // until the end of the already-paid period.
+        // -----------------------------------------------------------------
+        case "subscription.not_renew": {
+          const sub = await getSubByCustomer(customerCode);
+          if (!sub) break;
+
+          const nextPaymentDate: string | undefined = data?.next_payment_date;
+          const downgradeAt = nextPaymentDate ? new Date(nextPaymentDate) : null;
+
+          await storage.updateSubscription(sub.id, {
+            scheduledDowngradeAt: downgradeAt,
+            updatedAt: new Date(),
+          });
+
+          await notifyOrgAdmins(sub.organizationId, {
+            type: "subscription_not_renew",
+            title: "Subscription Will Not Renew",
+            message: downgradeAt
+              ? `Your subscription will not renew. Access continues until ${downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.`
+              : "Your subscription is set to not renew at the end of the current period.",
+            entityType: "subscription",
+            entityId: sub.id,
+          });
+          break;
+        }
+
+        default:
+          // Unknown / unhandled event — still return 200 to prevent Paystack retries
+          break;
+      }
+    } catch (handlerErr: any) {
+      console.error(`[Paystack webhook] handler error for ${eventType}:`, handlerErr?.message ?? handlerErr);
+      // Return 200 so Paystack doesn't retry — log the failure for investigation
+    }
+
+    return res.status(200).json({ received: true });
+  }));
+
   // ── SEO / Public content routes ──────────────────────────────────────────
   // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
   // so that Googlebot receives fully server-rendered HTML.
