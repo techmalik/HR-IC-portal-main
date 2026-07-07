@@ -9,7 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/status-badge";
 import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
 
 interface BillingData {
   subscription: {
@@ -27,6 +28,9 @@ interface BillingData {
     appliedDiscountId: string | null;
     discountType: string | null;
     discountValue: number | null;
+    paystackCustomerCode: string | null;
+    paystackSubscriptionCode: string | null;
+    billingCurrency: string | null;
   };
   organization: {
     id: string;
@@ -52,6 +56,11 @@ interface UsageData {
   trialExpired: boolean;
   daysLeftInTrial: number | null;
   estimatedMonthlyCost: number;
+}
+
+interface CurrencyData {
+  currency: "NGN" | "USD" | "EUR";
+  prices: Record<string, Record<string, string>>;
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -82,9 +91,35 @@ const PLAN_FEATURES: Record<string, string[]> = {
   ],
 };
 
+const CURRENCY_SYMBOL: Record<string, string> = { NGN: "₦", USD: "$", EUR: "€" };
+
 export default function BillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
+
+  // Show toast based on Paystack redirect result
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (payment === "success") {
+      toast({
+        title: "Payment successful",
+        description: "Your plan has been upgraded. Changes take effect immediately.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/usage"] });
+      // Clean up URL
+      window.history.replaceState({}, "", "/billing");
+    } else if (payment === "failed") {
+      toast({
+        title: "Payment not completed",
+        description: "Your plan was not changed. Please try again.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", "/billing");
+    }
+  }, []);
 
   const { data: billing, isLoading: billingLoading } = useQuery<BillingData>({
     queryKey: ["/api/billing"],
@@ -104,6 +139,49 @@ export default function BillingPage() {
       return res.json();
     },
     enabled: !!user,
+  });
+
+  const { data: currencyData } = useQuery<CurrencyData>({
+    queryKey: ["/api/billing/detect-currency"],
+    queryFn: async () => {
+      const res = await fetch("/api/billing/detect-currency", { credentials: "include" });
+      if (!res.ok) return { currency: "USD", prices: {} };
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  // Use the org's existing billing currency if set, otherwise use detected
+  const activeCurrency: "NGN" | "USD" | "EUR" =
+    (billing?.subscription?.billingCurrency as "NGN" | "USD" | "EUR") ||
+    currencyData?.currency ||
+    "USD";
+
+  const subscribeMutation = useMutation({
+    mutationFn: async ({ plan, currency }: { plan: string; currency: string }) => {
+      const res = await fetch("/api/billing/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ plan, currency }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to start checkout");
+      }
+      return res.json() as Promise<{ authorization_url: string; reference: string }>;
+    },
+    onSuccess: (data) => {
+      window.location.href = data.authorization_url;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not start checkout",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const changePlanMutation = useMutation({
@@ -153,6 +231,7 @@ export default function BillingPage() {
   const trialExpired = usage?.trialExpired ?? false;
   const daysLeftInTrial = usage?.daysLeftInTrial ?? null;
   const estimatedMonthlyCost = usage?.estimatedMonthlyCost ?? 0;
+  const hasPaystackSub = !!billing?.subscription?.paystackSubscriptionCode;
 
   const plans: SubscriptionPlanType[] = ["free", "starter", "pro", "enterprise"];
 
@@ -176,6 +255,26 @@ export default function BillingPage() {
     }
   };
 
+  // Returns localized price label for a paid plan, e.g. "$9/IC/mo" or "₦15,000/IC/mo"
+  const getPriceLabel = (plan: string) => {
+    const prices = currencyData?.prices;
+    if (prices && prices[plan] && prices[plan][activeCurrency]) {
+      return `${prices[plan][activeCurrency]}/IC/mo`;
+    }
+    const info = PLAN_LIMITS[plan as SubscriptionPlanType];
+    return `$${info?.unitPrice}/IC/mo`;
+  };
+
+  const handleUpgrade = (plan: string) => {
+    subscribeMutation.mutate({ plan, currency: activeCurrency });
+  };
+
+  const handleDowngrade = (plan: string) => {
+    changePlanMutation.mutate(plan);
+  };
+
+  const isMutating = subscribeMutation.isPending || changePlanMutation.isPending;
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
@@ -195,8 +294,13 @@ export default function BillingPage() {
               You can no longer add new users. Upgrade to a paid plan to continue growing your team.
             </p>
           </div>
-          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white shrink-0" onClick={() => changePlanMutation.mutate("starter")}>
-            Upgrade now
+          <Button
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+            onClick={() => handleUpgrade("starter")}
+            disabled={isMutating}
+          >
+            {isMutating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upgrade now"}
           </Button>
         </div>
       )}
@@ -230,11 +334,11 @@ export default function BillingPage() {
               ) : currentPlan === "enterprise" ? (
                 <span className="text-xs text-neutral-500">Custom pricing</span>
               ) : (
-                <span className="text-xs text-neutral-500">${planInfo?.unitPrice}/IC/mo</span>
+                <span className="text-xs text-neutral-500">{getPriceLabel(currentPlan)}</span>
               )}
               {billing?.billing?.discountType && (
                 <span className="text-xs font-semibold text-emerald-600">
-                  ${billing.billing.netPrice}/mo
+                  {CURRENCY_SYMBOL[activeCurrency] || "$"}{billing.billing.netPrice}/mo
                 </span>
               )}
             </div>
@@ -250,10 +354,13 @@ export default function BillingPage() {
                   </span>
                 ) : (
                   <span className="text-[11px] text-neutral-500">
-                    ${billing.billing.discountValue} discount applied
+                    {CURRENCY_SYMBOL[activeCurrency] || "$"}{billing.billing.discountValue} discount applied
                   </span>
                 )}
               </div>
+            )}
+            {activeCurrency && (
+              <span className="text-[10px] text-neutral-400 mt-0.5">Billing in {activeCurrency}</span>
             )}
           </div>
         </div>
@@ -267,7 +374,7 @@ export default function BillingPage() {
           <p className="text-xs text-neutral-500">{percentUsed}% of seats used</p>
           {estimatedMonthlyCost > 0 && (
             <p className="text-xs text-emerald-700 font-medium mt-1">
-              Est. ${estimatedMonthlyCost}/mo at current usage
+              Est. {CURRENCY_SYMBOL[activeCurrency] || "$"}{estimatedMonthlyCost}/mo at current usage
             </p>
           )}
         </div>
@@ -297,6 +404,11 @@ export default function BillingPage() {
           <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
           <CardDescription>
             Per-contractor-per-month — you pay as your team grows
+            {activeCurrency && activeCurrency !== "USD" && (
+              <span className="ml-1 text-xs text-neutral-500">
+                · Prices shown in {activeCurrency}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -306,6 +418,11 @@ export default function BillingPage() {
               const features = PLAN_FEATURES[plan] || [];
               const isCurrent = plan === currentPlan;
               const isUpgrade = plans.indexOf(plan) > plans.indexOf(currentPlan);
+              const isPaidPlan = plan !== "free" && plan !== "enterprise";
+
+              const localPrice = isPaidPlan
+                ? (currencyData?.prices?.[plan]?.[activeCurrency] || `$${info?.unitPrice}`)
+                : null;
 
               return (
                 <div
@@ -330,9 +447,9 @@ export default function BillingPage() {
                   )}
                   <h3 className="text-lg font-semibold mt-1">{info.name}</h3>
                   <div className="mt-2 mb-1">
-                    {info.unitPrice > 0 ? (
+                    {isPaidPlan ? (
                       <span className="text-3xl font-bold">
-                        ${info.unitPrice}
+                        {localPrice}
                         <span className="text-sm font-normal text-muted-foreground">/IC/mo</span>
                       </span>
                     ) : plan === "enterprise" ? (
@@ -364,18 +481,30 @@ export default function BillingPage() {
                     <Button variant="outline" className="w-full" asChild>
                       <a href="mailto:sales@axle.app">Contact Sales</a>
                     </Button>
+                  ) : isUpgrade ? (
+                    <Button
+                      variant="default"
+                      className={`w-full ${plan === "pro" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+                      onClick={() => handleUpgrade(plan)}
+                      disabled={isMutating}
+                    >
+                      {subscribeMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Upgrade
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
                   ) : (
                     <Button
-                      variant={isUpgrade ? "default" : "outline"}
-                      className={`w-full ${plan === "pro" && isUpgrade ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
-                      onClick={() => changePlanMutation.mutate(plan)}
-                      disabled={changePlanMutation.isPending}
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleDowngrade(plan)}
+                      disabled={isMutating}
                     >
                       {changePlanMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : null}
-                      {isUpgrade ? "Upgrade" : "Downgrade"}
-                      {isUpgrade && <ArrowRight className="w-4 h-4 ml-1" />}
+                      Downgrade
                     </Button>
                   )}
                 </div>
@@ -400,6 +529,12 @@ export default function BillingPage() {
                 <p className="text-sm text-muted-foreground">Billing Email</p>
                 <p className="font-medium">{billing.organization.billingEmail || "Not set"}</p>
               </div>
+              {billing.subscription.paystackCustomerCode && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Payment processor</p>
+                  <p className="font-medium text-sm text-neutral-600">Paystack · {billing.subscription.billingCurrency}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

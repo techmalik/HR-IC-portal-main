@@ -123,6 +123,10 @@ export const subscriptions = pgTable("subscriptions", {
   appliedDiscountId: varchar("applied_discount_id"),
   discountType: text("discount_type"),
   discountValue: integer("discount_value"),
+  paystackCustomerCode: text("paystack_customer_code"),
+  paystackSubscriptionCode: text("paystack_subscription_code"),
+  billingCurrency: text("billing_currency").default("USD"),
+  scheduledDowngradeAt: timestamp("scheduled_downgrade_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -4354,6 +4354,162 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // ── Paystack billing routes ───────────────────────────────────────────────
+
+  // GET /api/billing/detect-currency — lightweight IP-based currency detection
+  app.get("/api/billing/detect-currency", authMiddleware, asyncHandler(async (req, res) => {
+    const { detectCurrencyFromIp, DISPLAY_PRICES } = await import("./paystackService");
+    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+      || req.socket?.remoteAddress
+      || req.ip
+      || "";
+    const currency = detectCurrencyFromIp(ip);
+    res.json({ currency, prices: DISPLAY_PRICES });
+  }));
+
+  // POST /api/billing/subscribe — initialise a Paystack checkout session
+  app.post("/api/billing/subscribe", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "User is not associated with an organization" });
+    }
+
+    const { plan, currency } = req.body;
+    const validPlans = ["starter", "pro"];
+    const validCurrencies = ["NGN", "USD", "EUR"];
+
+    if (!plan || !validPlans.includes(plan)) {
+      return res.status(400).json({ error: "Plan must be 'starter' or 'pro'" });
+    }
+    if (!currency || !validCurrencies.includes(currency)) {
+      return res.status(400).json({ error: "Currency must be NGN, USD, or EUR" });
+    }
+
+    const {
+      findOrCreateCustomer,
+      initializeTransaction,
+      listPlans,
+      createPlan,
+      PAYSTACK_PRICES,
+    } = await import("./paystackService");
+
+    const organization = await storage.getOrganization(currentUser.organizationId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const billingEmail = organization.billingEmail || currentUser.email;
+
+    // Look up or create the Paystack customer
+    const customer = await findOrCreateCustomer(billingEmail, currentUser.firstName, currentUser.lastName);
+
+    // Find or create the Paystack plan for this plan+currency combination
+    const planName = `Axle ${plan.charAt(0).toUpperCase() + plan.slice(1)} (${currency})`;
+    const allPlans = await listPlans();
+    let paystackPlan = allPlans.find((p: any) => p.name === planName && p.currency === currency);
+
+    if (!paystackPlan) {
+      const price = PAYSTACK_PRICES[plan]?.[currency as "NGN" | "USD" | "EUR"];
+      if (!price) {
+        return res.status(500).json({ error: "Price configuration missing" });
+      }
+      paystackPlan = await createPlan({
+        name: planName,
+        amount: price.amount,
+        currency: currency as "NGN" | "USD" | "EUR",
+        interval: "monthly",
+      });
+    }
+
+    // Build callback URL
+    const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
+    const host = req.headers.host;
+    const callbackUrl = `${proto}://${host}/api/billing/paystack-callback`;
+
+    const txn = await initializeTransaction({
+      email: billingEmail,
+      planCode: paystackPlan.plan_code,
+      currency: currency as "NGN" | "USD" | "EUR",
+      callbackUrl,
+      metadata: {
+        plan,
+        currency,
+        organizationId: currentUser.organizationId,
+        paystackCustomerCode: customer.customer_code,
+      },
+    });
+
+    // Store the customer code now so the webhook can match later
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (subscription && !subscription.paystackCustomerCode) {
+      await storage.updateSubscription(subscription.id, {
+        paystackCustomerCode: customer.customer_code,
+        billingCurrency: currency,
+        updatedAt: new Date(),
+      });
+    }
+
+    res.json({ authorization_url: txn.authorization_url, reference: txn.reference });
+  }));
+
+  // GET /api/billing/paystack-callback — Paystack redirects here after payment
+  app.get("/api/billing/paystack-callback", asyncHandler(async (req, res) => {
+    const { reference, trxref } = req.query;
+    const ref = (reference || trxref) as string | undefined;
+
+    if (!ref) {
+      return res.redirect("/billing?payment=failed");
+    }
+
+    try {
+      const { verifyTransaction } = await import("./paystackService");
+      const txn = await verifyTransaction(ref);
+
+      if (txn.status !== "success") {
+        return res.redirect("/billing?payment=failed");
+      }
+
+      const { organizationId, plan, currency } = (txn.metadata || {}) as Record<string, string>;
+
+      if (!organizationId || !plan) {
+        return res.redirect("/billing?payment=success");
+      }
+
+      const subscription = await storage.getSubscriptionByOrganization(organizationId);
+      if (subscription) {
+        const { PLAN_LIMITS } = await import("@shared/schema");
+        const newLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
+        const subscriptionCode = txn.subscription?.subscription_code || subscription.paystackSubscriptionCode || null;
+
+        await storage.updateSubscription(subscription.id, {
+          plan,
+          status: "active",
+          maxSeats: newLimits?.maxSeats ?? subscription.maxSeats,
+          paystackCustomerCode: txn.customer?.customer_code || subscription.paystackCustomerCode,
+          paystackSubscriptionCode: subscriptionCode,
+          billingCurrency: currency || subscription.billingCurrency || "USD",
+          updatedAt: new Date(),
+        });
+
+        try {
+          await storage.createActivityLog({
+            userId: txn.customer?.email || "system",
+            organizationId,
+            action: "Subscription upgraded via Paystack",
+            details: `Plan changed to ${plan} (${currency}) — ref: ${ref}`,
+            entityType: "subscription",
+            entityId: subscription.id,
+          });
+        } catch { /* non-critical */ }
+      }
+
+      return res.redirect("/billing?payment=success");
+    } catch (err: any) {
+      console.error("[Paystack callback] verification error:", err?.message || err);
+      return res.redirect("/billing?payment=failed");
+    }
+  }));
+
   // ── SEO / Public content routes ──────────────────────────────────────────
   // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
   // so that Googlebot receives fully server-rendered HTML.
