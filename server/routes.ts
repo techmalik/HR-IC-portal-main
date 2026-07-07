@@ -4514,8 +4514,13 @@ export async function registerRoutes(
   // Must be a PUBLIC route (no authMiddleware). HMAC-SHA512 signature is
   // verified against the raw request body before any processing occurs.
   app.post("/api/billing/paystack-webhook", asyncHandler(async (req, res) => {
-    const { createHmac } = await import("crypto");
-    const secretKey = process.env.PAYSTACK_TEST_API_KEY || "";
+    const { createHmac, timingSafeEqual } = await import("crypto");
+    const secretKey = process.env.PAYSTACK_TEST_API_KEY;
+    if (!secretKey) {
+      // Config error — fail loudly so operators notice; 500 causes Paystack to retry
+      console.error("[Paystack webhook] PAYSTACK_TEST_API_KEY is not set");
+      return res.status(500).json({ error: "Webhook secret not configured" });
+    }
 
     const signature = req.headers["x-paystack-signature"] as string | undefined;
     const rawBody = (req as any).rawBody as Buffer | undefined;
@@ -4525,7 +4530,10 @@ export async function registerRoutes(
     }
 
     const expected = createHmac("sha512", secretKey).update(rawBody).digest("hex");
-    if (signature !== expected) {
+    const sigBuf = Buffer.from(signature, "utf8");
+    const expBuf = Buffer.from(expected, "utf8");
+    const valid = sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf);
+    if (!valid) {
       return res.status(400).json({ error: "Invalid signature" });
     }
 
@@ -4564,8 +4572,7 @@ export async function registerRoutes(
     const { event: eventType, data } = event;
     const customerCode: string = data?.customer?.customer_code ?? "";
 
-    try {
-      switch (eventType) {
+    switch (eventType) {
         // -----------------------------------------------------------------
         // charge.success — a one-time or recurring charge succeeded.
         // Activate / renew the subscription plan.
@@ -4575,8 +4582,20 @@ export async function registerRoutes(
           const sub = await getSubByCustomer(customerCode);
           if (!sub) break;
 
-          const planName: string = data?.metadata?.plan ?? data?.plan_object?.name ?? "";
-          const planKey = (planName === "starter" || planName === "pro") ? planName : null;
+          // Resolve plan from metadata.plan (set during checkout), then fall
+          // back to the Paystack plan name (e.g. "Axle Starter (USD)" → "starter").
+          // This handles recurring charge events that may omit metadata.
+          const resolvePlanKey = (raw: string): "starter" | "pro" | null => {
+            if (!raw) return null;
+            const lower = raw.toLowerCase();
+            if (lower === "starter" || lower.includes("starter")) return "starter";
+            if (lower === "pro" || lower.includes("pro")) return "pro";
+            return null;
+          };
+          const planKey =
+            resolvePlanKey(data?.metadata?.plan ?? "") ??
+            resolvePlanKey(data?.plan_object?.name ?? "") ??
+            resolvePlanKey(data?.plan?.name ?? "");
           if (!planKey) break;
 
           const limits = PLAN_LIMITS[planKey];
@@ -4729,10 +4748,6 @@ export async function registerRoutes(
           // Unknown / unhandled event — still return 200 to prevent Paystack retries
           break;
       }
-    } catch (handlerErr: any) {
-      console.error(`[Paystack webhook] handler error for ${eventType}:`, handlerErr?.message ?? handlerErr);
-      // Return 200 so Paystack doesn't retry — log the failure for investigation
-    }
 
     return res.status(200).json({ received: true });
   }));
