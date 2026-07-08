@@ -143,21 +143,25 @@ returns the statuses defined above; no path returns a redirect-to-homepage.
 
 From the Namecheap + Replit screenshots:
 
-1. **Delete the "URL Redirect Record @ → https://www.axlehq.app (Permanent 301)"
-   in Namecheap.** It conflicts with the `A @ → 34.111.179.208` record (Namecheap
-   implements URL-redirects via their own A record), so apex resolution is
-   nondeterministic — some visitors get 301'd to `www`, which is a TLS dead end
-   (next item). The apex must be served by the A record alone.
-2. **Decide on `www`:** either (a) add `www.axlehq.app` as a custom domain in
-   Replit (keep the existing `CNAME www → axle-app.replit.app`) and let the
-   P0-2 middleware 301 it to the apex, or (b) delete the `www` CNAME and use
-   Namecheap's URL-redirect on `www` only → `https://axlehq.app`. Option (a)
-   is more reliable. Until one of these is done, every `www` URL is broken.
+1. **Delete the `URL Redirect Record` on host `@` → `https://www.axlehq.app`
+   (Permanent) in Namecheap.** (DECIDED.) It conflicts with the
+   `A @ → 34.111.179.208` record — Namecheap implements URL-redirects via their
+   own web-forwarding IP, so the apex has two competing answers and resolution
+   is nondeterministic; some visitors get 301'd to `www`, a TLS dead end. The
+   apex must be served by the `A @` record alone. Keep the two `TXT @` records,
+   `CNAME app → axle-app.replit.app`, and `A @`.
+2. **Fix `www` (DECIDED — option b):** delete the `CNAME www → axle-app.replit.app`
+   record and add `URL Redirect Record: host=www, value=https://axlehq.app,
+   Permanent (301)`. Then `www` cleanly 301s to the apex with no Replit cert
+   needed. (Alternative, if you prefer keeping the CNAME: register
+   `www.axlehq.app` as a custom domain in Replit so it gets a cert, and let the
+   P0-2 middleware 301 it to apex.) Until one of these is done, every `www` URL
+   is broken.
 3. **Replit secrets (Production deployment):**
-   - `PAYSTACK_TEST_API_KEY`: confirm whether the value is a test (`sk_test_…`)
-     or live (`sk_live_…`) key. If test: no real money is being collected.
-     Rename the secret to `PAYSTACK_SECRET_KEY` (code change in P2-1) and set
-     the live key when ready to charge.
+   - `PAYSTACK_TEST_API_KEY`: CONFIRMED test-mode — no real money is collected
+     yet, by design. Do the P2-1 rename to `PAYSTACK_SECRET_KEY` now (read the
+     old name as fallback), and swap in the live `sk_live_…` key later when
+     ready to charge. No further action needed until then.
    - Add `FROM_EMAIL` (e.g. `notifications@axlehq.app`, domain verified in
      Resend) — today it falls back to `notifications@resend.dev`
      (`server/emailService.ts:13`), which only delivers to the Resend account
@@ -303,10 +307,78 @@ already only uses it for downgrades (`client/src/pages/billing.tsx:435-437`).
 - `/api/billing` (routes.ts:4450-4452) computes prices in USD but the UI
   renders them with the detected currency symbol
   (`billing.tsx:562-585`) — show currency-correct numbers.
-- Trial: decide what expiry means. Today `trialEndsAt` only blocks adding
-  users (routes.ts:1295, 1678), which the 3-seat free cap already does —
-  i.e., the "7-day trial" on the landing page is functionally meaningless.
-  Either enforce read-only after expiry or drop the trial language.
+- Trial enforcement — see P2-4 (this is now a defined requirement, not a
+  question).
+
+### P2-4 · Enforce the 7-day trial as a hard lockout (product decision — CONFIRMED)
+
+**Requirement:** when an org registers it gets 7 days of full free access
+(`trialEndsAt` is already set at signup, routes.ts:556-565). After
+`trialEndsAt` passes, if the org has **not** subscribed to a paid plan, the
+org is locked: logged-in users can do nothing except reach the subscribe/billing
+flow and log out. This applies even though free is capped at 3 seats — the point
+is a time-boxed trial, not a seat-boxed one.
+
+**Server (authoritative gate):**
+
+- In `authMiddleware` (server/routes.ts:163), alongside the existing
+  suspended-org block (routes.ts:181-193), add a trial-expiry block:
+  - Compute `isPlatformAdmin` (already done nearby) — platform admins are exempt.
+  - Load the org subscription. Treat the org as **locked** when:
+    `plan === "free"` AND `trialEndsAt != null` AND `trialEndsAt < now` AND
+    `status !== "active-paid"` (i.e. no live `paystackSubscriptionCode`).
+  - When locked, allow a small exempt path set and 403 everything else with a
+    machine-readable flag so the client can react (mirror the
+    `mustChangePassword` pattern at routes.ts:171-177):
+    ```ts
+    return res.status(403).json({ error: "Trial expired", trialExpired: true });
+    ```
+  - **Exempt paths** (must stay reachable while locked): `POST /api/auth/logout`,
+    `GET /api/auth/me`, `GET /api/billing`, `GET /api/billing/detect-currency`,
+    `POST /api/billing/subscribe`, `GET/POST /api/billing/paystack-callback`,
+    the Paystack webhook (unauthenticated already), and read-only
+    `GET /api/notifications*` if you want the bell to work. Everything else
+    (timesheets, invoices, users, evaluations, org writes …) returns the 403.
+- Reactivation is automatic: once `subscribe` completes and the webhook sets the
+  plan to a paid tier / stores `paystackSubscriptionCode`, the lock condition is
+  false on the next request. No manual step.
+- Keep the existing seat-add trial checks (routes.ts:1295, 1678) — they become
+  redundant but harmless once the global gate exists; simplest to leave them.
+
+**Client (UX):**
+
+- `client/src/lib/queryClient.ts`: the global fetch interceptor already handles
+  401. Add a sibling branch: on a 403 whose JSON body has `trialExpired: true`,
+  dispatch a `TRIAL_EXPIRED` event instead of treating it as a normal error
+  (mirror the `mustChangePassword` handling that already exists on the client).
+- `client/src/lib/auth-context.tsx`: surface `trialExpired` on the auth context.
+  Cheapest source: `GET /api/auth/me` should include a computed
+  `trialExpired` boolean (add it next to `isPlatformAdmin` at routes.ts:720-725,
+  and to the `/api/auth/login` response at routes.ts:508-513) so the client
+  knows on first load without waiting for a blocked call.
+- Render a **blocking, non-dismissible overlay** when `trialExpired` is true
+  (same slot/pattern as `ForcePasswordChangeModal`, auth-context.tsx:243-256):
+  "Your 7-day trial has ended — subscribe to keep using Axle," with a button to
+  `/billing` and a log-out link. Only `/billing` and `/profile`(logout) render
+  behind it. Admins/owners see the plan picker; ICs see a "ask your admin to
+  subscribe" message (only admin/owner can hit `subscribe`, routes.ts:4561).
+- The billing page (`client/src/pages/billing.tsx`) already shows
+  `trialExpired`/`daysLeftInTrial` (routes.ts:4488-4493) — reuse that banner.
+
+**Landing copy:** reconcile the two conflicting claims — "7-day free trial"
+(landing.tsx:96,277) vs "Free for up to 3 contractors" permanently
+(landing.tsx:277,653). With this change the free plan is trial-only (7 days),
+so remove the "free forever for 3 contractors" language or make the Free tier
+genuinely permanent-but-limited and drop the trial. Pick one; they can't both
+be true.
+
+**Acceptance:**
+- New org, set `trialEndsAt` to the past in DB → logging in, every app page shows
+  the subscribe overlay; direct `curl` to `/api/timesheets` with that cookie →
+  `403 {trialExpired:true}`; `/api/billing/subscribe` still works.
+- After a successful (test-mode) subscribe, the same cookie can reach
+  `/api/timesheets` again.
+- Platform-admin account is never locked.
 
 ---
 
