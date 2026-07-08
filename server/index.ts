@@ -9,6 +9,17 @@ import { registerWebSocketClient, unregisterWebSocketClient } from "./notificati
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
 import { storage } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
+import {
+  APP_HOST,
+  MARKETING_APEX_HOST,
+  MARKETING_WWW_HOST,
+  REPLIT_HOST,
+  isAppShellPath,
+  isMarketingOnlyPath,
+  isBackofficePath,
+  isStaticAssetPath,
+  isApiPath,
+} from "./hostRouting";
 
 const app = express();
 const httpServer = createServer(app);
@@ -95,72 +106,70 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     app.use(async (req: Request, res: Response, next: NextFunction) => {
       const hostname = req.hostname;
-      const isAppSubdomain = hostname === "app.axlehq.app";
-      const isMarketingDomain = hostname === "axlehq.app" || hostname === "www.axlehq.app";
+      const p = req.path;
 
-      // Unknown host (Replit preview URL, custom domains, etc.) — pass through untouched.
+      // Host canonicalization — runs before any host-specific logic below.
+      if (hostname === MARKETING_WWW_HOST) {
+        return res.redirect(301, `https://${MARKETING_APEX_HOST}${p}`);
+      }
+      if (hostname === REPLIT_HOST) {
+        // Keep the health check reachable on every host Replit might route to.
+        if (p === "/api/health") {
+          return next();
+        }
+        return res.redirect(301, `https://${MARKETING_APEX_HOST}${p}`);
+      }
+
+      const isAppSubdomain = hostname === APP_HOST;
+      const isMarketingDomain = hostname === MARKETING_APEX_HOST;
+
+      // Unknown host (Replit preview/dev URL, custom domains, etc.) — pass through untouched.
       if (!isAppSubdomain && !isMarketingDomain) {
         return next();
       }
 
+      if (isApiPath(p) || isStaticAssetPath(p)) {
+        return next();
+      }
+
+      if (isBackofficePath(p)) {
+        // Back-office only exists on the app subdomain — forward there
+        // instead of bouncing to the marketing homepage, and skip the
+        // server-side session gate below (it uses its own bo_session_token
+        // cookie, checked client-side by BackofficeGuard).
+        if (isMarketingDomain) {
+          return res.redirect(302, `https://${APP_HOST}${p}`);
+        }
+        return next();
+      }
+
       if (isMarketingDomain) {
-        // On the marketing domain only public paths are allowed.
-        const p = req.path;
-        const isBackoffice = p === "/back-office" || p.startsWith("/back-office/");
-        if (isBackoffice) {
-          // Back-office only exists on the app subdomain — forward there
-          // instead of bouncing to the marketing homepage.
-          return res.redirect(302, `https://app.axlehq.app${p}`);
+        // Private app-shell paths typed on the marketing domain forward to
+        // the app subdomain instead of silently rendering the landing page.
+        if (isAppShellPath(p)) {
+          return res.redirect(302, `https://${APP_HOST}${p}`);
         }
-        const isPublic =
-          p === "/" ||
-          p === "/login" ||
-          p === "/signup" ||
-          p === "/competitive-analysis" ||
-          p.startsWith("/blog") ||
-          p.startsWith("/seo") ||
-          p.startsWith("/api/auth/") ||
-          p.startsWith("/api/blog/") ||
-          p === "/api/billing/detect-currency" ||
-          p === "/api/health" ||
-          p.startsWith("/api/support/") ||
-          p.startsWith("/objects/") ||
-          p.startsWith("/assets/") ||
-          p.startsWith("/uploads/") ||
-          p === "/favicon.ico";
-
-        if (!isPublic) {
-          return res.redirect(302, "https://axlehq.app/");
-        }
+        // Everything else (SEO pages, sitemaps, robots.txt, /, /login, /signup,
+        // static, API) passes through — the SPA only renders public routes on
+        // this host regardless of auth state, so nothing private can leak.
         return next();
       }
 
-      if (isAppSubdomain) {
-        // On the app subdomain, unauthenticated HTML navigations redirect to login.
-        const p = req.path;
-        const isApiRequest = p.startsWith("/api/");
-        const isStaticAsset =
-          p.startsWith("/assets/") ||
-          p.startsWith("/objects/") ||
-          p.startsWith("/uploads/") ||
-          p === "/favicon.ico" ||
-          /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map)$/.test(p);
-        const isBackoffice = p === "/back-office" || p.startsWith("/back-office/");
-
-        if (!isApiRequest && !isStaticAsset && !isBackoffice) {
-          const token = req.cookies?.session_token;
-          if (!token) {
-            return res.redirect(302, "https://axlehq.app/login");
-          }
-          const userId = await getUserIdFromToken(token);
-          if (!userId) {
-            return res.redirect(302, "https://axlehq.app/login");
-          }
-        }
-        return next();
+      // isAppSubdomain
+      if (isMarketingOnlyPath(p)) {
+        return res.redirect(301, `https://${MARKETING_APEX_HOST}${p}`);
       }
-
-      next();
+      if (p === "/" || isAppShellPath(p)) {
+        const token = req.cookies?.session_token;
+        if (!token) {
+          return res.redirect(302, `https://${MARKETING_APEX_HOST}/login`);
+        }
+        const userId = await getUserIdFromToken(token);
+        if (!userId) {
+          return res.redirect(302, `https://${MARKETING_APEX_HOST}/login`);
+        }
+      }
+      return next();
     });
   }
 
