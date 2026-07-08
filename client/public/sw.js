@@ -1,8 +1,8 @@
-// Axle service worker — caches the static app shell so the PWA can load
-// instantly on flaky mobile networks. API calls always go to the network.
-const CACHE_NAME = "axle-shell-v1";
+// Axle service worker — caches static assets for fast repeat loads.
+// API calls always go to the network.
+// IMPORTANT: bump CACHE_NAME whenever deploying to force old caches to clear.
+const CACHE_NAME = "axle-shell-v2";
 const SHELL_ASSETS = [
-  "/",
   "/manifest.webmanifest",
   "/favicon.ico",
   "/favicon.png",
@@ -43,7 +43,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache-first.
+  // Static assets (JS, CSS, images, fonts): cache-first.
   const isStatic =
     url.pathname.startsWith("/assets/") ||
     url.pathname.startsWith("/icons/") ||
@@ -67,10 +67,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Document navigations: network-first with shell fallback.
+  // Document navigations: always go to the network.
+  // Do NOT fall back to a cached shell — serving a stale index.html
+  // after a new deployment would load old JS bundles and break the app.
+  // If the network is unavailable, let the browser show its own offline page.
   if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req).catch(() => caches.match("/").then((r) => r || Response.error()))
-    );
+    return; // Let the browser handle it natively (network only).
   }
 });
