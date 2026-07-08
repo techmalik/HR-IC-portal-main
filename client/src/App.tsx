@@ -15,7 +15,7 @@ import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from
 import { BackofficeLayout } from "@/components/backoffice-layout";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
-import { isSubdomainMode, getMarketingOrigin } from "@/lib/subdomain";
+import { isMarketingHost, getMarketingOrigin } from "@/lib/subdomain";
 
 // Small shared pages loaded eagerly (no heavy deps, needed for error states)
 import NotFound from "@/pages/not-found";
@@ -563,6 +563,13 @@ function BackOfficeRoutes() {
 function ProtectedRoutes() {
   const { user, isLoading, isAdmin, isPlatformAdmin } = useAuth();
   const [location] = useLocation();
+
+  // On the marketing domain (axlehq.app / www.axlehq.app) always render public
+  // routes — even when the user has a valid session. The product app lives on
+  // app.axlehq.app; authenticated state must never hijack the landing page.
+  if (isMarketingHost()) {
+    return <PublicRoutes />;
+  }
 
   if (isLoading) {
     return (
