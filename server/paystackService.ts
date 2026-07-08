@@ -31,12 +31,12 @@ export function detectCurrencyFromIp(ip: string): BillingCurrency {
 
 export const PAYSTACK_PRICES: Record<string, Record<BillingCurrency, { amount: number; label: string }>> = {
   starter: {
-    NGN: { amount: 1500000, label: "₦15,000" },
+    NGN: { amount: 900000, label: "₦9,000" },
     USD: { amount:     900, label: "$9"       },
     EUR: { amount:     800, label: "€8"       },
   },
   pro: {
-    NGN: { amount: 2200000, label: "₦22,000" },
+    NGN: { amount: 1400000, label: "₦14,000" },
     USD: { amount:    1400, label: "$14"      },
     EUR: { amount:    1300, label: "€13"      },
   },
@@ -44,8 +44,8 @@ export const PAYSTACK_PRICES: Record<string, Record<BillingCurrency, { amount: n
 
 // Display prices for the billing page (does not require Paystack plan codes)
 export const DISPLAY_PRICES: Record<string, Record<BillingCurrency, string>> = {
-  starter: { NGN: "₦15,000", USD: "$9", EUR: "€8" },
-  pro:     { NGN: "₦22,000", USD: "$14", EUR: "€13" },
+  starter: { NGN: "₦9,000", USD: "$9", EUR: "€8" },
+  pro:     { NGN: "₦14,000", USD: "$14", EUR: "€13" },
 };
 
 // ---------------------------------------------------------------------------

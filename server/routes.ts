@@ -453,7 +453,7 @@ export async function registerRoutes(
     });
 
     const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 7);
+    trialEnd.setDate(trialEnd.getDate() + 30);
     const subscription = await storage.createSubscription({
       organizationId: organization.id,
       plan: "free",

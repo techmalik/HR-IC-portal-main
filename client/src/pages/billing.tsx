@@ -382,8 +382,15 @@ export default function BillingPage() {
   const estimatedMonthlyCost = usage?.estimatedMonthlyCost ?? 0;
 
   const subDbStatus = billing?.subscription?.status || "active";
-  const isPastDue = subDbStatus === "past_due";
-  const isSuspended = subDbStatus === "suspended";
+  const liveSubStatus = subStatus?.status || null;
+  // Prefer live Paystack status for warnings; fall back to DB status
+  const effectiveStatus = liveSubStatus === "past_due" || liveSubStatus === "attention"
+    ? "past_due"
+    : liveSubStatus === "suspended" || liveSubStatus === "disabled"
+    ? "suspended"
+    : subDbStatus;
+  const isPastDue = effectiveStatus === "past_due";
+  const isSuspended = effectiveStatus === "suspended";
   const scheduledDowngradeAt = billing?.subscription?.scheduledDowngradeAt || subStatus?.scheduledDowngradeAt || null;
 
   const plans: SubscriptionPlanType[] = ["free", "starter", "pro", "enterprise"];
@@ -798,7 +805,7 @@ export default function BillingPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
                     {plan === "free"
-                      ? "7-day trial · no credit card"
+                      ? "30-day trial · no credit card"
                       : plan === "enterprise"
                       ? "Unlimited contractors"
                       : `Up to ${info.maxSeats} contractors`}

@@ -146,8 +146,8 @@ const darkDotBg =
 
 const PLAN_PRICE_OVERRIDES: Record<string, Record<string, { price: string; example: string }>> = {
   NGN: {
-    starter: { price: "₦15k", example: "10 ICs = ₦150k/mo" },
-    pro: { price: "₦22k", example: "25 ICs = ₦550k/mo" },
+    starter: { price: "₦9k", example: "10 ICs = ₦90k/mo" },
+    pro: { price: "₦14k", example: "25 ICs = ₦350k/mo" },
   },
   EUR: {
     starter: { price: "€8", example: "10 ICs = €80/mo" },
@@ -479,7 +479,7 @@ export default function LandingPage() {
               PRICING
             </div>
             <h2 className="font-serif font-normal text-gray-900 text-3xl sm:text-4xl mb-3">Pay only for the ICs you have</h2>
-            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 7 days.</p>
+            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 30 days.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
