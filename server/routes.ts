@@ -284,7 +284,7 @@ import {
   notifyEvaluationOutcome,
   createNotification,
 } from "./notificationService";
-import { sendPasswordResetEmail } from "./emailService";
+import { sendPasswordResetEmail, sendBillingEmail } from "./emailService";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -453,7 +453,7 @@ export async function registerRoutes(
     });
 
     const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 30);
+    trialEnd.setDate(trialEnd.getDate() + 7);
     const subscription = await storage.createSubscription({
       organizationId: organization.id,
       plan: "free",
@@ -4356,8 +4356,8 @@ export async function registerRoutes(
 
   // ── Paystack billing routes ───────────────────────────────────────────────
 
-  // GET /api/billing/detect-currency — lightweight IP-based currency detection
-  app.get("/api/billing/detect-currency", authMiddleware, asyncHandler(async (req, res) => {
+  // GET /api/billing/detect-currency — lightweight IP-based currency detection (public)
+  app.get("/api/billing/detect-currency", asyncHandler(async (req, res) => {
     const { detectCurrencyFromIp, DISPLAY_PRICES } = await import("./paystackService");
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
       || req.socket?.remoteAddress
@@ -4634,6 +4634,23 @@ export async function registerRoutes(
                 entityId: sub.id,
               });
             }
+            // Billing receipt email — always send on successful charge
+            try {
+              const chargeOrg = await storage.getOrganization(sub.organizationId);
+              if (chargeOrg?.billingEmail) {
+                await sendBillingEmail(
+                  chargeOrg.billingEmail,
+                  `Payment received — ${limits.name} plan active`,
+                  {
+                    title: "Payment received",
+                    message: `Your payment was processed successfully. Your ${limits.name} plan is now active. Thank you for using Axle.`,
+                    details: { Plan: limits.name, Organization: chargeOrg.name },
+                  }
+                );
+              }
+            } catch (emailErr) {
+              console.error("[billing] charge receipt email error:", emailErr);
+            }
           }
           break;
         }
@@ -4679,6 +4696,22 @@ export async function registerRoutes(
               entityType: "subscription",
               entityId: sub.id,
             });
+            try {
+              const failedOrg = await storage.getOrganization(sub.organizationId);
+              if (failedOrg?.billingEmail) {
+                await sendBillingEmail(
+                  failedOrg.billingEmail,
+                  "Action required: subscription payment failed",
+                  {
+                    title: "Payment failed",
+                    message: "We were unable to charge your card for your Axle subscription. Please update your payment method as soon as possible to avoid losing access.",
+                    ctaLabel: "Update payment method",
+                  }
+                );
+              }
+            } catch (emailErr) {
+              console.error("[billing] payment failed email error:", emailErr);
+            }
           }
           break;
         }
@@ -4707,6 +4740,21 @@ export async function registerRoutes(
               entityType: "subscription",
               entityId: sub.id,
             });
+            try {
+              const suspendedOrg = await storage.getOrganization(sub.organizationId);
+              if (suspendedOrg?.billingEmail) {
+                await sendBillingEmail(
+                  suspendedOrg.billingEmail,
+                  "Your Axle subscription has been suspended",
+                  {
+                    title: "Subscription suspended",
+                    message: "Your Axle subscription has been suspended due to non-payment. Please contact support or update your payment method to restore access.",
+                  }
+                );
+              }
+            } catch (emailErr) {
+              console.error("[billing] suspension email error:", emailErr);
+            }
           }
           break;
         }
@@ -4740,6 +4788,23 @@ export async function registerRoutes(
               entityType: "subscription",
               entityId: sub.id,
             });
+            try {
+              const notRenewOrg = await storage.getOrganization(sub.organizationId);
+              if (notRenewOrg?.billingEmail && downgradeAt) {
+                const accessUntil = downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+                await sendBillingEmail(
+                  notRenewOrg.billingEmail,
+                  "Subscription cancellation confirmed",
+                  {
+                    title: "Subscription cancellation confirmed",
+                    message: `Your Axle subscription has been cancelled. You will keep full access until ${accessUntil}, then your account will revert to the Free plan (max 3 contractors). You can resubscribe at any time.`,
+                    details: { "Access until": accessUntil },
+                  }
+                );
+              }
+            } catch (emailErr) {
+              console.error("[billing] not-renew email error:", emailErr);
+            }
           }
           break;
         }
@@ -4844,10 +4909,81 @@ export async function registerRoutes(
       });
     }
 
+    // Billing cancellation email
+    try {
+      const cancelOrg = await storage.getOrganization(currentUser.organizationId);
+      if (cancelOrg?.billingEmail && downgradeAt) {
+        const accessUntil = downgradeAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+        await sendBillingEmail(
+          cancelOrg.billingEmail,
+          "Subscription cancellation confirmed",
+          {
+            title: "Subscription cancelled",
+            message: `Your Axle subscription has been cancelled. You will keep full access until ${accessUntil}, then your account will revert to the Free plan (max 3 contractors). You can resubscribe at any time from your billing page.`,
+            details: { "Access until": accessUntil },
+          }
+        );
+      }
+    } catch (emailErr) {
+      console.error("[billing] cancel email error:", emailErr);
+    }
+
     return res.json({
       scheduledDowngradeAt: downgradeAt?.toISOString() ?? null,
       message: "Subscription cancelled. Your plan will revert to Free at the end of the current billing period.",
     });
+  }));
+
+  // POST /api/billing/reactivate-subscription — re-enables a non-renewing Paystack
+  // subscription so the org doesn't need to go through checkout again.
+  app.post("/api/billing/reactivate-subscription", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+    if (!subscription?.paystackSubscriptionCode) {
+      return res.status(400).json({ error: "No Paystack subscription to reactivate" });
+    }
+
+    const { fetchSubscription, enableSubscription } = await import("./paystackService");
+    const live = await fetchSubscription(subscription.paystackSubscriptionCode);
+
+    // Only re-enable if Paystack reports non-renewing; otherwise direct to new checkout
+    if (live.status !== "non-renewing") {
+      return res.status(400).json({
+        error: "Subscription is not in a non-renewing state. Please start a new subscription.",
+        requiresCheckout: true,
+      });
+    }
+
+    await enableSubscription(subscription.paystackSubscriptionCode, live.email_token);
+    await storage.updateSubscription(subscription.id, {
+      scheduledDowngradeAt: null,
+      status: "active",
+      updatedAt: new Date(),
+    });
+
+    return res.json({ message: "Subscription reactivated successfully." });
+  }));
+
+  // PATCH /api/billing/billing-email — update the org's billing email address
+  app.patch("/api/billing/billing-email", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!currentUser.organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+    const { billingEmail } = req.body;
+    if (!billingEmail || typeof billingEmail !== "string" || !billingEmail.includes("@")) {
+      return res.status(400).json({ error: "Valid billing email is required" });
+    }
+    const org = await storage.getOrganization(currentUser.organizationId);
+    if (!org) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+    const updated = await storage.updateOrganization(org.id, { billingEmail: billingEmail.trim().toLowerCase() });
+    return res.json({ billingEmail: updated?.billingEmail });
   }));
 
   // POST /api/billing/reauth-link — generates a Paystack manage link so the

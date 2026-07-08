@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePageMeta } from "@/lib/use-page-meta";
 import { Button } from "@/components/ui/button";
@@ -144,9 +144,28 @@ const dotGridBg =
 const darkDotBg =
   "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)";
 
+const PLAN_PRICE_OVERRIDES: Record<string, Record<string, { price: string; example: string }>> = {
+  NGN: {
+    starter: { price: "₦15k", example: "10 ICs = ₦150k/mo" },
+    pro: { price: "₦22k", example: "25 ICs = ₦550k/mo" },
+  },
+  EUR: {
+    starter: { price: "€8", example: "10 ICs = €80/mo" },
+    pro: { price: "€13", example: "25 ICs = €325/mo" },
+  },
+};
+
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const [contractorCount, setContractorCount] = useState(25);
+  const [detectedCurrency, setDetectedCurrency] = useState<string>("USD");
+
+  useEffect(() => {
+    fetch("/api/billing/detect-currency")
+      .then((r) => r.json())
+      .then((data) => { if (data?.currency) setDetectedCurrency(data.currency); })
+      .catch(() => {});
+  }, []);
 
   usePageMeta({
     title: "Axle — Contractor Management Platform",
@@ -460,11 +479,16 @@ export default function LandingPage() {
               PRICING
             </div>
             <h2 className="font-serif font-normal text-gray-900 text-3xl sm:text-4xl mb-3">Pay only for the ICs you have</h2>
-            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 30 days.</p>
+            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 7 days.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
-            {plans.map((plan) => (
+            {plans.map((plan) => {
+              const planKey = plan.name.toLowerCase() as string;
+              const override = PLAN_PRICE_OVERRIDES[detectedCurrency]?.[planKey];
+              const displayPrice = override?.price ?? plan.price;
+              const displayExample = override?.example ?? plan.example;
+              return (
               <div
                 key={plan.name}
                 className={`relative rounded-2xl p-7 flex flex-col ${
@@ -483,20 +507,20 @@ export default function LandingPage() {
                 </div>
                 <div className={`text-[13px] mb-6 ${plan.highlight ? "text-white/50" : "text-gray-500"}`}>{plan.tagline}</div>
                 <div className={`text-[38px] font-bold mb-0.5 tracking-tight leading-none ${plan.highlight ? "text-white" : "text-gray-900"}`}>
-                  {plan.price}
+                  {displayPrice}
                 </div>
                 <div className={`text-xs mb-1 ${plan.highlight ? "text-white/40" : "text-gray-400"}`}>{plan.priceNote}</div>
                 <div className={`text-[11px] mb-1 font-medium ${plan.highlight ? "text-emerald-400" : "text-primary"}`}>{plan.seats}</div>
-                <div className={`text-[11px] mb-4 ${plan.highlight ? "text-white/30" : "text-gray-400"}`}>{plan.example}</div>
+                <div className={`text-[11px] mb-4 ${plan.highlight ? "text-white/30" : "text-gray-400"}`}>{displayExample}</div>
                 <Button
                   className="mb-5 w-full"
                   variant={plan.highlight ? "default" : "secondary"}
                   onClick={() =>
                     plan.enterprise
                       ? window.open("mailto:sales@axlehq.app")
-                      : setLocation("/signup")
+                      : setLocation(planKey === "free" ? "/signup" : `/signup?plan=${planKey}`)
                   }
-                  data-testid={`button-plan-${plan.name.toLowerCase()}`}
+                  data-testid={`button-plan-${planKey}`}
                 >
                   {plan.cta}
                 </Button>
@@ -509,7 +533,8 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           {/* Pricing calculator */}

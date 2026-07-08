@@ -226,3 +226,7 @@ export async function generateManageLink(subscriptionCode: string, emailToken: s
   );
   return result.data.link;
 }
+
+export async function enableSubscription(code: string, token: string): Promise<void> {
+  await paystackRequest("POST", "/subscription/enable", { code, token });
+}

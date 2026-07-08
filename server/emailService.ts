@@ -377,3 +377,92 @@ export async function sendPasswordResetEmail(
 export function isEmailServiceConfigured(): boolean {
   return !!resend;
 }
+
+// Sends a transactional billing email directly to an address (no preference check —
+// billing notifications are mandatory and cannot be opted out of).
+export async function sendBillingEmail(
+  toEmail: string,
+  subject: string,
+  payload: {
+    title: string;
+    message: string;
+    details?: Record<string, string>;
+    ctaUrl?: string;
+    ctaLabel?: string;
+  }
+): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Billing email skipped — RESEND_API_KEY not set");
+    return false;
+  }
+
+  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : "#";
+  const ctaUrl = payload.ctaUrl || `${baseUrl}/billing`;
+  const ctaLabel = payload.ctaLabel || "View Billing";
+
+  const detailsHtml =
+    payload.details && Object.keys(payload.details).length > 0
+      ? `<table style="margin:16px 0;border-collapse:collapse;">${Object.entries(payload.details)
+          .map(
+            ([k, v]) =>
+              `<tr><td style="padding:4px 16px 4px 0;color:#71717a;font-size:14px;font-weight:500;">${k}:</td><td style="padding:4px 0;color:#52525b;font-size:14px;">${v}</td></tr>`
+          )
+          .join("")}</table>`
+      : "";
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background-color:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <tr><td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME}</h1>
+        </td></tr>
+        <tr><td style="padding:32px 32px 0;">
+          <span style="display:inline-block;background-color:#2563EB15;color:${BRAND_COLOR};padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Billing</span>
+        </td></tr>
+        <tr><td style="padding:24px 32px;">
+          <h2 style="margin:0 0 16px;color:#18181b;font-size:22px;font-weight:600;">${payload.title}</h2>
+          <p style="margin:0 0 20px;color:#52525b;font-size:16px;line-height:1.6;">${payload.message}</p>
+          ${detailsHtml}
+        </td></tr>
+        <tr><td style="padding:0 32px 32px;">
+          <a href="${ctaUrl}" style="display:inline-block;background-color:${BRAND_COLOR};color:#ffffff;padding:14px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${ctaLabel}</a>
+        </td></tr>
+        <tr><td style="background-color:#fafafa;padding:24px 32px;border-top:1px solid #e4e4e7;">
+          <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.5;">This is a billing notification from ${APP_NAME}. You cannot unsubscribe from billing emails.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const detailsText = payload.details
+    ? "\n\n" + Object.entries(payload.details).map(([k, v]) => `${k}: ${v}`).join("\n")
+    : "";
+  const text = `${payload.title}\n\n${payload.message}${detailsText}\n\n${ctaLabel}: ${ctaUrl}\n\n---\nThis is a billing notification from ${APP_NAME}.`;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: toEmail,
+      subject: `[${APP_NAME}] ${subject}`,
+      html,
+      text,
+    });
+    if (result.error) {
+      console.error("[EMAIL] Billing email failed:", result.error);
+      return false;
+    }
+    console.log(`[EMAIL] Billing email sent to ${toEmail}: ${subject}`);
+    return true;
+  } catch (error) {
+    console.error("[EMAIL] Billing email error:", error);
+    return false;
+  }
+}

@@ -64,7 +64,13 @@ export default function SignupPage() {
     setIsLoading(false);
 
     if (result.success) {
-      setLocation("/");
+      const params = new URLSearchParams(window.location.search);
+      const plan = params.get("plan");
+      if (plan && ["starter", "pro"].includes(plan)) {
+        setLocation(`/billing?plan=${plan}`);
+      } else {
+        setLocation("/");
+      }
     } else {
       toast({
         title: "Registration failed",

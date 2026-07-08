@@ -18,10 +18,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTriangle, Clock, XCircle, RefreshCw, Mail, Pencil } from "lucide-react";
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
 import { Link, useLocation } from "wouter";
-import { useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
 
 interface BillingData {
   subscription: {
@@ -118,10 +119,20 @@ export default function BillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
+  const [highlightedPlan, setHighlightedPlan] = useState<string | null>(null);
+  const [editingBillingEmail, setEditingBillingEmail] = useState(false);
+  const [billingEmailValue, setBillingEmailValue] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
+    const planParam = params.get("plan");
+    if (planParam && ["starter", "pro"].includes(planParam)) {
+      setHighlightedPlan(planParam);
+      setTimeout(() => {
+        document.getElementById("plan-cards")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 400);
+    }
     if (payment === "success") {
       toast({
         title: "Payment successful",
@@ -302,6 +313,57 @@ export default function BillingPage() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/billing/reactivate-subscription", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.requiresCheckout) return { requiresCheckout: true };
+        throw new Error(data.error || "Failed to reactivate");
+      }
+      return data as { message: string };
+    },
+    onSuccess: (data: any) => {
+      if (data.requiresCheckout) {
+        subscribeMutation.mutate({ plan: currentPlan, currency: activeCurrency });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/subscription-status"] });
+      toast({ title: "Subscription reactivated", description: "Your subscription is active again." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Reactivation failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const billingEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch("/api/billing/billing-email", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ billingEmail: email }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update billing email");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
+      setEditingBillingEmail(false);
+      toast({ title: "Billing email updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
   if (billingLoading || usageLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -429,10 +491,10 @@ export default function BillingPage() {
             size="sm"
             variant="outline"
             className="border-amber-400 text-amber-800 shrink-0"
-            onClick={() => handleUpgrade(currentPlan)}
-            disabled={isMutating}
+            onClick={() => reactivateMutation.mutate()}
+            disabled={isMutating || reactivateMutation.isPending}
           >
-            Reactivate
+            {reactivateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reactivate"}
           </Button>
         </div>
       )}
@@ -667,7 +729,7 @@ export default function BillingPage() {
       )}
 
       {/* Plan cards */}
-      <Card className="border-[1.5px] border-neutral-200 rounded-xl">
+      <Card id="plan-cards" className="border-[1.5px] border-neutral-200 rounded-xl">
         <CardHeader>
           <CardTitle className="text-[13.5px] font-semibold text-neutral-900">Choose your plan</CardTitle>
           <CardDescription>
@@ -692,12 +754,15 @@ export default function BillingPage() {
                 ? (currencyData?.prices?.[plan]?.[activeCurrency] || `$${info?.unitPrice}`)
                 : null;
 
+              const isHighlighted = highlightedPlan === plan && !isCurrent;
               return (
                 <div
                   key={plan}
                   className={`relative rounded-lg border p-5 flex flex-col ${
                     isCurrent
                       ? "border-primary bg-primary/5 ring-2 ring-primary"
+                      : isHighlighted
+                      ? "border-indigo-400 bg-indigo-50/40 ring-2 ring-indigo-300"
                       : plan === "pro"
                       ? "border-emerald-400 bg-emerald-50/40"
                       : "border-border"
@@ -708,7 +773,12 @@ export default function BillingPage() {
                       Current Plan
                     </Badge>
                   )}
-                  {!isCurrent && plan === "pro" && (
+                  {isHighlighted && (
+                    <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white">
+                      Recommended
+                    </Badge>
+                  )}
+                  {!isCurrent && !isHighlighted && plan === "pro" && (
                     <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white">
                       Best value
                     </Badge>
@@ -728,7 +798,7 @@ export default function BillingPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
                     {plan === "free"
-                      ? "30-day trial · no credit card"
+                      ? "7-day trial · no credit card"
                       : plan === "enterprise"
                       ? "Unlimited contractors"
                       : `Up to ${info.maxSeats} contractors`}
@@ -794,8 +864,51 @@ export default function BillingPage() {
                 <p className="font-medium">{billing.organization.name}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Billing Email</p>
-                <p className="font-medium">{billing.organization.billingEmail || "Not set"}</p>
+                <p className="text-sm text-muted-foreground mb-1">Billing Email</p>
+                {editingBillingEmail ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      className="h-8 text-sm"
+                      value={billingEmailValue}
+                      onChange={(e) => setBillingEmailValue(e.target.value)}
+                      placeholder="billing@yourcompany.com"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs px-3"
+                      disabled={billingEmailMutation.isPending}
+                      onClick={() => billingEmailMutation.mutate(billingEmailValue)}
+                    >
+                      {billingEmailMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs px-3"
+                      onClick={() => setEditingBillingEmail(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-sm">{billing.organization.billingEmail || "Not set"}</span>
+                    {(user?.role === "owner" || user?.role === "admin") && (
+                      <button
+                        className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                        onClick={() => {
+                          setBillingEmailValue(billing.organization.billingEmail || "");
+                          setEditingBillingEmail(true);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               {billing.subscription.paystackCustomerCode && (
                 <div>

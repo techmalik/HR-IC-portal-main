@@ -750,7 +750,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserCountByOrganization(organizationId: string): Promise<number> {
-    const result = await db.select().from(users).where(eq(users.organizationId, organizationId));
+    const result = await db.select().from(users).where(
+      and(eq(users.organizationId, organizationId), eq(users.isActive, true))
+    );
     return result.length;
   }
 
