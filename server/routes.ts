@@ -5200,6 +5200,7 @@ export async function registerRoutes(
   // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
   // so that Googlebot receives fully server-rendered HTML.
 
+  const { CANONICAL_ORIGIN } = await import("./ssrShared");
   const { getBlogIndexHtml, getBlogArticleHtml } = await import("./seo/blogPages");
   const { addSubscriber, isValidEmail } = await import("./seo/emailCapture");
   const { getFaqHtml } = await import("./seo/faqPages");
@@ -6162,16 +6163,16 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(
-      `User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\nSitemap: /sitemap-blog.xml\nSitemap: /sitemap-programmatic.xml\n`
+      `User-agent: *\nAllow: /\nDisallow: /back-office\n\nSitemap: ${CANONICAL_ORIGIN}/sitemap.xml\nSitemap: ${CANONICAL_ORIGIN}/sitemap-blog.xml\nSitemap: ${CANONICAL_ORIGIN}/sitemap-programmatic.xml\n`
     );
   });
 
   app.get("/llms.txt", (_req, res) => {
-    const base = "https://www.axlehq.app";
+    const base = CANONICAL_ORIGIN;
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(
-      `# Axle\n\n> Axle is a multi-tenant SaaS platform for managing independent contractors — timesheets, invoicing, leave tracking, performance evaluations, and compliance in one place.\n\n## Key public sections\n\n- Blog: ${base}/blog\n- FAQ: ${base}/faq\n- Industries: ${base}/industries\n- Compare: ${base}/compare\n\n## Programmatic landing pages\n\n- Industry pages: ${base}/contractor-management-for-[industry]\n- Competitor comparison pages: ${base}/axle-vs-[competitor]\n\n## Sitemaps\n\n- ${base}/sitemap.xml\n- ${base}/sitemap-blog.xml\n- ${base}/sitemap-programmatic.xml\n`
+      `# Axle\n\n> Axle is a multi-tenant SaaS platform for managing independent contractors — timesheets, invoicing, leave tracking, performance evaluations, and compliance in one place.\n\n## Key public sections\n\n- Blog: ${base}/blog\n- FAQ: ${base}/faq\n- Industries: ${base}/industries\n- Compare: ${base}/compare\n\n## Programmatic landing pages\n\n- Industry pages: ${base}/contractor-management-for-[industry]\n- Competitor comparison pages: ${base}/[competitor]-alternative\n\n## Sitemaps\n\n- ${base}/sitemap.xml\n- ${base}/sitemap-blog.xml\n- ${base}/sitemap-programmatic.xml\n`
     );
   });
 
@@ -6185,7 +6186,7 @@ export async function registerRoutes(
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlEntries}\n</urlset>`;
   }
 
-  const BASE_URL = "https://www.axlehq.app";
+  const BASE_URL = CANONICAL_ORIGIN;
 
   app.get("/sitemap.xml", (_req, res) => {
     const today = new Date().toISOString().slice(0, 10);

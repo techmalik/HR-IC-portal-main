@@ -32,7 +32,7 @@ export default function LoginPage() {
   usePageMeta({
     title: "Log in — Axle",
     description: "Log in to your Axle account to manage timesheets, invoices, leave requests, and more.",
-    canonical: "https://axle.run/login",
+    canonical: "https://axlehq.app/login",
   });
 
   const [isLoading, setIsLoading] = useState(false);

@@ -171,7 +171,7 @@ export default function LandingPage() {
   usePageMeta({
     title: "Axle — Contractor Management Platform",
     description: "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews — all in one place.",
-    canonical: "https://axle.run/",
+    canonical: "https://axlehq.app/",
   });
 
   const scrollToHowItWorks = () => {

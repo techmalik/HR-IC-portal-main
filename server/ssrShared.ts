@@ -1,5 +1,7 @@
 const AXLE_LOGO_SVG = `<svg width="26" height="26" viewBox="0 0 28 28" fill="none" style="display:block;"><circle cx="14" cy="14" r="11.5" stroke="#111827" stroke-width="2"/><circle cx="14" cy="14" r="4" fill="#111827"/></svg>`;
 
+export const CANONICAL_ORIGIN = "https://axlehq.app";
+
 interface SsrShellOptions {
   title: string;
   metaDescription: string;
@@ -29,7 +31,7 @@ export function ssrHtmlShell(opts: SsrShellOptions): string {
     ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/<\/script/gi, "<\\/script")}</script>`
     : "";
 
-  const baseUrl = "https://www.axlehq.app";
+  const baseUrl = CANONICAL_ORIGIN;
   const canonical = `${baseUrl}${canonicalPath}`;
 
   return `<!DOCTYPE html>

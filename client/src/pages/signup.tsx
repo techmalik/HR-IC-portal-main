@@ -39,7 +39,7 @@ export default function SignupPage() {
   usePageMeta({
     title: "Start your free trial — Axle",
     description: "Create your Axle account and start managing independent contractors with timesheets, invoices, and performance reviews. Free plan available.",
-    canonical: "https://axle.run/signup",
+    canonical: "https://axlehq.app/signup",
   });
 
   const [isLoading, setIsLoading] = useState(false);

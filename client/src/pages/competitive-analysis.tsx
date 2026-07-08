@@ -1410,7 +1410,7 @@ export default function CompetitiveAnalysisPage() {
   usePageMeta({
     title: "Axle vs. Competitors — Contractor Management Comparison",
     description: "See how Axle compares to Deel, Remote, Rippling, Worksuite, and other contractor management platforms across features, pricing, and market positioning.",
-    canonical: "https://axle.run/competitive-analysis",
+    canonical: "https://axlehq.app/competitive-analysis",
   });
 
   const [, setLocation] = useLocation();

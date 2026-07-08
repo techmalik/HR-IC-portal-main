@@ -1,4 +1,4 @@
-import { ssrHtmlShell, escHtml, escAttr } from "../ssrShared";
+import { ssrHtmlShell, escHtml, escAttr, CANONICAL_ORIGIN } from "../ssrShared";
 import {
   getPublishedIndustries as getIndustries,
   getPublishedIndustryBySlug as getIndustryBySlug,
@@ -7,7 +7,7 @@ import {
 } from "./programmaticStorage";
 import type { IndustryPage, CompetitorPage } from "./programmaticData";
 
-const BASE_URL = "https://www.axlehq.app";
+const BASE_URL = CANONICAL_ORIGIN;
 
 function organizationJsonLd() {
   return {
