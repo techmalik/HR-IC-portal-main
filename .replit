@@ -48,7 +48,6 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-PLATFORM_ADMIN_EMAILS = "malik.kbrmustapha@gmail.com"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-a574b5c8-816e-42ff-ad9b-932337729135"
