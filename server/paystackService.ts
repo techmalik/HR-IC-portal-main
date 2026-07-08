@@ -1,6 +1,8 @@
 import geoip from "geoip-lite";
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_TEST_API_KEY || "";
+// PAYSTACK_TEST_API_KEY is read as a fallback for one deploy while secrets
+// are renamed in production; prefer PAYSTACK_SECRET_KEY going forward.
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_TEST_API_KEY || "";
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +14,9 @@ const EU_COUNTRY_CODES = new Set([
   "HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK",
 ]);
 
-export type BillingCurrency = "NGN" | "USD" | "EUR";
+// Paystack cannot settle EUR transactions today, so EU visitors are mapped to
+// USD instead of a currency that would fail at checkout.
+export type BillingCurrency = "NGN" | "USD";
 
 export function detectCurrencyFromIp(ip: string): BillingCurrency {
   const cleaned = ip.replace(/^::ffff:/, "");
@@ -20,7 +24,6 @@ export function detectCurrencyFromIp(ip: string): BillingCurrency {
   if (!geo) return "USD";
   const country = geo.country;
   if (country === "NG") return "NGN";
-  if (EU_COUNTRY_CODES.has(country)) return "EUR";
   return "USD";
 }
 
@@ -33,19 +36,17 @@ export const PAYSTACK_PRICES: Record<string, Record<BillingCurrency, { amount: n
   starter: {
     NGN: { amount: 900000, label: "₦9,000" },
     USD: { amount:     900, label: "$9"       },
-    EUR: { amount:     800, label: "€8"       },
   },
   pro: {
     NGN: { amount: 1400000, label: "₦14,000" },
     USD: { amount:    1400, label: "$14"      },
-    EUR: { amount:    1300, label: "€13"      },
   },
 };
 
 // Display prices for the billing page (does not require Paystack plan codes)
 export const DISPLAY_PRICES: Record<string, Record<BillingCurrency, string>> = {
-  starter: { NGN: "₦9,000", USD: "$9", EUR: "€8" },
-  pro:     { NGN: "₦14,000", USD: "$14", EUR: "€13" },
+  starter: { NGN: "₦9,000", USD: "$9" },
+  pro:     { NGN: "₦14,000", USD: "$14" },
 };
 
 // ---------------------------------------------------------------------------
@@ -117,11 +118,15 @@ export async function initializeTransaction(opts: {
   currency: BillingCurrency;
   callbackUrl: string;
   metadata?: Record<string, any>;
+  // First-charge amount override, in the smallest currency unit
+  // (cents/kobo) — used to apply a sales discount to the initial charge.
+  // Recurring renewals still bill the plan's own configured amount.
+  amount?: number;
 }): Promise<PaystackInitResult> {
   // When a plan code is provided, Paystack uses the plan's configured amount for recurring billing.
   // We also pass the amount for the first charge (in kobo/cents).
   const planKey = opts.metadata?.plan as string | undefined;
-  const price = planKey ? PAYSTACK_PRICES[planKey]?.[opts.currency]?.amount : undefined;
+  const price = opts.amount ?? (planKey ? PAYSTACK_PRICES[planKey]?.[opts.currency]?.amount : undefined);
 
   const body: Record<string, any> = {
     email: opts.email,

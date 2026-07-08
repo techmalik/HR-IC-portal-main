@@ -274,7 +274,7 @@ export default function LandingPage() {
                 See how it works
               </Button>
             </div>
-            <p className="text-gray-400 text-xs">7-day free trial · No credit card required · Free for up to 3 contractors.</p>
+            <p className="text-gray-400 text-xs">7-day free trial · No credit card required · Up to 3 contractors during the trial.</p>
           </div>
 
           {/* Right: app screenshot mockup */}
@@ -650,7 +650,7 @@ export default function LandingPage() {
               Book a demo
             </Button>
           </div>
-          <p className="text-gray-600 text-xs mt-4">No credit card required. Free up to 3 contractors.</p>
+          <p className="text-gray-600 text-xs mt-4">No credit card required. 7-day free trial, up to 3 contractors.</p>
         </div>
       </section>
       {/* Footer */}

@@ -2,6 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getMarketingOrigin } from "@/lib/subdomain";
 
 export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+export const TRIAL_EXPIRED_EVENT = "auth:trial-expired";
 
 declare global {
   interface Window {
@@ -26,6 +27,21 @@ function shouldIgnore401For(url: string): boolean {
     return UNAUTHORIZED_IGNORE_PATHS.some((p) => u.pathname === p);
   } catch {
     return UNAUTHORIZED_IGNORE_PATHS.some((p) => url.includes(p));
+  }
+}
+
+// A 403 with { trialExpired: true } means the org's free trial has ended —
+// distinct from a normal 401/403, this doesn't log the user out or redirect,
+// it just flips a flag so the blocking subscribe overlay can render in place.
+async function checkTrialExpired(res: Response): Promise<void> {
+  if (res.status !== 403) return;
+  try {
+    const body = await res.clone().json();
+    if (body?.trialExpired) {
+      window.dispatchEvent(new CustomEvent(TRIAL_EXPIRED_EVENT));
+    }
+  } catch {
+    // Not a JSON body (or already consumed) — nothing to do.
   }
 }
 
@@ -73,6 +89,8 @@ if (typeof window !== "undefined" && !window.__authFetchInstalled) {
       if (!shouldIgnore401For(reqUrl)) {
         handleUnauthorized();
       }
+    } else if (response.status === 403) {
+      await checkTrialExpired(response);
     }
     return response;
   };

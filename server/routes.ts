@@ -155,6 +155,19 @@ function getClientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
+// The dollar figures in PLAN_LIMITS are USD-only; what Paystack actually
+// charges per plan+currency lives in PAYSTACK_PRICES (amount is in the
+// smallest currency unit — cents/kobo). Use that as the source of truth for
+// any customer-facing price so a NGN-billed org doesn't see a USD number with
+// a Naira symbol slapped on it. Falls back to the USD constant for plans
+// PAYSTACK_PRICES doesn't cover (free, enterprise).
+async function getUnitPriceForCurrency(plan: string, currency: "NGN" | "USD"): Promise<number> {
+  const { PAYSTACK_PRICES } = await import("./paystackService");
+  const priced = PAYSTACK_PRICES[plan]?.[currency];
+  if (priced) return priced.amount / 100;
+  return PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
+}
+
 // Get current user from session cookie
 async function getCurrentUser(req: Request) {
   const token = req.cookies?.session_token;
@@ -185,19 +198,16 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
     }
   }
 
-  // Block access for users whose org subscription is suspended.
-  // Platform admins are exempt so they can still manage/reactivate.
-  if (user.organizationId) {
-    const allowedAdminEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isPlatformAdmin = allowedAdminEmails.includes(user.email.toLowerCase());
-    if (!isPlatformAdmin) {
-      const sub = await storage.getSubscriptionByOrganization(user.organizationId);
-      if (sub?.status === "suspended") {
-        return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
-      }
+  // Block access for users whose org subscription is suspended, and lock out
+  // orgs whose free trial has expired without a paid subscription.
+  // Platform admins are exempt from both so they can still manage/reactivate.
+  if (user.organizationId && !isPlatformAdminUser(user)) {
+    const sub = await storage.getSubscriptionByOrganization(user.organizationId);
+    if (sub?.status === "suspended") {
+      return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+    }
+    if (isTrialExpired(sub) && !isExemptFromTrialLock(req)) {
+      return res.status(403).json({ error: "Your 7-day trial has ended. Subscribe to keep using Axle.", trialExpired: true });
     }
   }
 
@@ -264,6 +274,34 @@ export function isPlatformAdminUser(user: User): boolean {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
   return allowedEmails.includes(user.email.toLowerCase());
+}
+
+// The free plan is trial-only: 7 days of full access, then a hard lockout
+// until the org subscribes to a paid plan. An org is never locked while it
+// holds a live Paystack subscription code, even if the plan hasn't flipped
+// to a paid tier yet (e.g. between checkout and the confirming webhook).
+export function isTrialExpired(
+  sub: { plan: string; trialEndsAt: Date | string | null; paystackSubscriptionCode: string | null } | null | undefined
+): boolean {
+  if (!sub) return false;
+  if (sub.plan !== "free") return false;
+  if (!sub.trialEndsAt) return false;
+  if (new Date(sub.trialEndsAt) >= new Date()) return false;
+  if (sub.paystackSubscriptionCode) return false;
+  return true;
+}
+
+// Paths that must stay reachable for a trial-locked org: logging out,
+// reading who-am-I (so the client can render the lock state), and the
+// billing/subscribe flow that's the only way out of the lock. Read-only
+// notifications are exempt too so the bell still works.
+export function isExemptFromTrialLock(req: Request): boolean {
+  const { path, method } = req;
+  if (method === "POST" && path === "/api/auth/logout") return true;
+  if (method === "GET" && path === "/api/billing") return true;
+  if (method === "POST" && path === "/api/billing/subscribe") return true;
+  if (method === "GET" && path.startsWith("/api/notifications")) return true;
+  return false;
 }
 
 // Fails closed: a user with no organizationId (and no platform-admin bypass)
@@ -623,12 +661,11 @@ export async function registerRoutes(
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    const loginAllowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const loginIsPlatformAdmin = loginAllowedPlatformAdmins.includes(user.email.toLowerCase());
-    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin: loginIsPlatformAdmin });
+    const loginIsPlatformAdmin = isPlatformAdminUser(user);
+    const loginTrialExpired = user.organizationId && !loginIsPlatformAdmin
+      ? isTrialExpired(await storage.getSubscriptionByOrganization(user.organizationId))
+      : false;
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin: loginIsPlatformAdmin, trialExpired: loginTrialExpired });
   });
 
   app.post("/api/auth/register", async (req, res) => {
@@ -843,12 +880,11 @@ export async function registerRoutes(
     const directReports = await storage.getUsersBySupervisor(user.id);
     const hasDirectReports = directReports.length > 0;
     const { password: _, ...userWithoutPassword } = user;
-    const allowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isPlatformAdmin = allowedPlatformAdmins.includes(user.email.toLowerCase());
-    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin });
+    const isPlatformAdmin = isPlatformAdminUser(user);
+    const trialExpired = user.organizationId && !isPlatformAdmin
+      ? isTrialExpired(await storage.getSubscriptionByOrganization(user.organizationId))
+      : false;
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin, trialExpired });
   });
 
   // Back-office API namespace — platform admins only (uses bo_session_token)
@@ -4814,7 +4850,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Billing information not found" });
     }
     const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
-    const unitPrice = PLAN_LIMITS[subscription.plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
+    const billingCurrency = (subscription.billingCurrency as "NGN" | "USD") || "USD";
+    const unitPrice = await getUnitPriceForCurrency(subscription.plan, billingCurrency);
     const basePrice = unitPrice * currentSeats;
     const netPrice = computeNetPrice(basePrice, subscription.discountType, subscription.discountValue);
 
@@ -4832,6 +4869,7 @@ export async function registerRoutes(
         billingEmail: organization.billingEmail,
       },
       billing: {
+        currency: billingCurrency,
         basePrice,
         netPrice,
         discountType: subscription.discountType ?? null,
@@ -4859,12 +4897,18 @@ export async function registerRoutes(
       ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
       : null;
 
-    const { PLAN_LIMITS: limits } = await import("@shared/schema");
-    const unitPrice = limits[plan]?.unitPrice ?? 0;
+    const billingCurrency = (subscription?.billingCurrency as "NGN" | "USD") || "USD";
+    const unitPrice = await getUnitPriceForCurrency(plan, billingCurrency);
     const estimatedMonthlyCost = unitPrice > 0 ? currentSeats * unitPrice : 0;
 
-    res.json({ currentSeats, maxSeats, plan, percentUsed, trialEndsAt, trialExpired, daysLeftInTrial, estimatedMonthlyCost });
+    res.json({ currentSeats, maxSeats, plan, percentUsed, trialEndsAt, trialExpired, daysLeftInTrial, estimatedMonthlyCost, currency: billingCurrency });
   });
+
+  // Downgrades only — this updates the DB plan directly with no payment
+  // involved, so it must never be able to move an org onto a higher-paying
+  // plan for free. Upgrades go through POST /api/billing/subscribe, which
+  // actually charges via Paystack.
+  const PLAN_TIER_RANK: Record<string, number> = { free: 0, starter: 1, pro: 2, enterprise: 3 };
 
   app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     const currentUser = req.authenticatedUser!;
@@ -4872,7 +4916,6 @@ export async function registerRoutes(
     if (!currentUser.organizationId) {
       return res.status(400).json({ error: "User is not associated with an organization" });
     }
-    const { PLAN_LIMITS } = await import("@shared/schema");
     const validPlans = Object.keys(PLAN_LIMITS);
     if (!plan || !validPlans.includes(plan)) {
       return res.status(400).json({ error: "Invalid plan. Must be one of: " + validPlans.join(", ") });
@@ -4883,6 +4926,11 @@ export async function registerRoutes(
     const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
     if (!subscription) {
       return res.status(404).json({ error: "Subscription not found" });
+    }
+    if (PLAN_TIER_RANK[plan] >= PLAN_TIER_RANK[subscription.plan]) {
+      return res.status(400).json({
+        error: "This endpoint only supports downgrades. Use the subscribe flow to upgrade your plan.",
+      });
     }
     const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
     const newLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
@@ -4933,13 +4981,13 @@ export async function registerRoutes(
 
     const { plan, currency } = req.body;
     const validPlans = ["starter", "pro"];
-    const validCurrencies = ["NGN", "USD", "EUR"];
+    const validCurrencies = ["NGN", "USD"];
 
     if (!plan || !validPlans.includes(plan)) {
       return res.status(400).json({ error: "Plan must be 'starter' or 'pro'" });
     }
     if (!currency || !validCurrencies.includes(currency)) {
-      return res.status(400).json({ error: "Currency must be NGN, USD, or EUR" });
+      return res.status(400).json({ error: "Currency must be NGN or USD" });
     }
 
     const {
@@ -4955,6 +5003,25 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Organization not found" });
     }
 
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+
+    // Guard against double-subscribe: re-submitting the same active plan+currency
+    // would create a second live Paystack subscription and double-charge the org.
+    // Switching plan or currency is still allowed — the old subscription is
+    // disabled once the new one is confirmed active (see the webhook handler).
+    const alreadyOnThisPlan =
+      subscription?.status === "active" &&
+      !!subscription.paystackSubscriptionCode &&
+      subscription.plan === plan &&
+      subscription.billingCurrency === currency;
+    if (alreadyOnThisPlan) {
+      return res.status(400).json({ error: "You already have an active subscription on this plan. Manage or cancel it from the billing page instead." });
+    }
+    const previousSubscriptionCode =
+      subscription?.status === "active" && subscription.paystackSubscriptionCode
+        ? subscription.paystackSubscriptionCode
+        : null;
+
     const billingEmail = organization.billingEmail || currentUser.email;
 
     // Look up or create the Paystack customer
@@ -4965,18 +5032,29 @@ export async function registerRoutes(
     const allPlans = await listPlans();
     let paystackPlan = allPlans.find((p: any) => p.name === planName && p.currency === currency);
 
+    const price = PAYSTACK_PRICES[plan]?.[currency as "NGN" | "USD"];
+    if (!price) {
+      return res.status(500).json({ error: "Price configuration missing" });
+    }
+
     if (!paystackPlan) {
-      const price = PAYSTACK_PRICES[plan]?.[currency as "NGN" | "USD" | "EUR"];
-      if (!price) {
-        return res.status(500).json({ error: "Price configuration missing" });
-      }
       paystackPlan = await createPlan({
         name: planName,
         amount: price.amount,
-        currency: currency as "NGN" | "USD" | "EUR",
+        currency: currency as "NGN" | "USD",
         interval: "monthly",
       });
     }
+
+    // Apply any sales-negotiated discount already on the subscription to the
+    // first charge — Paystack Plans are shared across customers so recurring
+    // renewals still bill the plan's list price, but at least the checkout
+    // charge the customer sees matches what they were quoted.
+    const discountValueInSmallestUnit =
+      subscription?.discountType === "fixed"
+        ? (subscription.discountValue ?? 0) * 100
+        : subscription?.discountValue ?? null;
+    const chargeAmount = computeNetPrice(price.amount, subscription?.discountType, discountValueInSmallestUnit);
 
     // Build callback URL
     const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
@@ -4986,18 +5064,19 @@ export async function registerRoutes(
     const txn = await initializeTransaction({
       email: billingEmail,
       planCode: paystackPlan.plan_code,
-      currency: currency as "NGN" | "USD" | "EUR",
+      currency: currency as "NGN" | "USD",
       callbackUrl,
+      amount: chargeAmount,
       metadata: {
         plan,
         currency,
         organizationId: currentUser.organizationId,
         paystackCustomerCode: customer.customer_code,
+        previousSubscriptionCode,
       },
     });
 
     // Store the customer code now so the webhook can match later
-    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
     if (subscription && !subscription.paystackCustomerCode) {
       await storage.updateSubscription(subscription.id, {
         paystackCustomerCode: customer.customer_code,
@@ -5072,10 +5151,10 @@ export async function registerRoutes(
   // verified against the raw request body before any processing occurs.
   app.post("/api/billing/paystack-webhook", asyncHandler(async (req, res) => {
     const { createHmac, timingSafeEqual } = await import("crypto");
-    const secretKey = process.env.PAYSTACK_TEST_API_KEY;
+    const secretKey = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_TEST_API_KEY;
     if (!secretKey) {
       // Config error — fail loudly so operators notice; 500 causes Paystack to retry
-      console.error("[Paystack webhook] PAYSTACK_TEST_API_KEY is not set");
+      console.error("[Paystack webhook] PAYSTACK_SECRET_KEY is not set");
       return res.status(500).json({ error: "Webhook secret not configured" });
     }
 
@@ -5207,6 +5286,23 @@ export async function registerRoutes(
               }
             } catch (emailErr) {
               console.error("[billing] charge receipt email error:", emailErr);
+            }
+
+            // The new subscription is now confirmed active — disable whatever
+            // subscription the org was previously on so it doesn't keep
+            // billing in parallel (see the double-subscribe guard in
+            // POST /api/billing/subscribe).
+            const previousSubscriptionCode: string | undefined = data?.metadata?.previousSubscriptionCode;
+            if (previousSubscriptionCode && previousSubscriptionCode !== incomingSubCode) {
+              try {
+                const { fetchSubscription, disableSubscription } = await import("./paystackService");
+                const previous = await fetchSubscription(previousSubscriptionCode);
+                if (previous.status === "active" || previous.status === "non-renewing") {
+                  await disableSubscription(previousSubscriptionCode, previous.email_token);
+                }
+              } catch (disableErr) {
+                console.error("[billing] failed to disable previous subscription:", disableErr);
+              }
             }
           }
           break;
