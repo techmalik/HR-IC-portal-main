@@ -58,6 +58,7 @@ const AdminSeoPage = lazy(() => import("@/pages/admin-seo"));
 const MigrateFilesPage = lazy(() => import("@/pages/migrate-files"));
 
 // Back-office pages — lazy-loaded (only platform admins ever reach these)
+const BackofficeLoginPage = lazy(() => import("@/pages/backoffice-login"));
 const BackofficeOverviewPage = lazy(() => import("@/pages/backoffice-overview"));
 const BackofficeTenantDetailPage = lazy(() => import("@/pages/backoffice-tenant-detail"));
 const BackofficeDiscountsPage = lazy(() => import("@/pages/backoffice-discounts"));
@@ -580,6 +581,45 @@ function ProtectedRoutes() {
     );
   }
 
+  // Back-office login page — always accessible without auth.
+  // If already logged in as platform admin, skip login and go straight to the console.
+  if (location === "/back-office/login") {
+    if (user && isPlatformAdmin) {
+      window.location.replace("/back-office");
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+          <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+        </div>
+      );
+    }
+    return <Suspense fallback={pageFallback}><BackofficeLoginPage /></Suspense>;
+  }
+
+  // Other back-office routes — redirect to /back-office/login when unauthenticated
+  // or when logged in as a regular user (not a platform admin).
+  if (location.startsWith("/back-office")) {
+    if (!user) {
+      window.location.replace("/back-office/login");
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+          <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+        </div>
+      );
+    }
+    return isPlatformAdmin ? <BackOfficeRoutes /> : (
+      // Logged in as a regular org user — send them to the back-office login
+      // so they get a clear "platform admins only" error rather than a generic denied page.
+      (() => {
+        window.location.replace("/back-office/login");
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+            <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+          </div>
+        );
+      })()
+    );
+  }
+
   if (!user) {
     const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
     const isPublicPath = publicPaths.includes(location) || location === "";
@@ -598,11 +638,6 @@ function ProtectedRoutes() {
   // a double header/sidebar for authenticated users.
   if (location === "/competitive-analysis") {
     return <Suspense fallback={pageFallback}><CompetitiveAnalysisPage /></Suspense>;
-  }
-
-  // Internal back-office console — platform admins only, not org admins.
-  if (location.startsWith("/back-office")) {
-    return isPlatformAdmin ? <BackOfficeRoutes /> : <AccessDenied />;
   }
 
   const sidebarStyle = {

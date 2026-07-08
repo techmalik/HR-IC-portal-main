@@ -12,8 +12,10 @@ import {
   Upload,
   Tag,
   ClipboardList,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface NavItem {
   label: string;
@@ -69,7 +71,18 @@ interface BackofficeSidebarProps {
 
 export function BackofficeSidebar({ active }: BackofficeSidebarProps) {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
   const currentPath = active ?? location;
+
+  const handleSignOut = async () => {
+    await logout();
+    window.location.replace("/back-office/login");
+  };
+
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "PA"
+    : "PA";
+  const displayName = user ? `${user.firstName} ${user.lastName}`.trim() || user.email : "Platform Admin";
 
   const isActive = (href: string) => {
     if (href === "/back-office") {
@@ -145,17 +158,24 @@ export function BackofficeSidebar({ active }: BackofficeSidebarProps) {
         ))}
       </div>
 
-      {/* Identity */}
+      {/* Identity + Sign out */}
       <div className="px-[10px] py-[10px] border-t border-white/5">
         <div className="flex items-center gap-2 px-[9px] py-[7px]">
           <div className="w-7 h-7 bg-[#1C2230] border border-[#2A3545] rounded-full shrink-0 flex items-center justify-center">
-            <span className="text-[#8DAFC8] text-[9.5px] font-bold">KP</span>
+            <span className="text-[#8DAFC8] text-[9.5px] font-bold">{initials}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[#E5E7EB] text-[12px] font-semibold truncate">Krish Patel</div>
-            <div className="text-[#4B5563] text-[10.5px]">Owner</div>
+            <div className="text-[#E5E7EB] text-[12px] font-semibold truncate">{displayName}</div>
+            <div className="text-[#4B5563] text-[10.5px]">Platform Admin</div>
           </div>
         </div>
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-2 px-[9px] py-[7px] rounded-md text-[#6B7280] hover:text-[#9CA3AF] hover:bg-white/[0.04] transition-colors cursor-pointer"
+        >
+          <LogOut className="w-[14px] h-[14px] shrink-0" strokeWidth={2} />
+          <span className="text-[13px]">Sign out</span>
+        </button>
       </div>
     </aside>
   );
