@@ -18,7 +18,7 @@ import {
   PLAN_LIMITS,
   computeNetPrice,
 } from "@shared/schema";
-import { createSession, invalidateSession, getUserIdFromToken } from "./sessionManager";
+import { createSession, invalidateSession, getUserIdFromToken, getUserIdFromTokenForContext } from "./sessionManager";
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 
@@ -196,6 +196,27 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Back-office authentication middleware - validates bo_session_token cookie
+async function boAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies?.bo_session_token;
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized - Back-office session required" });
+  }
+  const userId = await getUserIdFromTokenForContext(token, "backoffice");
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized - Invalid or expired back-office session" });
+  }
+  const user = await storage.getUser(userId);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized - User not found" });
+  }
+  if (!user.isActive) {
+    return res.status(403).json({ error: "Account is disabled" });
+  }
+  req.authenticatedUser = user;
+  next();
+}
+
 // Role-based authorization middleware
 function requireRole(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -295,7 +316,7 @@ export async function registerRoutes(
   registerObjectStorageRoutes(app, authMiddleware, storage);
 
   // Migration file upload route - admin only
-  app.use(createMigrateFilesRouter(authMiddleware, requirePlatformAdmin));
+  app.use(createMigrateFilesRouter(boAuthMiddleware, requirePlatformAdmin));
 
   // Public health check endpoint — returns DB and storage connectivity status
   app.get("/api/health", asyncHandler(async (req, res) => {
@@ -597,6 +618,94 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
+  // Back-office dedicated auth endpoints — use bo_session_token cookie
+  app.post("/api/backoffice/auth/login", async (req, res) => {
+    const clientIp = req.socket?.remoteAddress || req.ip || "unknown";
+    if (!checkRateLimit(clientIp)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
+    }
+
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password required" });
+    }
+
+    const user = await storage.getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const isValidPassword = await comparePassword(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Account is disabled" });
+    }
+
+    const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!allowedEmails.includes(user.email.toLowerCase())) {
+      return res.status(403).json({ error: "Access denied — platform admins only" });
+    }
+
+    resetRateLimit(clientIp);
+
+    const sessionToken = await createSession(user.id, user.username, "backoffice");
+
+    res.cookie("bo_session_token", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      domain: process.env.NODE_ENV === "production" ? ".axlehq.app" : undefined,
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ ...userWithoutPassword, isPlatformAdmin: true });
+  });
+
+  app.post("/api/backoffice/auth/logout", async (req, res) => {
+    const token = req.cookies?.bo_session_token;
+    if (token) {
+      await invalidateSession(token);
+    }
+    res.clearCookie("bo_session_token", { path: "/" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/backoffice/auth/me", async (req, res) => {
+    const token = req.cookies?.bo_session_token;
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const userId = await getUserIdFromTokenForContext(token, "backoffice");
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const user = await storage.getUser(userId);
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!allowedEmails.includes(user.email.toLowerCase())) {
+      return res.status(403).json({ error: "Forbidden - Platform admin access required" });
+    }
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ ...userWithoutPassword, isPlatformAdmin: true });
+  });
+
   app.get("/api/auth/me", async (req, res) => {
     const user = await getCurrentUser(req);
     if (!user) {
@@ -616,8 +725,8 @@ export async function registerRoutes(
     res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin });
   });
 
-  // Back-office API namespace — platform admins only
-  app.use("/api/backoffice", authMiddleware, requirePlatformAdmin);
+  // Back-office API namespace — platform admins only (uses bo_session_token)
+  app.use("/api/backoffice", boAuthMiddleware, requirePlatformAdmin);
 
   // Back-office: platform metrics (real DB data)
   app.get("/api/backoffice/metrics", asyncHandler(async (req, res) => {
@@ -5804,16 +5913,16 @@ export async function registerRoutes(
     })
   );
 
-  app.get("/api/admin/blog-subscribers", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog-subscribers", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const { getSubscribers } = await import("./seo/emailCapture");
     res.json(getSubscribers());
   }));
 
-  app.get("/api/admin/blog", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getBlogArticles());
   }));
 
-  app.get("/api/admin/blog-analytics", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
+  app.get("/api/admin/blog-analytics", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const articles = getBlogArticles();
     const viewStats = getAllViewStats();
     const analytics = articles.map((a) => {
@@ -5830,7 +5939,7 @@ export async function registerRoutes(
     res.json(analytics);
   }));
 
-  app.post("/api/admin/blog", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.post("/api/admin/blog", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const validationError = validateBlogArticleBody(req.body);
     if (validationError) return res.status(400).json({ error: validationError });
     const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
@@ -5842,7 +5951,7 @@ export async function registerRoutes(
     }
   }));
 
-  app.put("/api/admin/blog/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.put("/api/admin/blog/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const { slug: _bodySlug, ...rawUpdates } = req.body;
     const updates: Record<string, any> = {};
     const allowed = ["title", "metaDescription", "publishedDate", "updatedDate", "readingMinutes", "excerpt", "bodyHtml"] as const;
@@ -5871,7 +5980,7 @@ export async function registerRoutes(
     }
   }));
 
-  app.delete("/api/admin/blog/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.delete("/api/admin/blog/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try {
       deleteArticle(req.params.slug);
       res.json({ success: true });
@@ -6009,37 +6118,37 @@ export async function registerRoutes(
     }
   }
 
-  app.get("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
+  app.get("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getIndustries());
   }));
-  app.post("/api/admin/seo/industries", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.post("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body);
     if (err) return res.status(400).json({ error: err });
     try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.put("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.put("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
     try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.delete("/api/admin/seo/industries/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.delete("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
-  app.get("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
+  app.get("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     res.json(getCompetitors());
   }));
-  app.post("/api/admin/seo/competitors", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.post("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body);
     if (err) return res.status(400).json({ error: err });
     try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.put("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.put("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
     try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
-  app.delete("/api/admin/seo/competitors/:slug", authMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
+  app.delete("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 

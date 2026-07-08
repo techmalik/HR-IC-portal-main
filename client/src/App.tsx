@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { BackofficeAuthProvider, useBackofficeAuth } from "@/lib/backoffice-auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
@@ -562,8 +563,54 @@ function BackOfficeRoutes() {
   );
 }
 
+function BackofficeGuard() {
+  const { user, isLoading } = useBackofficeAuth();
+  const [location] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+      </div>
+    );
+  }
+
+  if (location === "/back-office/login") {
+    if (user) {
+      window.location.replace("/back-office");
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+          <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+        </div>
+      );
+    }
+    return <Suspense fallback={pageFallback}><BackofficeLoginPage /></Suspense>;
+  }
+
+  if (!user) {
+    window.location.replace("/back-office/login");
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
+        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+      </div>
+    );
+  }
+
+  return <BackOfficeRoutes />;
+}
+
+// Mounts BackofficeAuthProvider only when navigating to a back-office route
+// so the /api/backoffice/auth/me probe never fires on normal app pages.
+function BackofficeSection() {
+  return (
+    <BackofficeAuthProvider>
+      <BackofficeGuard />
+    </BackofficeAuthProvider>
+  );
+}
+
 function ProtectedRoutes() {
-  const { user, isLoading, isAdmin, isPlatformAdmin } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
   const [location] = useLocation();
 
   // On the marketing domain (axlehq.app / www.axlehq.app) always render public
@@ -581,43 +628,11 @@ function ProtectedRoutes() {
     );
   }
 
-  // Back-office login page — always accessible without auth.
-  // If already logged in as platform admin, skip login and go straight to the console.
-  if (location === "/back-office/login") {
-    if (user && isPlatformAdmin) {
-      window.location.replace("/back-office");
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
-          <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-        </div>
-      );
-    }
-    return <Suspense fallback={pageFallback}><BackofficeLoginPage /></Suspense>;
-  }
-
-  // Other back-office routes — redirect to /back-office/login when unauthenticated
-  // or when logged in as a regular user (not a platform admin).
-  if (location.startsWith("/back-office")) {
-    if (!user) {
-      window.location.replace("/back-office/login");
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
-          <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-        </div>
-      );
-    }
-    return isPlatformAdmin ? <BackOfficeRoutes /> : (
-      // Logged in as a regular org user — send them to the back-office login
-      // so they get a clear "platform admins only" error rather than a generic denied page.
-      (() => {
-        window.location.replace("/back-office/login");
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-[#0B0F19]">
-            <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-          </div>
-        );
-      })()
-    );
+  // All back-office routes are handled by BackofficeSection, which mounts
+  // BackofficeAuthProvider only on /back-office* to keep the bo_session probe
+  // away from normal app pages.
+  if (location === "/back-office/login" || location.startsWith("/back-office")) {
+    return <BackofficeSection />;
   }
 
   if (!user) {

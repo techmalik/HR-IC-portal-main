@@ -13,7 +13,12 @@ let unauthorizedHandled = false;
 
 // Endpoints that legitimately return 401 as a normal response (e.g. probing
 // whether the user has a session) — those must NOT trigger a redirect.
-const UNAUTHORIZED_IGNORE_PATHS = ["/api/auth/me", "/api/auth/login"];
+const UNAUTHORIZED_IGNORE_PATHS = [
+  "/api/auth/me",
+  "/api/auth/login",
+  "/api/backoffice/auth/me",
+  "/api/backoffice/auth/login",
+];
 
 function shouldIgnore401For(url: string): boolean {
   try {
@@ -30,7 +35,14 @@ function handleUnauthorized() {
   if (unauthorizedHandled) return;
   const currentPath = window.location.pathname;
   if (currentPath === "/login" || currentPath === "/signup") return;
+  // Back-office 401s redirect to /back-office/login, not the main app login.
+  if (currentPath === "/back-office/login") return;
   unauthorizedHandled = true;
+
+  if (currentPath.startsWith("/back-office")) {
+    window.location.href = "/back-office/login";
+    return;
+  }
 
   // Notify the auth context (and anyone else who cares) so client state can
   // be cleared before we redirect.

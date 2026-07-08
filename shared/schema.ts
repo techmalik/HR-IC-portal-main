@@ -957,6 +957,7 @@ export const sessions = pgTable("sessions", {
   token: varchar("token").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   username: text("username").notNull(),
+  context: varchar("context").notNull().default("app"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
 }, (table) => [

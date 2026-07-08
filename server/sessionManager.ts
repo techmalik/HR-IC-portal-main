@@ -1,39 +1,68 @@
 import crypto from "crypto";
 import { db } from "./db";
 import { sessions } from "@shared/schema";
-import { eq, lt } from "drizzle-orm";
+import { eq, lt, and } from "drizzle-orm";
 
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 
-export async function createSession(userId: string, username: string): Promise<string> {
+export type SessionContext = "app" | "backoffice";
+
+export async function createSession(
+  userId: string,
+  username: string,
+  context: SessionContext = "app",
+): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
-  
+
   await db.insert(sessions).values({
     token,
     userId,
     username,
+    context,
     createdAt: now,
     expiresAt,
   });
-  
+
   return token;
 }
 
 export async function validateSession(token: string): Promise<{ userId: string; username: string } | null> {
   const result = await db.select().from(sessions).where(eq(sessions.token, token));
   const session = result[0];
-  
+
   if (!session) {
     return null;
   }
-  
+
   if (new Date() > session.expiresAt) {
     await db.delete(sessions).where(eq(sessions.token, token));
     return null;
   }
-  
+
+  return { userId: session.userId, username: session.username };
+}
+
+export async function validateSessionForContext(
+  token: string,
+  context: SessionContext,
+): Promise<{ userId: string; username: string } | null> {
+  const result = await db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.token, token), eq(sessions.context, context)));
+  const session = result[0];
+
+  if (!session) {
+    return null;
+  }
+
+  if (new Date() > session.expiresAt) {
+    await db.delete(sessions).where(eq(sessions.token, token));
+    return null;
+  }
+
   return { userId: session.userId, username: session.username };
 }
 
@@ -44,6 +73,14 @@ export async function invalidateSession(token: string): Promise<boolean> {
 
 export async function getUserIdFromToken(token: string): Promise<string | null> {
   const session = await validateSession(token);
+  return session?.userId || null;
+}
+
+export async function getUserIdFromTokenForContext(
+  token: string,
+  context: SessionContext,
+): Promise<string | null> {
+  const session = await validateSessionForContext(token, context);
   return session?.userId || null;
 }
 

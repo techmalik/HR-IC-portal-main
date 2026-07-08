@@ -15,7 +15,7 @@ import {
   LogOut,
   type LucideIcon,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useBackofficeAuth } from "@/lib/backoffice-auth-context";
 
 interface NavItem {
   label: string;
@@ -71,7 +71,7 @@ interface BackofficeSidebarProps {
 
 export function BackofficeSidebar({ active }: BackofficeSidebarProps) {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout } = useBackofficeAuth();
   const currentPath = active ?? location;
 
   const handleSignOut = async () => {

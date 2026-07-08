@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2, AlertCircle, ShieldAlert } from "lucide-react";
+import { useBackofficeAuth } from "@/lib/backoffice-auth-context";
 
 function LogoMark() {
   return (
@@ -13,6 +14,7 @@ function LogoMark() {
 
 export default function BackofficeLoginPage() {
   const [, setLocation] = useLocation();
+  const { user, isLoading: authLoading, login } = useBackofficeAuth();
 
   useEffect(() => {
     let el = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
@@ -27,6 +29,12 @@ export default function BackofficeLoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      setLocation("/back-office");
+    }
+  }, [authLoading, user, setLocation]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -37,36 +45,23 @@ export default function BackofficeLoginPage() {
     setError(null);
     setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username: email.trim(), password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Invalid credentials. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
-      const userData = await res.json();
-
-      if (!userData.isPlatformAdmin) {
-        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-        setError("Access denied — platform admins only.");
-        setIsLoading(false);
-        return;
-      }
-
-      window.location.replace("/back-office");
-    } catch {
-      setError("Network error. Please try again.");
+    const result = await login(email.trim(), password);
+    if (!result.ok) {
+      setError(result.error || "Invalid credentials. Please try again.");
       setIsLoading(false);
+      return;
     }
+
+    window.location.replace("/back-office");
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center p-6">
@@ -90,7 +85,7 @@ export default function BackofficeLoginPage() {
 
           {error && (
             <div className="flex items-start gap-2.5 mb-5 p-3 rounded-lg bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)]">
-              {error.includes("Access denied") ? (
+              {error.includes("Access denied") || error.includes("platform admins") ? (
                 <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-[#FCA5A5]" />
               ) : (
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#FCA5A5]" />
