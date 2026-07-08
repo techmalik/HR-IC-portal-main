@@ -87,7 +87,7 @@ interface SubscriptionStatusData {
 
 const PLAN_FEATURES: Record<string, string[]> = {
   free: [
-    "Up to 3 contractors (30-day trial)",
+    "Up to 3 contractors (7-day trial)",
     "Timesheet management",
     "Leave tracking",
     "Basic invoicing",
@@ -805,7 +805,7 @@ export default function BillingPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
                     {plan === "free"
-                      ? "30-day trial · no credit card"
+                      ? "7-day trial · no credit card"
                       : plan === "enterprise"
                       ? "Unlimited contractors"
                       : `Up to ${info.maxSeats} contractors`}

@@ -160,7 +160,7 @@ app.use((req, res, next) => {
   await registerRoutes(httpServer, app);
 
   // Backfill trialEndsAt for existing free-plan orgs that predate the trial column.
-  // Sets to now + 30 days so they get a grace period before the trial enforcement kicks in.
+  // Sets to now + 7 days so they get a grace period before the trial enforcement kicks in.
   try {
     const { db: dbInstance } = await import("./db");
     const { subscriptions: subTable } = await import("@shared/schema");
@@ -170,7 +170,7 @@ app.use((req, res, next) => {
     );
     if (freeOrgs.length > 0) {
       const graceEnd = new Date();
-      graceEnd.setDate(graceEnd.getDate() + 30);
+      graceEnd.setDate(graceEnd.getDate() + 7);
       for (const sub of freeOrgs) {
         await dbInstance.update(subTable).set({ trialEndsAt: graceEnd }).where(eq(subTable.id, sub.id));
       }

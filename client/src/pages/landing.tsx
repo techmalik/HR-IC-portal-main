@@ -93,7 +93,7 @@ const plans = [
     name: "Free",
     tagline: "Try it free — no card needed",
     price: "$0",
-    priceNote: "30-day trial",
+    priceNote: "7-day trial",
     seats: "Up to 3 contractors",
     example: "3 ICs = $0",
     cta: "Start free trial",
@@ -274,7 +274,7 @@ export default function LandingPage() {
                 See how it works
               </Button>
             </div>
-            <p className="text-gray-400 text-xs">30-day free trial · No credit card required · Free for up to 3 contractors.</p>
+            <p className="text-gray-400 text-xs">7-day free trial · No credit card required · Free for up to 3 contractors.</p>
           </div>
 
           {/* Right: app screenshot mockup */}
@@ -506,7 +506,7 @@ export default function LandingPage() {
               PRICING
             </div>
             <h2 className="font-serif font-normal text-gray-900 text-3xl sm:text-4xl mb-3">Pay only for the ICs you have</h2>
-            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 30 days.</p>
+            <p className="text-gray-500 text-lg">No seat bundles. No surprises. Start free for 7 days.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">

@@ -19,7 +19,7 @@ Preferred communication style: Simple, everyday language.
 - **Organizations**: Each signup creates an organization with isolated data
 - **Roles**: `owner` (org creator), `admin` (org admin), `ic` (independent contractor)
 - **Data Isolation**: All queries filter by `organizationId` from the authenticated user
-- **Subscriptions**: Free (3-IC cap, 30-day trial), Starter ($9/IC/mo, 25-IC cap), Pro ($14/IC/mo, 100-IC cap), Enterprise (custom, 999-IC cap)
+- **Subscriptions**: Free (3-IC cap, 7-day trial), Starter ($9/IC/mo, 25-IC cap), Pro ($14/IC/mo, 100-IC cap), Enterprise (custom, 999-IC cap)
 - **Seat Limits**: Enforced on user creation; admins see usage in Billing page
 
 ### Frontend
