@@ -11,7 +11,14 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Hashed build assets never change under the same filename — cache them for a year.
+  app.use("/assets", express.static(path.join(distPath, "assets"), {
+    immutable: true,
+    maxAge: "1y",
+    index: false,
+  }));
+
+  app.use(express.static(distPath, { index: false }));
 
   app.use("*", async (req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
@@ -23,6 +30,7 @@ export function serveStatic(app: Express) {
     }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
     res.end(html);
   });
 }
