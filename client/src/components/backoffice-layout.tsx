@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { BackofficeSidebar } from "@/components/backoffice-sidebar";
 
 interface BackofficeLayoutProps {
@@ -18,6 +18,19 @@ export function BackofficeLayout({
   active,
   topbarContent,
 }: BackofficeLayoutProps) {
+  useEffect(() => {
+    let el = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!el) {
+      el = document.createElement("meta");
+      el.setAttribute("name", "robots");
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", "noindex, nofollow");
+    return () => {
+      el?.remove();
+    };
+  }, []);
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#F3F4F6]">
       <BackofficeSidebar active={active} />

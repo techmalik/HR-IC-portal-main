@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2, AlertCircle, ShieldAlert } from "lucide-react";
 
@@ -13,6 +13,20 @@ function LogoMark() {
 
 export default function BackofficeLoginPage() {
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    let el = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!el) {
+      el = document.createElement("meta");
+      el.setAttribute("name", "robots");
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", "noindex, nofollow");
+    return () => {
+      el?.remove();
+    };
+  }, []);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
