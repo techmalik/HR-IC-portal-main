@@ -249,9 +249,115 @@ function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
-  if (!currentUser.organizationId) return true;
+export function isPlatformAdminUser(user: User): boolean {
+  const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowedEmails.includes(user.email.toLowerCase());
+}
+
+// Fails closed: a user with no organizationId (and no platform-admin bypass)
+// is never considered same-org as anything.
+export function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
+  if (isPlatformAdminUser(currentUser)) return true;
+  if (!currentUser.organizationId) return false;
   return currentUser.organizationId === targetUser.organizationId;
+}
+
+// Sends 404 if the entity is missing, 403 on cross-org access, else returns true.
+// Callers must `if (!assertSameOrg(res, currentUser, entity)) return;`
+export function assertSameOrg(
+  res: Response,
+  currentUser: User,
+  entity: { organizationId: string | null } | null | undefined
+): boolean {
+  if (!entity) {
+    res.status(404).json({ error: "Not found" });
+    return false;
+  }
+  if (!checkOrgBoundary(currentUser, entity)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  return true;
+}
+
+// Guards writes made "on behalf of" another user (timesheet save/submit,
+// overtime requests): the caller must be the target user, an admin/owner in
+// the target's org, or the target's direct supervisor.
+export async function assertSelfOrSupervisorOf(
+  res: Response,
+  currentUser: User,
+  targetUserId: string,
+  opts: { allowSelf?: boolean } = { allowSelf: true }
+): Promise<boolean> {
+  if (opts.allowSelf !== false && currentUser.id === targetUserId) return true;
+  if (isPlatformAdminUser(currentUser)) return true;
+  const targetUser = await storage.getUser(targetUserId);
+  if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+  if (isAdmin) return true;
+  const reports = await storage.getUsersBySupervisor(currentUser.id);
+  if (reports.some((r) => r.id === targetUserId)) return true;
+  res.status(403).json({ error: "Forbidden - not your direct report" });
+  return false;
+}
+
+// Which side of an evaluation section the caller may write: the IC's
+// self-assessment fields, the manager's review fields, or (admin/owner) both.
+export function evaluationSectionAccess(
+  currentUser: User,
+  evaluation: { icId: string; managerId: string }
+): "ic" | "manager" | "both" | null {
+  if (currentUser.role === "admin" || currentUser.role === "owner") return "both";
+  if (currentUser.id === evaluation.managerId) return "manager";
+  if (currentUser.id === evaluation.icId) return "ic";
+  return null;
+}
+
+export function sanitizeEvaluationSectionUpdate(body: any, side: "ic" | "manager" | "both"): Record<string, any> {
+  const updates: Record<string, any> = {};
+  if ((side === "ic" || side === "both") && body) {
+    if (body.selfRating !== undefined) updates.selfRating = body.selfRating;
+    if (body.selfDocumentation !== undefined) updates.selfDocumentation = body.selfDocumentation;
+    if (body.improvementGoal !== undefined) updates.improvementGoal = body.improvementGoal;
+  }
+  if ((side === "manager" || side === "both") && body) {
+    if (body.managerRating !== undefined) updates.managerRating = body.managerRating;
+    if (body.managerFeedback !== undefined) updates.managerFeedback = body.managerFeedback;
+    if (body.founderFeedback !== undefined) updates.founderFeedback = body.founderFeedback;
+  }
+  return updates;
+}
+
+// Guards `?userId=` style reads/writes: the caller must either be the target
+// user themselves, or an admin/owner (or, with allowSupervisor, any user with
+// supervisor privileges) in the target user's organization.
+export async function assertSelfOrOrgAdmin(
+  res: Response,
+  currentUser: User,
+  targetUserId: string,
+  opts: { allowSupervisor?: boolean } = {}
+): Promise<boolean> {
+  if (currentUser.id === targetUserId) return true;
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+  const isAllowed =
+    isAdmin || isPlatformAdminUser(currentUser) ||
+    (opts.allowSupervisor === true && (await hasSupervisorPrivileges(currentUser.id)));
+  if (!isAllowed) {
+    res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    return false;
+  }
+  const targetUser = await storage.getUser(targetUserId);
+  if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  return true;
 }
 
 // Check if user has supervisor privileges (either admin or IC with direct reports)
@@ -1422,6 +1528,24 @@ export async function registerRoutes(
       }
     }
 
+    // Nobody may edit their own role. Only an owner may grant/revoke the
+    // owner role; a plain admin may only move a user between admin/ic.
+    if ("role" in req.body) {
+      if (isSelf) {
+        return res.status(403).json({ error: "Cannot modify your own role" });
+      }
+      const isOwner = currentUser.role === "owner";
+      const targetCurrentUser = await storage.getUser(targetUserId);
+      const newRole = req.body.role;
+      const isRoleChange = !targetCurrentUser || targetCurrentUser.role !== newRole;
+      if (isRoleChange && (newRole === "owner" || targetCurrentUser?.role === "owner") && !isOwner) {
+        return res.status(403).json({ error: "Only an owner may grant or revoke the owner role" });
+      }
+      if (newRole !== "admin" && newRole !== "ic" && newRole !== "owner") {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+    }
+
     // Allowlist fields that may be updated — strip everything else
     const {
       firstName,
@@ -1833,10 +1957,10 @@ export async function registerRoutes(
     
     // Users can only see their own requests unless admin or dynamic supervisor
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
-    
+
     if (userId) {
-      if (!isSupervisor && userId !== currentUser.id) {
-        return res.status(403).json({ error: "Cannot view other users' requests" });
+      if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+        return;
       }
       const requests = await storage.getOOORequestsByUser(userId as string);
       res.json(requests);
@@ -1924,27 +2048,30 @@ export async function registerRoutes(
     try {
       const currentUser = req.authenticatedUser!;
       
-      // Users can only create requests for themselves
-      if (req.body.userId !== currentUser.id) {
-        return res.status(403).json({ error: "Cannot create requests for other users" });
-      }
-      
-      const request = await storage.createOOORequest({ ...req.body, organizationId: currentUser.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+      // Users can only create requests for themselves, always starting pending
+      const { startDate, endDate, oooType, reason, managerId } = req.body;
+      const request = await storage.createOOORequest({
+        startDate,
+        endDate,
+        oooType,
+        reason,
+        managerId,
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        status: "pending",
+      });
 
       try {
         await storage.createActivityLog({
-          userId: req.body.userId,
+          userId: currentUser.id,
           organizationId: currentUser.organizationId,
           action: "OOO request created",
-          details: `Requested time off from ${req.body.startDate} to ${req.body.endDate}`,
+          details: `Requested time off from ${startDate} to ${endDate}`,
           entityType: "ooo_request",
           entityId: request.id,
         });
 
-        if (submitter) {
-          await notifyOOOSubmitted(request, submitter);
-        }
+        await notifyOOOSubmitted(request, currentUser);
       } catch (e) {
         console.error("Failed to create activity log or notification:", e);
       }
@@ -1958,22 +2085,27 @@ export async function registerRoutes(
   app.patch("/api/ooo-requests/:id", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const existingRequest = await storage.getOOORequest(req.params.id);
-    if (!existingRequest) {
-      return res.status(404).json({ error: "Request not found" });
+    if (!assertSameOrg(res, currentUser, existingRequest)) return;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isRequesterSupervisor = existingRequest!.managerId === currentUser.id;
+    if (!isAdmin && !isRequesterSupervisor) {
+      return res.status(403).json({ error: "Forbidden - only an admin/owner or the requester's supervisor may review this request" });
     }
 
-    if (req.body.reviewedBy) {
-      req.body.reviewedBy = currentUser.id;
-    }
-
-    if (currentUser.id === existingRequest.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected") &&
-        currentUser.role !== "admin") {
+    if (currentUser.id === existingRequest!.userId && !isAdmin) {
       return res.status(403).json({ error: "You cannot approve or reject your own request" });
     }
 
+    const { status, reviewNote } = req.body;
+    if (status !== "approved" && status !== "rejected" && status !== "pending") {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
     const request = await storage.updateOOORequest(req.params.id, {
-      ...req.body,
+      status,
+      reviewNote,
+      reviewedBy: currentUser.id,
       reviewedAt: new Date(),
     });
 
@@ -1983,23 +2115,18 @@ export async function registerRoutes(
 
     try {
       await storage.createActivityLog({
-        userId: req.body.reviewedBy,
+        userId: currentUser.id,
         organizationId: currentUser.organizationId,
-        action: `OOO request ${req.body.status}`,
-        details: `Leave request was ${req.body.status}`,
+        action: `OOO request ${status}`,
+        details: `Leave request was ${status}`,
         entityType: "ooo_request",
         entityId: request.id,
       });
 
-      if (req.body.reviewedBy && req.body.status) {
-        const reviewer = await storage.getUser(req.body.reviewedBy);
-        if (reviewer) {
-          if (req.body.status === "approved") {
-            await notifyOOOApproved(request, reviewer);
-          } else if (req.body.status === "rejected") {
-            await notifyOOORejected(request, reviewer, req.body.reviewNote);
-          }
-        }
+      if (status === "approved") {
+        await notifyOOOApproved(request, currentUser);
+      } else if (status === "rejected") {
+        await notifyOOORejected(request, currentUser, reviewNote);
       }
     } catch (e) {
       console.error("Failed to create activity log or notification:", e);
@@ -2010,8 +2137,13 @@ export async function registerRoutes(
 
   // Timesheet routes
   app.get("/api/timesheets", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year } = req.query;
-    
+
+    if (userId && !(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+      return;
+    }
+
     if (userId && month && year) {
       const timesheet = await storage.getTimesheetByUserAndMonth(
         userId as string,
@@ -2094,17 +2226,25 @@ export async function registerRoutes(
   });
 
   app.get("/api/timesheets/:id/entries", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const timesheet = await storage.getTimesheet(req.params.id);
+    if (!assertSameOrg(res, currentUser, timesheet)) return;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, timesheet!.userId, { allowSupervisor: true }))) {
+      return;
+    }
     const entries = await storage.getDailyEntriesByTimesheet(req.params.id);
     res.json(entries);
   });
 
   app.post("/api/timesheets/save", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, userId))) return;
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
     // Prevent editing approved timesheets
@@ -2179,12 +2319,14 @@ export async function registerRoutes(
   }));
 
   app.post("/api/timesheets/submit", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, userId))) return;
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
     const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
@@ -2526,26 +2668,41 @@ export async function registerRoutes(
 
   app.post("/api/overtime-requests", authMiddleware, async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+      const { timesheetId, date, requestedHours, isWeekendWork } = req.body;
+
+      const timesheet = await storage.getTimesheet(timesheetId);
+      if (!assertSameOrg(res, currentUser, timesheet)) return;
+      if (!(await assertSelfOrSupervisorOf(res, currentUser, timesheet!.userId))) return;
+
       // Check for existing overtime request to prevent duplicates
       const existingRequest = await storage.getOvertimeRequestByTimesheetAndDate(
-        req.body.timesheetId,
-        req.body.date
+        timesheetId,
+        date
       );
-      
+
       if (existingRequest) {
         // Return existing request instead of creating a duplicate
         return res.json(existingRequest);
       }
-      
-      const request = await storage.createOvertimeRequest({ ...req.body, organizationId: req.authenticatedUser!.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+
+      const request = await storage.createOvertimeRequest({
+        userId: timesheet!.userId,
+        timesheetId,
+        date,
+        requestedHours,
+        isWeekendWork: !!isWeekendWork,
+        status: "pending",
+        organizationId: currentUser.organizationId,
+      });
+      const submitter = await storage.getUser(timesheet!.userId);
 
       try {
         await storage.createActivityLog({
-          userId: req.body.userId,
-          organizationId: req.authenticatedUser!.organizationId,
+          userId: timesheet!.userId,
+          organizationId: currentUser.organizationId,
           action: "Overtime request created",
-          details: `Requested ${req.body.requestedHours - 8} overtime hours for ${req.body.date}`,
+          details: `Requested ${requestedHours - 8} overtime hours for ${date}`,
           entityType: "overtime_request",
           entityId: request.id,
         });
@@ -2672,9 +2829,13 @@ export async function registerRoutes(
 
   // Get approved OOO dates for a user within a month
   app.get("/api/ooo-requests/approved-dates", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year } = req.query;
     if (!userId || !month || !year) {
       return res.status(400).json({ error: "userId, month, and year are required" });
+    }
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+      return;
     }
 
     const requests = await storage.getOOORequestsByUser(userId as string);
@@ -2755,27 +2916,55 @@ export async function registerRoutes(
 
   app.post("/api/invoices", authMiddleware, async (req, res) => {
     try {
-      const { userId, month, year } = req.body;
-      
+      const currentUser = req.authenticatedUser!;
+      // Force userId to the caller — never trust the client for who an invoice belongs to
+      const userId = currentUser.id;
+      const {
+        month, year, issueDate, invoiceNumber, fileName, fileUrl, amount, subtotal,
+        contractorName, contractorAddress, contractorPhone, contractorEmail, contractorVatNo,
+        billToName, billToAddress, billToVatNo, bankDetails,
+      } = req.body;
+
       // Link invoice to timesheet if exists
       const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
 
+      // Prevent duplicate invoices for the same user/month/year
+      const existingInvoices = await storage.getInvoicesByUser(userId);
+      if (existingInvoices.some((inv) => inv.month === month && inv.year === year)) {
+        return res.status(409).json({ error: "An invoice for this month already exists" });
+      }
+
       // Default invoice currency to the contractor's preferred currency
       let invoiceCurrency = normalizeCurrencyInput(req.body.currency) || "";
-      if (!invoiceCurrency && userId) {
-        const invoiceUser = await storage.getUser(userId);
-        invoiceCurrency = normalizeCurrencyInput(invoiceUser?.currency) || "USD";
+      if (!invoiceCurrency) {
+        invoiceCurrency = normalizeCurrencyInput(currentUser.currency) || "USD";
       }
-      if (!invoiceCurrency) invoiceCurrency = "USD";
 
       const invoiceData = {
-        ...req.body,
+        userId,
+        month,
+        year,
+        issueDate,
+        invoiceNumber,
+        fileName,
+        fileUrl,
+        amount,
+        subtotal,
+        contractorName,
+        contractorAddress,
+        contractorPhone,
+        contractorEmail,
+        contractorVatNo,
+        billToName,
+        billToAddress,
+        billToVatNo,
+        bankDetails,
         currency: invoiceCurrency,
-        status: "pending_review",
+        status: "pending_review" as const,
         timesheetId: timesheet?.id || null,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId,
       };
-      
+
       const invoice = await storage.createInvoice(invoiceData);
 
       // When invoice is submitted, auto-submit timesheet if in draft status
@@ -2796,10 +2985,10 @@ export async function registerRoutes(
       }
 
       await storage.createActivityLog({
-        userId: req.body.userId,
-        organizationId: req.authenticatedUser!.organizationId,
+        userId,
+        organizationId: currentUser.organizationId,
         action: "Invoice submitted for review",
-        details: `Submitted invoice ${req.body.fileName} for approval`,
+        details: `Submitted invoice ${fileName} for approval`,
         entityType: "invoice",
         entityId: invoice.id,
       });
@@ -2837,6 +3026,10 @@ export async function registerRoutes(
 
   app.get("/api/invoices/next-number/:userId", authMiddleware, async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+      if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.userId, { allowSupervisor: true }))) {
+        return;
+      }
       const invoiceNumber = await storage.getNextInvoiceNumber(req.params.userId);
       res.json({ invoiceNumber });
     } catch (error) {
@@ -2871,13 +3064,11 @@ export async function registerRoutes(
   });
 
   app.delete("/api/invoices/:id", authMiddleware, async (req, res) => {
-    const invoice = await storage.getInvoice(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({ error: "Invoice not found" });
-    }
-    
+    const invoiceOrUndefined = await storage.getInvoice(req.params.id);
     const user = req.authenticatedUser!;
-    
+    if (!assertSameOrg(res, user, invoiceOrUndefined)) return;
+    const invoice = invoiceOrUndefined!;
+
     // Only allow deleting rejected invoices or pending ones by the owner
     if (invoice.status === "approved") {
       return res.status(403).json({ error: "Cannot delete approved invoices" });
@@ -2885,7 +3076,7 @@ export async function registerRoutes(
     if (invoice.status === "paid") {
       return res.status(403).json({ error: "Cannot delete paid invoices" });
     }
-    
+
     if (invoice.userId !== user.id && user.role !== "admin") {
       return res.status(403).json({ error: "Not authorized to delete this invoice" });
     }
@@ -2906,6 +3097,10 @@ export async function registerRoutes(
 
     const user = req.authenticatedUser!;
     const { status, reviewNote } = req.body;
+    const ALLOWED_STATUSES = ["approved", "rejected", "revision_requested"];
+    if (status !== undefined && !ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({ error: "Invalid status. Use the dedicated mark-paid endpoint to mark an invoice paid." });
+    }
 
     // Prevent self-approval
     if (user.id === invoice.userId && (status === "approved" || status === "rejected")) {
@@ -2944,7 +3139,8 @@ export async function registerRoutes(
     }
 
     const updates: any = {
-      ...req.body,
+      status,
+      reviewNote,
       reviewedBy: user.id,
       reviewedAt: new Date(),
     };
@@ -3158,16 +3354,28 @@ export async function registerRoutes(
 
   // Invoice Line Items routes - protected
   app.get("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const invoice = await storage.getInvoice(req.params.invoiceId);
+    if (!assertSameOrg(res, currentUser, invoice)) return;
     const lineItems = await storage.getInvoiceLineItems(req.params.invoiceId);
     res.json(lineItems);
   });
 
   app.post("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+      const invoice = await storage.getInvoice(req.params.invoiceId);
+      if (!assertSameOrg(res, currentUser, invoice)) return;
+
+      const { description, quantity, rate, total, sortOrder } = req.body;
       const lineItem = await storage.createInvoiceLineItem({
-        ...req.body,
+        description,
+        quantity,
+        rate,
+        total,
+        sortOrder,
         invoiceId: req.params.invoiceId,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId,
       });
       res.status(201).json(lineItem);
     } catch (error) {
@@ -3229,13 +3437,25 @@ export async function registerRoutes(
 
   // IC Responsibilities routes - protected
   app.get("/api/ic-responsibilities/:icId", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.icId, { allowSupervisor: true }))) {
+      return;
+    }
     const responsibilities = await storage.getIcResponsibilities(req.params.icId);
     res.json(responsibilities);
   });
 
   app.post("/api/ic-responsibilities", authMiddleware, async (req, res) => {
     try {
-      const responsibility = await storage.createIcResponsibility(req.body);
+      const currentUser = req.authenticatedUser!;
+      const { icId, responsibility: responsibilityText, isActive } = req.body;
+      if (!(await assertSelfOrSupervisorOf(res, currentUser, icId, { allowSelf: false }))) return;
+      const responsibility = await storage.createIcResponsibility({
+        icId,
+        responsibility: responsibilityText,
+        isActive,
+        organizationId: currentUser.organizationId,
+      });
       res.status(201).json(responsibility);
     } catch (error) {
       res.status(500).json({ error: "Failed to create responsibility" });
@@ -3243,7 +3463,16 @@ export async function registerRoutes(
   });
 
   app.patch("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
-    const responsibility = await storage.updateIcResponsibility(req.params.id, req.body);
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getIcResponsibility(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, existing!.icId, { allowSelf: false }))) return;
+
+    const { responsibility: responsibilityText, isActive } = req.body;
+    const responsibility = await storage.updateIcResponsibility(req.params.id, {
+      responsibility: responsibilityText,
+      isActive,
+    });
     if (!responsibility) {
       return res.status(404).json({ error: "Responsibility not found" });
     }
@@ -3251,6 +3480,11 @@ export async function registerRoutes(
   });
 
   app.delete("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getIcResponsibility(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, existing!.icId, { allowSelf: false }))) return;
+
     const success = await storage.deleteIcResponsibility(req.params.id);
     if (!success) {
       return res.status(404).json({ error: "Responsibility not found" });
@@ -3757,36 +3991,42 @@ export async function registerRoutes(
 
   app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isSelf = evaluation!.icId === currentUser.id;
+    const isManager = evaluation!.managerId === currentUser.id;
+    if (!isAdminOrOwner && !isSelf && !isManager) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     res.json(evaluation);
   });
 
   app.get("/api/evaluations/:id/sections", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isSelf = evaluation!.icId === currentUser.id;
+    const isManager = evaluation!.managerId === currentUser.id;
+    if (!isAdminOrOwner && !isSelf && !isManager) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     const sections = await storage.getEvaluationSections(req.params.id);
     res.json(sections);
   });
 
   app.get("/api/users/:id/last-evaluation", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.id, { allowSupervisor: true }))) {
+      return;
+    }
     const evaluation = await storage.getLastCompletedEvaluation(req.params.id);
     res.json(evaluation || null);
   });
@@ -3807,19 +4047,33 @@ export async function registerRoutes(
       if (!req.body.managerId) {
         return res.status(400).json({ error: "Manager/supervisor is required for self-evaluations" });
       }
-      
-      // Validate that the manager exists and has supervisor privileges
+
+      // Validate that the manager exists, is in the same org, and has supervisor privileges
       const manager = await storage.getUser(req.body.managerId);
-      if (!manager) {
+      if (!manager || !checkOrgBoundary(currentUser, manager)) {
         return res.status(400).json({ error: "Selected supervisor does not exist" });
       }
-      
+
       const managerIsSupervisor = await hasSupervisorPrivileges(req.body.managerId);
       if (!managerIsSupervisor && manager.role !== "admin") {
         return res.status(400).json({ error: "Selected user is not a valid supervisor" });
       }
+    } else {
+      // Supervisor creating an evaluation on behalf of an IC: the IC must be
+      // in the caller's org, and (for non-admins) a direct report.
+      const ic = await storage.getUser(req.body.icId);
+      if (!ic || !checkOrgBoundary(currentUser, ic)) {
+        return res.status(400).json({ error: "Selected employee does not exist" });
+      }
+      const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdminOrOwner) {
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(req.body.icId)) {
+          return res.status(403).json({ error: "You may only create evaluations for your direct reports" });
+        }
+      }
     }
-    
+
     // Build evaluation data with validated fields
     const evaluationData = {
       icId: isCreatingSelfEvaluation ? currentUser.id : req.body.icId,
@@ -3894,6 +4148,7 @@ export async function registerRoutes(
 
     const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
     const isManagerAction = req.body.status === "manager_submitted" || req.body.status === "completed";
+    let isIcSelfSide = false;
 
     if (currentUser.role === "ic") {
       if (isManagerAction) {
@@ -3910,18 +4165,44 @@ export async function registerRoutes(
         if (existingEvaluation.icId !== currentUser.id) {
           return res.status(403).json({ error: "Forbidden" });
         }
+        isIcSelfSide = true;
       }
     } else if (!isAdminOrOwner) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const updates = { ...req.body };
-    
-    if (req.body.status === "ic_submitted") {
+    // Allowlist fields by role — an IC on the self-assessment side can only
+    // move their own status forward, never set manager-only outcome fields.
+    const {
+      status,
+      overallSelfRating,
+      expectationsForNextReview,
+      managerSummary,
+      newExperienceLevel,
+      outcomes,
+      overallScore,
+      overallManagerRating,
+    } = req.body;
+
+    const updates: Record<string, any> = {};
+    if (status !== undefined) updates.status = status;
+
+    if (isIcSelfSide) {
+      if (overallSelfRating !== undefined) updates.overallSelfRating = overallSelfRating;
+    } else {
+      if (expectationsForNextReview !== undefined) updates.expectationsForNextReview = expectationsForNextReview;
+      if (managerSummary !== undefined) updates.managerSummary = managerSummary;
+      if (newExperienceLevel !== undefined) updates.newExperienceLevel = newExperienceLevel;
+      if (outcomes !== undefined) updates.outcomes = outcomes;
+      if (overallScore !== undefined) updates.overallScore = overallScore;
+      if (overallManagerRating !== undefined) updates.overallManagerRating = overallManagerRating;
+    }
+
+    if (status === "ic_submitted") {
       updates.icSubmittedAt = new Date();
-    } else if (req.body.status === "manager_submitted" || req.body.status === "completed") {
+    } else if (status === "manager_submitted" || status === "completed") {
       updates.managerSubmittedAt = new Date();
-      if (req.body.status === "completed") {
+      if (status === "completed") {
         updates.completedAt = new Date();
       }
     }
@@ -3993,7 +4274,23 @@ export async function registerRoutes(
 
   // Evaluation sections routes - protected
   app.patch("/api/evaluation-sections/:id", authMiddleware, async (req, res) => {
-    const section = await storage.updateEvaluationSection(req.params.id, req.body);
+    const currentUser = req.authenticatedUser!;
+    const existingSection = await storage.getEvaluationSection(req.params.id);
+    if (!existingSection) {
+      return res.status(404).json({ error: "Section not found" });
+    }
+    const evaluation = await storage.getEvaluation(existingSection.evaluationId);
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const side = evaluationSectionAccess(currentUser, evaluation!);
+    if (!side) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const section = await storage.updateEvaluationSection(
+      req.params.id,
+      sanitizeEvaluationSectionUpdate(req.body, side)
+    );
     if (!section) {
       return res.status(404).json({ error: "Section not found" });
     }
@@ -4002,27 +4299,37 @@ export async function registerRoutes(
 
   app.post("/api/evaluations/:id/sections/bulk-update", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const side = evaluationSectionAccess(currentUser, evaluation!);
+    if (!side) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     try {
       const { sections } = req.body;
+      if (!Array.isArray(sections)) {
+        return res.status(400).json({ error: "sections must be an array" });
+      }
       const updatedSections = [];
-      
+
       for (const sectionUpdate of sections) {
-        const updated = await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+        // Verify each section actually belongs to this evaluation before writing it
+        const existingSection = await storage.getEvaluationSection(sectionUpdate?.id);
+        if (!existingSection || existingSection.evaluationId !== req.params.id) {
+          continue;
+        }
+        const updated = await storage.updateEvaluationSection(
+          sectionUpdate.id,
+          sanitizeEvaluationSectionUpdate(sectionUpdate, side)
+        );
         if (updated) {
           updatedSections.push(updated);
         }
       }
-      
+
       res.json(updatedSections);
     } catch (error) {
       res.status(500).json({ error: "Failed to update sections" });
@@ -4074,17 +4381,30 @@ export async function registerRoutes(
     }
     
     try {
-      
-      // Save all sections first
+      const sectionSide: "ic" | "manager" = finalizeAs;
+
+      // Save all sections first — only sections that belong to this evaluation
       if (sections && sections.length > 0) {
         for (const sectionUpdate of sections) {
-          await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+          const existingSection = await storage.getEvaluationSection(sectionUpdate?.id);
+          if (!existingSection || existingSection.evaluationId !== req.params.id) {
+            continue;
+          }
+          await storage.updateEvaluationSection(sectionUpdate.id, sanitizeEvaluationSectionUpdate(sectionUpdate, sectionSide));
         }
       }
-      
-      // Determine new status and timestamps
-      const updates: Record<string, any> = { ...evaluationUpdates };
-      
+
+      // Determine new status and timestamps. evaluationUpdates only applies on
+      // the manager side — allowlisted to the fields the manager review form sends.
+      const updates: Record<string, any> = {};
+      if (finalizeAs === "manager" && evaluationUpdates) {
+        const { expectationsForNextReview, managerSummary, newExperienceLevel, outcomes } = evaluationUpdates;
+        if (expectationsForNextReview !== undefined) updates.expectationsForNextReview = expectationsForNextReview;
+        if (managerSummary !== undefined) updates.managerSummary = managerSummary;
+        if (newExperienceLevel !== undefined) updates.newExperienceLevel = newExperienceLevel;
+        if (outcomes !== undefined) updates.outcomes = outcomes;
+      }
+
       if (finalizeAs === "ic") {
         updates.status = "ic_submitted";
         updates.icSubmittedAt = new Date();
@@ -4170,8 +4490,14 @@ export async function registerRoutes(
 
   // Feedback invitation routes - protected
   app.get("/api/feedback-invitations", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { evaluationId } = req.query;
     if (evaluationId) {
+      const evaluation = await storage.getEvaluation(evaluationId as string);
+      if (!assertSameOrg(res, currentUser, evaluation)) return;
+      if (!evaluationSectionAccess(currentUser, evaluation!)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const invitations = await storage.getFeedbackInvitationsByEvaluation(evaluationId as string);
       res.json(invitations);
     } else {
@@ -4181,19 +4507,28 @@ export async function registerRoutes(
 
   app.post("/api/feedback-invitations", authMiddleware, async (req, res) => {
     try {
-      const users = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
+      const currentUser = req.authenticatedUser!;
+      const evaluation = await storage.getEvaluation(req.body.evaluationId);
+      if (!assertSameOrg(res, currentUser, evaluation)) return;
+      const side = evaluationSectionAccess(currentUser, evaluation!);
+      if (side !== "manager" && side !== "both") {
+        return res.status(403).json({ error: "Only the evaluation's manager may invite feedback" });
+      }
+
+      const users = await storage.getAllUsers(currentUser.organizationId ?? undefined);
       const invitedUser = users.find(u => u.email === req.body.email);
-      
+
       const invitation = await storage.createFeedbackInvitation({
-        ...req.body,
+        evaluationId: req.body.evaluationId,
+        invitedById: currentUser.id,
         invitedUserId: invitedUser?.id || "unknown",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId,
       });
 
       try {
         await storage.createActivityLog({
-          userId: req.body.invitedById,
-          organizationId: req.authenticatedUser!.organizationId,
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
           action: "Feedback invitation sent",
           details: `Invited ${req.body.email} to provide feedback`,
           entityType: "evaluation",
@@ -4204,17 +4539,14 @@ export async function registerRoutes(
       }
 
       // Notify the invited user (in-app + email) when they're a known user.
-      if (invitedUser && req.body.evaluationId) {
+      if (invitedUser) {
         try {
-          const evaluation = await storage.getEvaluation(req.body.evaluationId);
           let icName = "a team member";
-          if (evaluation) {
-            const ic = await storage.getUser(evaluation.icId);
-            if (ic) icName = `${ic.firstName} ${ic.lastName}`;
-          }
+          const ic = await storage.getUser(evaluation!.icId);
+          if (ic) icName = `${ic.firstName} ${ic.lastName}`;
           await notifyFeedbackRequested(
             req.body.evaluationId,
-            req.body.invitedById || req.authenticatedUser!.id,
+            currentUser.id,
             invitedUser.id,
             icName,
           );
@@ -4230,11 +4562,23 @@ export async function registerRoutes(
   });
 
   app.patch("/api/feedback-invitations/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getFeedbackInvitation(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    if (existing!.invitedUserId !== currentUser.id && !isAdminOrOwner) {
+      return res.status(403).json({ error: "Forbidden - only the invited reviewer may submit this feedback" });
+    }
+
+    const { feedback, rating, status } = req.body;
     const invitation = await storage.updateFeedbackInvitation(req.params.id, {
-      ...req.body,
-      completedAt: req.body.status === "completed" ? new Date() : undefined,
+      feedback,
+      rating,
+      status,
+      completedAt: status === "completed" ? new Date() : undefined,
     });
-    
+
     if (!invitation) {
       return res.status(404).json({ error: "Invitation not found" });
     }
@@ -4254,12 +4598,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
-    // Users can only access their own notifications (admins/cofounders can access any)
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+
+    // Users can only access their own notifications (admins/owners can access any in their org)
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string))) return;
+
     if (status === "unread") {
       const notifications = await storage.getUnreadNotificationsByUser(userId as string);
       res.json(notifications);
@@ -4273,12 +4615,10 @@ export async function registerRoutes(
   app.get("/api/notifications/count/:userId", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const userId = req.params.userId;
-    
+
     // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     const count = await storage.getUnreadNotificationCount(userId);
     res.json({ count });
   });
@@ -4289,12 +4629,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
+
     // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string))) return;
+
     const count = await storage.getUnreadNotificationCount(userId as string);
     res.json({ count });
   });
@@ -4307,12 +4645,10 @@ export async function registerRoutes(
     if (userId === "count" || userId === "read-all") {
       return res.status(404).json({ error: "Not found" });
     }
-    
+
     // Users can only access their own notifications
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     const notifications = await storage.getNotificationsByUser(userId);
     res.json(notifications);
   });
@@ -4320,16 +4656,14 @@ export async function registerRoutes(
   app.patch("/api/notifications/:id/read", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const notification = await storage.getNotification(req.params.id);
-    
+
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
-    
+
     // Users can only mark their own notifications as read
-    if (notification.userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, notification.userId))) return;
+
     const updated = await storage.markNotificationAsRead(req.params.id);
     res.json(updated);
   });
@@ -4340,12 +4674,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
+
     // Users can only mark their own notifications as read
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     await storage.markAllNotificationsAsRead(userId);
     res.json({ success: true });
   });
@@ -4429,7 +4761,15 @@ export async function registerRoutes(
     if (!currentUser.organizationId) {
       return res.status(404).json({ error: "No organization associated with this user" });
     }
-    const updated = await storage.updateOrganization(currentUser.organizationId, req.body);
+    const { name, logoUrl, billingEmail, address, vatNumber } = req.body;
+    const allowedUpdates: Record<string, any> = {};
+    if (name !== undefined) allowedUpdates.name = name;
+    if (logoUrl !== undefined) allowedUpdates.logoUrl = logoUrl;
+    if (billingEmail !== undefined) allowedUpdates.billingEmail = billingEmail;
+    if (address !== undefined) allowedUpdates.address = address;
+    if (vatNumber !== undefined) allowedUpdates.vatNumber = vatNumber;
+
+    const updated = await storage.updateOrganization(currentUser.organizationId, allowedUpdates);
     if (!updated) {
       return res.status(404).json({ error: "Organization not found" });
     }

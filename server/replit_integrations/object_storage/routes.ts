@@ -56,7 +56,15 @@ async function isAuthorizedForObject(
     );
   }
 
-  return isAdmin;
+  const avatarOwner = await storage.getUserByAvatarUrl(callerFileUrl);
+  if (avatarOwner) {
+    if (caller.id === avatarOwner.id) return true;
+    return callerOrgId != null && callerOrgId === avatarOwner.organizationId;
+  }
+
+  // Unlinked object we can't attribute to any org — fail closed rather than
+  // letting any admin (of any org) read it.
+  return false;
 }
 
 export function registerObjectStorageRoutes(

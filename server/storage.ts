@@ -82,6 +82,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByAvatarUrl(avatarUrl: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
@@ -142,6 +143,7 @@ export interface IStorage {
   updateIcPaymentDetails(userId: string, updates: Partial<IcPaymentDetails>): Promise<IcPaymentDetails | undefined>;
 
   getIcResponsibilities(icId: string): Promise<IcResponsibility[]>;
+  getIcResponsibility(id: string): Promise<IcResponsibility | undefined>;
   createIcResponsibility(responsibility: InsertIcResponsibility): Promise<IcResponsibility>;
   updateIcResponsibility(id: string, updates: Partial<IcResponsibility>): Promise<IcResponsibility | undefined>;
   deleteIcResponsibility(id: string): Promise<boolean>;
@@ -155,6 +157,7 @@ export interface IStorage {
   getLastCompletedEvaluation(icId: string): Promise<Evaluation | undefined>;
 
   getEvaluationSections(evaluationId: string): Promise<EvaluationSection[]>;
+  getEvaluationSection(id: string): Promise<EvaluationSection | undefined>;
   createEvaluationSection(section: InsertEvaluationSection): Promise<EvaluationSection>;
   updateEvaluationSection(id: string, updates: Partial<EvaluationSection>): Promise<EvaluationSection | undefined>;
   createDefaultSectionsForEvaluation(evaluationId: string): Promise<EvaluationSection[]>;
@@ -233,6 +236,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
+  }
+
+  async getUserByAvatarUrl(avatarUrl: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.avatarUrl, avatarUrl));
     return result[0];
   }
 
@@ -543,6 +551,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(icResponsibilities).where(eq(icResponsibilities.icId, icId));
   }
 
+  async getIcResponsibility(id: string): Promise<IcResponsibility | undefined> {
+    const result = await db.select().from(icResponsibilities).where(eq(icResponsibilities.id, id));
+    return result[0];
+  }
+
   async createIcResponsibility(responsibility: InsertIcResponsibility): Promise<IcResponsibility> {
     const result = await db.insert(icResponsibilities).values(responsibility).returning();
     return result[0];
@@ -598,6 +611,11 @@ export class DatabaseStorage implements IStorage {
 
   async getEvaluationSections(evaluationId: string): Promise<EvaluationSection[]> {
     return db.select().from(evaluationSections).where(eq(evaluationSections.evaluationId, evaluationId));
+  }
+
+  async getEvaluationSection(id: string): Promise<EvaluationSection | undefined> {
+    const result = await db.select().from(evaluationSections).where(eq(evaluationSections.id, id));
+    return result[0];
   }
 
   async createEvaluationSection(section: InsertEvaluationSection): Promise<EvaluationSection> {
