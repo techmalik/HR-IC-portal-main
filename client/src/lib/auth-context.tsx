@@ -3,6 +3,7 @@ import type { User } from "@shared/schema";
 import { ForcePasswordChangeModal } from "@/components/force-password-change-modal";
 import { IdleTimeoutDialog } from "@/components/idle-timeout-dialog";
 import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/queryClient";
+import { getMarketingOrigin } from "@/lib/subdomain";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_DURATION_S = 2 * 60;
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { pathname, search, hash } = window.location;
     const fullPath = pathname + search + hash;
     const redirect = fullPath && pathname !== "/login" ? `?redirect=${encodeURIComponent(fullPath)}` : "";
-    window.location.href = `/login${redirect}`;
+    window.location.href = `${getMarketingOrigin()}/login${redirect}`;
   }, [clearIdleTimer, clearWarningInterval, doLogout]);
 
   const startIdleTimer = useCallback(() => {

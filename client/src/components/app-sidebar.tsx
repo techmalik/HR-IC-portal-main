@@ -45,6 +45,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { isSubdomainMode, getMarketingOrigin } from "@/lib/subdomain";
 
 interface MenuItem {
   title: string;
@@ -365,7 +366,12 @@ export function AppSidebar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={logout}
+              onClick={async () => {
+                await logout();
+                if (isSubdomainMode()) {
+                  window.location.href = `${getMarketingOrigin()}/`;
+                }
+              }}
               className="text-destructive cursor-pointer"
               data-testid="button-logout"
             >

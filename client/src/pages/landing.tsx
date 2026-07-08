@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePageMeta } from "@/lib/use-page-meta";
+import { isSubdomainMode, getAppOrigin, getMarketingOrigin } from "@/lib/subdomain";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -199,13 +200,29 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-4 ml-auto md:ml-0">
             <button
-              onClick={() => setLocation("/login")}
+              onClick={() => {
+                if (isSubdomainMode()) {
+                  window.location.href = getAppOrigin();
+                } else {
+                  setLocation("/login");
+                }
+              }}
               className="text-gray-500 text-sm font-medium hover:text-gray-900 transition-colors"
               data-testid="button-nav-login"
             >
               Sign in
             </button>
-            <Button size="sm" onClick={() => setLocation("/signup")} data-testid="button-nav-signup">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (isSubdomainMode()) {
+                  window.location.href = `${getMarketingOrigin()}/signup`;
+                } else {
+                  setLocation("/signup");
+                }
+              }}
+              data-testid="button-nav-signup"
+            >
               Get started
             </Button>
           </div>
@@ -239,7 +256,17 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-3 mb-5">
-              <Button size="lg" onClick={() => setLocation("/signup")} data-testid="button-hero-get-started">
+              <Button
+                size="lg"
+                onClick={() => {
+                  if (isSubdomainMode()) {
+                    window.location.href = `${getMarketingOrigin()}/signup`;
+                  } else {
+                    setLocation("/signup");
+                  }
+                }}
+                data-testid="button-hero-get-started"
+              >
                 Start free trial
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
@@ -515,11 +542,18 @@ export default function LandingPage() {
                 <Button
                   className="mb-5 w-full"
                   variant={plan.highlight ? "default" : "secondary"}
-                  onClick={() =>
-                    plan.enterprise
-                      ? window.open("mailto:sales@axlehq.app")
-                      : setLocation(planKey === "free" ? "/signup" : `/signup?plan=${planKey}`)
-                  }
+                  onClick={() => {
+                    if (plan.enterprise) {
+                      window.open("mailto:sales@axlehq.app");
+                    } else if (isSubdomainMode()) {
+                      window.location.href =
+                        planKey === "free"
+                          ? `${getMarketingOrigin()}/signup`
+                          : `${getMarketingOrigin()}/signup?plan=${planKey}`;
+                    } else {
+                      setLocation(planKey === "free" ? "/signup" : `/signup?plan=${planKey}`);
+                    }
+                  }}
                   data-testid={`button-plan-${planKey}`}
                 >
                   {plan.cta}
@@ -592,7 +626,17 @@ export default function LandingPage() {
             Run your contractor operations without the spreadsheet chaos.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3.5">
-            <Button size="lg" onClick={() => setLocation("/signup")} data-testid="button-cta-signup">
+            <Button
+              size="lg"
+              onClick={() => {
+                if (isSubdomainMode()) {
+                  window.location.href = `${getMarketingOrigin()}/signup`;
+                } else {
+                  setLocation("/signup");
+                }
+              }}
+              data-testid="button-cta-signup"
+            >
               Start for free
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>

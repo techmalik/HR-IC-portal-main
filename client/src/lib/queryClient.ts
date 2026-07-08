@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getMarketingOrigin } from "@/lib/subdomain";
 
 export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
 
@@ -40,7 +41,7 @@ function handleUnauthorized() {
   if (currentPath && currentPath !== "/") {
     params.set("redirect", currentPath + window.location.search + window.location.hash);
   }
-  window.location.href = `/login?${params.toString()}`;
+  window.location.href = `${getMarketingOrigin()}/login?${params.toString()}`;
 }
 
 // Install a global fetch interceptor so ANY fetch in the app — including

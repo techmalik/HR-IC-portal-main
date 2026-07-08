@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { isSubdomainMode, getAppOrigin } from "@/lib/subdomain";
 import { Loader2 } from "lucide-react";
 
 function LogoMark({ size = 28, color = "white" }: { size?: number; color?: string }) {
@@ -66,7 +67,13 @@ export default function SignupPage() {
     if (result.success) {
       const params = new URLSearchParams(window.location.search);
       const plan = params.get("plan");
-      if (plan && ["starter", "pro"].includes(plan)) {
+      if (isSubdomainMode()) {
+        const dest =
+          plan && ["starter", "pro"].includes(plan)
+            ? `${getAppOrigin()}/billing?plan=${plan}`
+            : `${getAppOrigin()}/`;
+        window.location.href = dest;
+      } else if (plan && ["starter", "pro"].includes(plan)) {
         setLocation(`/billing?plan=${plan}`);
       } else {
         setLocation("/");

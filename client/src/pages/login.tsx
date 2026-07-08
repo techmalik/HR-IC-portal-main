@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { isSubdomainMode, getAppOrigin } from "@/lib/subdomain";
 import { Loader2, AlertCircle } from "lucide-react";
 
 function LogoMark({ size = 28, color = "white" }: { size?: number; color?: string }) {
@@ -57,7 +58,11 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (success) {
-      setLocation(redirectTo);
+      if (isSubdomainMode()) {
+        window.location.href = `${getAppOrigin()}/`;
+      } else {
+        setLocation(redirectTo);
+      }
     } else {
       toast({
         title: "Login failed",

@@ -15,6 +15,7 @@ import { OnboardingTour, portalTourConfig, ownerTourConfig, type TourStep } from
 import { BackofficeLayout } from "@/components/backoffice-layout";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import { isSubdomainMode, getMarketingOrigin } from "@/lib/subdomain";
 
 // Small shared pages loaded eagerly (no heavy deps, needed for error states)
 import NotFound from "@/pages/not-found";
@@ -575,7 +576,7 @@ function ProtectedRoutes() {
     const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
-      window.location.replace(`/login?redirect=${encodeURIComponent(location)}`);
+      window.location.replace(`${getMarketingOrigin()}/login?redirect=${encodeURIComponent(location)}`);
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />

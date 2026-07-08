@@ -399,6 +399,7 @@ export async function registerRoutes(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      domain: process.env.NODE_ENV === "production" ? ".axlehq.app" : undefined,
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -494,6 +495,7 @@ export async function registerRoutes(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      domain: process.env.NODE_ENV === "production" ? ".axlehq.app" : undefined,
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
     });

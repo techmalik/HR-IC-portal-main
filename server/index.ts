@@ -90,6 +90,72 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Subdomain-aware routing — production only.
+  // In dev/preview (localhost or Replit preview URL) every request passes through unchanged.
+  if (process.env.NODE_ENV === "production") {
+    app.use(async (req: Request, res: Response, next: NextFunction) => {
+      const hostname = req.hostname;
+      const isAppSubdomain = hostname === "app.axlehq.app";
+      const isMarketingDomain = hostname === "axlehq.app" || hostname === "www.axlehq.app";
+
+      // Unknown host (Replit preview URL, custom domains, etc.) — pass through untouched.
+      if (!isAppSubdomain && !isMarketingDomain) {
+        return next();
+      }
+
+      if (isMarketingDomain) {
+        // On the marketing domain only public paths are allowed.
+        const p = req.path;
+        const isPublic =
+          p === "/" ||
+          p === "/login" ||
+          p === "/signup" ||
+          p === "/competitive-analysis" ||
+          p.startsWith("/blog") ||
+          p.startsWith("/seo") ||
+          p.startsWith("/api/auth/") ||
+          p.startsWith("/api/blog/") ||
+          p === "/api/billing/detect-currency" ||
+          p === "/api/health" ||
+          p.startsWith("/objects/") ||
+          p.startsWith("/assets/") ||
+          p.startsWith("/uploads/") ||
+          p === "/favicon.ico";
+
+        if (!isPublic) {
+          return res.redirect(302, "https://axlehq.app/");
+        }
+        return next();
+      }
+
+      if (isAppSubdomain) {
+        // On the app subdomain, unauthenticated HTML navigations redirect to login.
+        const p = req.path;
+        const isApiRequest = p.startsWith("/api/");
+        const isStaticAsset =
+          p.startsWith("/assets/") ||
+          p.startsWith("/objects/") ||
+          p.startsWith("/uploads/") ||
+          p === "/favicon.ico" ||
+          /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map)$/.test(p);
+
+        if (!isApiRequest && !isStaticAsset) {
+          const token = req.cookies?.session_token;
+          if (!token) {
+            return res.redirect(302, "https://axlehq.app/login");
+          }
+          const userId = await getUserIdFromToken(token);
+          if (!userId) {
+            return res.redirect(302, "https://axlehq.app/login");
+          }
+        }
+        return next();
+      }
+
+      next();
+    });
+  }
+
   await registerRoutes(httpServer, app);
 
   // Backfill trialEndsAt for existing free-plan orgs that predate the trial column.
