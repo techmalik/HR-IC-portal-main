@@ -73,8 +73,10 @@ export function getPreferenceCategory(
 async function shouldNotifyUser(userId: string, notificationType: string, isTeamAction: boolean = false): Promise<boolean> {
   const prefs = await storage.getNotificationPreferences(userId);
   if (!prefs) {
+    const user = await storage.getUser(userId);
     await storage.createNotificationPreferences({
       userId,
+      organizationId: user?.organizationId ?? "",
       inAppEnabled: true,
       emailEnabled: true,
       oooNotifications: true,
@@ -111,10 +113,12 @@ export async function createNotification(
   isTeamAction: boolean = false
 ): Promise<void> {
   const shouldNotifyInApp = await shouldNotifyUser(userId, payload.type, isTeamAction);
-  
+
   if (shouldNotifyInApp) {
+    const recipient = await storage.getUser(userId);
     const notification = await storage.createNotification({
       userId,
+      organizationId: recipient?.organizationId ?? "",
       actorId: payload.actorId || null,
       type: payload.type,
       title: payload.title,

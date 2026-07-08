@@ -637,7 +637,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: user.id,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
         action: "User logged in",
         details: `${user.firstName} ${user.lastName} logged in`,
         entityType: "user",
@@ -1535,7 +1535,7 @@ export async function registerRoutes(
       try {
         await storage.createActivityLog({
           userId: req.body.createdBy || user.id,
-          organizationId: req.authenticatedUser!.organizationId,
+          organizationId: req.authenticatedUser!.organizationId!,
           action: "User created",
           details: `Created user ${user.firstName} ${user.lastName}`,
           entityType: "user",
@@ -1758,7 +1758,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: targetUserId,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "Password changed",
         details: `Password changed successfully`,
         entityType: "user",
@@ -1831,7 +1831,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "User deleted",
         details: `User account removed`,
         entityType: "user",
@@ -1991,7 +1991,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "Password reset",
         details: `Password reset for ${user.firstName} ${user.lastName}`,
         entityType: "user",
@@ -2120,14 +2120,14 @@ export async function registerRoutes(
         reason,
         managerId,
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         status: "pending",
       });
 
       try {
         await storage.createActivityLog({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: "OOO request created",
           details: `Requested time off from ${startDate} to ${endDate}`,
           entityType: "ooo_request",
@@ -2179,7 +2179,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `OOO request ${status}`,
         details: `Leave request was ${status}`,
         entityType: "ooo_request",
@@ -2339,7 +2339,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "draft",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
     }
 
@@ -2349,7 +2349,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -2367,7 +2367,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: req.authenticatedUser!.organizationId!,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -2412,7 +2412,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "submitted",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       const updated = await storage.updateTimesheet(created.id, {
         submittedAt: new Date(),
@@ -2429,7 +2429,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -2447,7 +2447,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: req.authenticatedUser!.organizationId!,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -2460,7 +2460,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId,
-      organizationId: req.authenticatedUser!.organizationId,
+      organizationId: req.authenticatedUser!.organizationId!,
       action: "Timesheet submitted",
       details: `Submitted timesheet for ${month}/${year} with ${totalHours} hours`,
       entityType: "timesheet",
@@ -2756,14 +2756,14 @@ export async function registerRoutes(
         requestedHours,
         isWeekendWork: !!isWeekendWork,
         status: "pending",
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
       });
       const submitter = await storage.getUser(timesheet!.userId);
 
       try {
         await storage.createActivityLog({
           userId: timesheet!.userId,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: "Overtime request created",
           details: `Requested ${requestedHours - 8} overtime hours for ${date}`,
           entityType: "overtime_request",
@@ -2866,7 +2866,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Overtime request ${req.body.status}`,
         details: `Overtime request was ${req.body.status}`,
         entityType: "overtime_request",
@@ -2983,10 +2983,12 @@ export async function registerRoutes(
       // Force userId to the caller — never trust the client for who an invoice belongs to
       const userId = currentUser.id;
       const {
-        month, year, issueDate, invoiceNumber, fileName, fileUrl, amount, subtotal,
+        month, year, issueDate, fileName, fileUrl, amount, subtotal,
         contractorName, contractorAddress, contractorPhone, contractorEmail, contractorVatNo,
         billToName, billToAddress, billToVatNo, bankDetails,
       } = req.body;
+      // invoiceNumber is never trusted from the client — storage.createInvoice
+      // assigns it atomically, scoped per organization, to avoid duplicates.
 
       // Link invoice to timesheet if exists
       const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
@@ -3008,7 +3010,6 @@ export async function registerRoutes(
         month,
         year,
         issueDate,
-        invoiceNumber,
         fileName,
         fileUrl,
         amount,
@@ -3025,7 +3026,7 @@ export async function registerRoutes(
         currency: invoiceCurrency,
         status: "pending_review" as const,
         timesheetId: timesheet?.id || null,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
       };
 
       const invoice = await storage.createInvoice(invoiceData);
@@ -3039,7 +3040,7 @@ export async function registerRoutes(
 
         await storage.createActivityLog({
           userId,
-          organizationId: req.authenticatedUser!.organizationId,
+          organizationId: req.authenticatedUser!.organizationId!,
           action: "Timesheet auto-submitted",
           details: `Timesheet for ${month}/${year} submitted for approval with invoice`,
           entityType: "timesheet",
@@ -3049,7 +3050,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: "Invoice submitted for review",
         details: `Submitted invoice ${fileName} for approval`,
         entityType: "invoice",
@@ -3093,7 +3094,13 @@ export async function registerRoutes(
       if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.userId, { allowSupervisor: true }))) {
         return;
       }
-      const invoiceNumber = await storage.getNextInvoiceNumber(req.params.userId);
+      const targetUser = await storage.getUser(req.params.userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Preview only — the number actually assigned to the invoice is computed
+      // atomically at creation time and may differ if another invoice lands first.
+      const invoiceNumber = await storage.getNextInvoiceNumber(targetUser.organizationId ?? "");
       res.json({ invoiceNumber });
     } catch (error) {
       res.status(500).json({ error: "Failed to get next invoice number" });
@@ -3329,7 +3336,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: user.id,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
         action: "Invoice marked as paid",
         details: `Marked invoice ${invoice.invoiceNumber} as paid${paymentReference ? ` (ref: ${paymentReference})` : ""}`,
         entityType: "invoice",
@@ -3438,7 +3445,7 @@ export async function registerRoutes(
         total,
         sortOrder,
         invoiceId: req.params.invoiceId,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
       });
       res.status(201).json(lineItem);
     } catch (error) {
@@ -3517,7 +3524,7 @@ export async function registerRoutes(
         icId,
         responsibility: responsibilityText,
         isActive,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
       });
       res.status(201).json(responsibility);
     } catch (error) {
@@ -3636,7 +3643,7 @@ export async function registerRoutes(
       }
 
       const insertPayload: InsertContract = {
-        organizationId: currentUser.organizationId ?? null,
+        organizationId: currentUser.organizationId!,
         userId,
         title: String(title),
         startDate: startDateStr,
@@ -3650,7 +3657,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: "Contract uploaded",
         details: `Uploaded contract "${title}" for ${contractor.firstName} ${contractor.lastName}`,
         entityType: "contract",
@@ -3679,7 +3686,7 @@ export async function registerRoutes(
     }
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Contract deleted",
       details: `Deleted contract "${contract.title}"`,
       entityType: "contract",
@@ -3869,7 +3876,7 @@ export async function registerRoutes(
     const year = dateObj.getUTCFullYear();
 
     const insertPayload: InsertExpense = {
-      organizationId: owner.organizationId ?? null,
+      organizationId: owner.organizationId!,
       userId: owner.id,
       managerId: owner.supervisorId || owner.managerId || null,
       amount: Math.round(amountNum),
@@ -3888,7 +3895,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Expense submitted",
       details: `${owner.firstName} ${owner.lastName} submitted a ${categoryStr} expense for ${currencyCode} ${(amountNum / 100).toFixed(2)}`,
       entityType: "expense",
@@ -3944,7 +3951,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: statusStr === "approved" ? "Expense approved" : "Expense rejected",
       details: submitter
         ? `${statusStr === "approved" ? "Approved" : "Rejected"} expense for ${submitter.firstName} ${submitter.lastName}`
@@ -3986,7 +3993,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Expense deleted",
       details: `Deleted expense for ${expense.currency} ${(expense.amount / 100).toFixed(2)}`,
       entityType: "expense",
@@ -4144,17 +4151,17 @@ export async function registerRoutes(
       periodStart: req.body.periodStart,
       periodEnd: req.body.periodEnd,
       status: "draft",
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
     };
-    
+
     try {
       const evaluation = await storage.createEvaluation(evaluationData);
 
-      await storage.createDefaultSectionsForEvaluation(evaluation.id);
+      await storage.createDefaultSectionsForEvaluation(evaluation.id, evaluation.organizationId);
 
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: isCreatingSelfEvaluation ? "Self-evaluation started" : "Evaluation created",
         details: `Created performance evaluation for period ${req.body.periodStart} to ${req.body.periodEnd}`,
         entityType: "evaluation",
@@ -4585,13 +4592,13 @@ export async function registerRoutes(
         evaluationId: req.body.evaluationId,
         invitedById: currentUser.id,
         invitedUserId: invitedUser?.id || "unknown",
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
       });
 
       try {
         await storage.createActivityLog({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: "Feedback invitation sent",
           details: `Invited ${req.body.email} to provide feedback`,
           entityType: "evaluation",
@@ -4760,8 +4767,13 @@ export async function registerRoutes(
     
     let prefs = await storage.getNotificationPreferences(userId as string);
     if (!prefs) {
+      const targetUser = await storage.getUser(userId as string);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
       prefs = await storage.createNotificationPreferences({
         userId: userId as string,
+        organizationId: targetUser.organizationId!,
         inAppEnabled: true,
         emailEnabled: false,
         oooNotifications: true,
@@ -5774,7 +5786,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update timesheet");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `Timesheet ${status}`,
           details: `Timesheet for ${existing.month}/${existing.year} was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "timesheet",
@@ -5799,7 +5811,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk timesheet ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} timesheets (${summary.failureCount} failed)`,
         entityType: "timesheet",
@@ -5853,7 +5865,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update request");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `OOO request ${status}`,
           details: `Leave request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "ooo_request",
@@ -5877,7 +5889,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk OOO ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} leave requests (${summary.failureCount} failed)`,
         entityType: "ooo_request",
@@ -5937,7 +5949,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update request");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `Overtime request ${status}`,
           details: `Overtime request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "overtime_request",
@@ -5976,7 +5988,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk overtime ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} overtime requests (${summary.failureCount} failed)`,
         entityType: "overtime_request",
@@ -6027,7 +6039,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update expense");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: status === "approved" ? "Expense approved" : "Expense rejected",
           details: `${status === "approved" ? "Approved" : "Rejected"} expense ${expense.id}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "expense",
@@ -6051,7 +6063,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk expense ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} expenses (${summary.failureCount} failed)`,
         entityType: "expense",
@@ -6109,7 +6121,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update invoice");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: status === "approved" ? "Invoice approved" : "Invoice rejected",
           details: `${status === "approved" ? "Approved" : "Rejected"} invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "invoice",
@@ -6149,7 +6161,7 @@ export async function registerRoutes(
               try {
                 await storage.createActivityLog({
                   userId: currentUser.id,
-                  organizationId: currentUser.organizationId,
+                  organizationId: currentUser.organizationId!,
                   action: "Timesheet unlocked for revision",
                   details: `Timesheet unlocked due to invoice rejection`,
                   entityType: "timesheet",
@@ -6168,7 +6180,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk invoice ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} invoices (${summary.failureCount} failed)`,
         entityType: "invoice",
@@ -6381,16 +6393,16 @@ export async function registerRoutes(
 
   app.get("/api/admin/blog-subscribers", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const { getSubscribers } = await import("./seo/emailCapture");
-    res.json(getSubscribers());
+    res.json(await getSubscribers());
   }));
 
   app.get("/api/admin/blog", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getBlogArticles());
+    res.json(await getBlogArticles());
   }));
 
   app.get("/api/admin/blog-analytics", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    const articles = getBlogArticles();
-    const viewStats = getAllViewStats();
+    const articles = await getBlogArticles();
+    const viewStats = await getAllViewStats();
     const analytics = articles.map((a) => {
       const stats = viewStats[a.slug] ?? { views: 0, referrers: {} };
       return {
@@ -6410,7 +6422,7 @@ export async function registerRoutes(
     if (validationError) return res.status(400).json({ error: validationError });
     const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
     try {
-      const article = createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
+      const article = await createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
       res.status(201).json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -6439,7 +6451,7 @@ export async function registerRoutes(
       return res.status(400).json({ error: "metaDescription must be 160 characters or fewer" });
     }
     try {
-      const article = updateArticle(req.params.slug, updates);
+      const article = await updateArticle(req.params.slug, updates);
       res.json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -6448,14 +6460,14 @@ export async function registerRoutes(
 
   app.delete("/api/admin/blog/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try {
-      deleteArticle(req.params.slug);
+      await deleteArticle(req.params.slug);
       res.json({ success: true });
     } catch (err) {
       handleBlogError(err, res as any);
     }
   }));
 
-  app.post("/api/blog/subscribe", (req, res) => {
+  app.post("/api/blog/subscribe", asyncHandler(async (req, res) => {
     const email = (req.body?.email ?? "").toString().trim();
     const rawReturnTo = (req.body?.returnTo ?? "/blog").toString().trim();
     const returnTo = /^\/blog(\/[a-z0-9-]*)?$/.test(rawReturnTo) ? rawReturnTo : "/blog";
@@ -6463,8 +6475,8 @@ export async function registerRoutes(
     if (!email || !isValidEmail(email)) {
       const opts = { error: "Please enter a valid email address." };
       const html = returnTo.startsWith("/blog/")
-        ? getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
-        : getBlogIndexHtml(opts);
+        ? await getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
+        : await getBlogIndexHtml(opts);
       if (!html) {
         res.redirect(`${returnTo}?error=invalid`);
         return;
@@ -6475,35 +6487,35 @@ export async function registerRoutes(
       return;
     }
 
-    addSubscriber(email, returnTo);
+    await addSubscriber(email, returnTo);
     res.redirect(`${returnTo}?subscribed=1`);
-  });
+  }));
 
-  app.get("/blog", (req, res) => {
+  app.get("/blog", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
-    res.send(getBlogIndexHtml({ subscribed }));
-  });
+    res.send(await getBlogIndexHtml({ subscribed }));
+  }));
 
-  app.get("/blog/:slug", (req, res) => {
+  app.get("/blog/:slug", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
-    const html = getBlogArticleHtml(req.params.slug, { subscribed });
+    const html = await getBlogArticleHtml(req.params.slug, { subscribed });
     if (!html) {
       res.status(404).send("<h1>Article not found</h1>");
       return;
     }
     if (!subscribed) {
-      recordView(req.params.slug, req.headers.referer);
+      await recordView(req.params.slug, req.headers.referer);
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: industry pages ──
-  app.get("/contractor-management-for-:industry", (req, res) => {
-    const html = getIndustryHtml(req.params.industry);
+  app.get("/contractor-management-for-:industry", asyncHandler(async (req, res) => {
+    const html = await getIndustryHtml(req.params.industry);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -6511,24 +6523,24 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
-  app.get("/industries", (_req, res) => {
+  app.get("/industries", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getIndustriesIndexHtml());
-  });
+    res.send(await getIndustriesIndexHtml());
+  }));
 
   // ── Programmatic SEO: competitor comparison pages ──
-  app.get("/compare", (_req, res) => {
+  app.get("/compare", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getCompetitorsIndexHtml());
-  });
+    res.send(await getCompetitorsIndexHtml());
+  }));
 
-  app.get(/^\/([a-z0-9-]+-alternative)$/, (req, res) => {
+  app.get(/^\/([a-z0-9-]+-alternative)$/, asyncHandler(async (req, res) => {
     const slug = req.params[0];
-    const html = getCompetitorHtml(slug);
+    const html = await getCompetitorHtml(slug);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -6536,7 +6548,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: admin CRUD ──
   const ALLOWED_STATUSES = new Set(["draft", "published"]);
@@ -6585,37 +6597,37 @@ export async function registerRoutes(
   }
 
   app.get("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getIndustries());
+    res.json(await getIndustries());
   }));
   app.post("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getCompetitors());
+    res.json(await getCompetitors());
   }));
   app.post("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/faq", (_req, res) => {
@@ -6653,9 +6665,9 @@ export async function registerRoutes(
 
   const BASE_URL = CANONICAL_ORIGIN;
 
-  app.get("/sitemap.xml", (_req, res) => {
+  app.get("/sitemap.xml", asyncHandler(async (_req, res) => {
     const today = new Date().toISOString().slice(0, 10);
-    const articles = getBlogArticles();
+    const articles = await getBlogArticles();
     const mostRecentArticleDate = articles.reduce(
       (max, a) => (a.updatedDate > max ? a.updatedDate : max),
       articles[0]?.updatedDate ?? today
@@ -6666,13 +6678,13 @@ export async function registerRoutes(
       changefreq: "monthly" as const,
       priority: "0.7",
     }));
-    const industryUrls = getPublishedIndustries().map((i) => ({
+    const industryUrls = (await getPublishedIndustries()).map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = (await getPublishedCompetitors()).map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -6692,16 +6704,16 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-programmatic.xml", (_req, res) => {
-    const industryUrls = getPublishedIndustries().map((i) => ({
+  app.get("/sitemap-programmatic.xml", asyncHandler(async (_req, res) => {
+    const industryUrls = (await getPublishedIndustries()).map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = (await getPublishedCompetitors()).map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -6717,10 +6729,10 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-blog.xml", (_req, res) => {
-    const articles = getBlogArticles();
+  app.get("/sitemap-blog.xml", asyncHandler(async (_req, res) => {
+    const articles = await getBlogArticles();
     const articleUrls = articles.map((a) => ({
       loc: `${BASE_URL}/blog/${a.slug}`,
       lastmod: a.updatedDate,
@@ -6734,7 +6746,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
   return httpServer;
 }

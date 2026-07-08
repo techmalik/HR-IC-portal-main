@@ -129,7 +129,10 @@ export const subscriptions = pgTable("subscriptions", {
   scheduledDowngradeAt: timestamp("scheduled_downgrade_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("subscriptions_organization_id_idx").on(table.organizationId),
+  index("subscriptions_paystack_customer_code_idx").on(table.paystackCustomerCode),
+]);
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   id: true,
@@ -199,7 +202,7 @@ export const users = pgTable("users", {
   organizationId: varchar("organization_id").references(() => organizations.id),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  email: text("email").notNull(),
+  email: text("email").notNull().unique(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: text("role").notNull().default("ic"),
@@ -220,6 +223,7 @@ export const users = pgTable("users", {
 }, (table) => [
   index("users_organization_id_idx").on(table.organizationId),
   index("users_supervisor_id_idx").on(table.supervisorId),
+  index("users_manager_id_idx").on(table.managerId),
 ]);
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -234,7 +238,7 @@ export type User = typeof users.$inferSelect;
 // ---------------------------------------------------------------------------
 export const contracts = pgTable("contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   startDate: date("start_date").notNull(),
@@ -282,7 +286,7 @@ export type ExpenseStatusValue = (typeof ExpenseStatus)[keyof typeof ExpenseStat
 
 export const expenses = pgTable("expenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   managerId: varchar("manager_id"),
   amount: integer("amount").notNull(),
@@ -307,6 +311,7 @@ export const expenses = pgTable("expenses", {
   index("expenses_organization_id_idx").on(table.organizationId),
   index("expenses_status_idx").on(table.status),
   index("expenses_user_year_month_idx").on(table.userId, table.year, table.month),
+  index("expenses_invoice_id_idx").on(table.invoiceId),
 ]);
 
 export const insertExpenseSchema = createInsertSchema(expenses).omit({
@@ -337,7 +342,7 @@ export type OOOTypeValue = (typeof OOOType)[keyof typeof OOOType];
 // ---------------------------------------------------------------------------
 export const oooRequests = pgTable("ooo_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   managerId: varchar("manager_id").notNull(),
   startDate: date("start_date").notNull(),
@@ -353,6 +358,7 @@ export const oooRequests = pgTable("ooo_requests", {
   index("ooo_requests_user_id_idx").on(table.userId),
   index("ooo_requests_manager_id_idx").on(table.managerId),
   index("ooo_requests_status_idx").on(table.status),
+  index("ooo_requests_organization_id_idx").on(table.organizationId),
 ]);
 
 export const insertOOORequestSchema = createInsertSchema(oooRequests).omit({
@@ -371,7 +377,7 @@ export type OOORequest = typeof oooRequests.$inferSelect;
 // ---------------------------------------------------------------------------
 export const timesheets = pgTable("timesheets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
@@ -403,7 +409,7 @@ export type Timesheet = typeof timesheets.$inferSelect;
 // ---------------------------------------------------------------------------
 export const dailyEntries = pgTable("daily_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   timesheetId: varchar("timesheet_id").notNull().references(() => timesheets.id, { onDelete: "cascade" }),
   date: date("date").notNull(),
   hours: integer("hours").notNull().default(0),
@@ -411,6 +417,7 @@ export const dailyEntries = pgTable("daily_entries", {
 }, (table) => [
   index("daily_entries_timesheet_id_idx").on(table.timesheetId),
   index("daily_entries_date_idx").on(table.date),
+  uniqueIndex("daily_entries_timesheet_date_idx").on(table.timesheetId, table.date),
 ]);
 
 export const insertDailyEntrySchema = createInsertSchema(dailyEntries).omit({
@@ -425,7 +432,7 @@ export type DailyEntry = typeof dailyEntries.$inferSelect;
 // ---------------------------------------------------------------------------
 export const overtimeRequests = pgTable("overtime_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   timesheetId: varchar("timesheet_id").notNull().references(() => timesheets.id),
   date: date("date").notNull(),
@@ -441,6 +448,7 @@ export const overtimeRequests = pgTable("overtime_requests", {
   index("overtime_requests_user_id_idx").on(table.userId),
   index("overtime_requests_timesheet_id_idx").on(table.timesheetId),
   index("overtime_requests_status_idx").on(table.status),
+  uniqueIndex("overtime_requests_user_date_idx").on(table.userId, table.date),
 ]);
 
 export const insertOvertimeRequestSchema = createInsertSchema(overtimeRequests).omit({
@@ -460,7 +468,7 @@ export type OvertimeRequest = typeof overtimeRequests.$inferSelect;
 // ---------------------------------------------------------------------------
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   invoiceNumber: text("invoice_number").notNull(),
   month: integer("month").notNull(),
@@ -495,15 +503,21 @@ export const invoices = pgTable("invoices", {
   index("invoices_status_idx").on(table.status),
   index("invoices_user_year_month_idx").on(table.userId, table.year, table.month),
   index("invoices_user_organization_idx").on(table.userId, table.organizationId),
+  index("invoices_timesheet_id_idx").on(table.timesheetId),
+  uniqueIndex("invoices_organization_invoice_number_idx").on(table.organizationId, table.invoiceNumber),
 ]);
 
-export const insertInvoiceSchema = createInsertSchema(invoices).omit({
-  id: true,
-  uploadedAt: true,
-  reviewedBy: true,
-  reviewedAt: true,
-  reviewNote: true,
-});
+export const insertInvoiceSchema = createInsertSchema(invoices)
+  .omit({
+    id: true,
+    uploadedAt: true,
+    reviewedBy: true,
+    reviewedAt: true,
+    reviewNote: true,
+  })
+  // invoiceNumber is assigned atomically by storage.createInvoice, never
+  // trusted from the client — see P3-2 in the audit plan.
+  .partial({ invoiceNumber: true });
 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
@@ -513,7 +527,7 @@ export type Invoice = typeof invoices.$inferSelect;
 // ---------------------------------------------------------------------------
 export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
   description: text("description").notNull(),
   quantity: integer("quantity").notNull(),
@@ -522,6 +536,7 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   sortOrder: integer("sort_order").notNull().default(0),
 }, (table) => [
   index("invoice_line_items_invoice_id_idx").on(table.invoiceId),
+  index("invoice_line_items_organization_id_idx").on(table.organizationId),
 ]);
 
 export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
@@ -536,7 +551,7 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 // ---------------------------------------------------------------------------
 export const icPaymentDetails = pgTable("ic_payment_details", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().unique().references(() => users.id),
   bankName: text("bank_name"),
   accountHolderFirstName: text("account_holder_first_name"),
@@ -575,7 +590,7 @@ export type EvaluationStatusType = (typeof EvaluationStatus)[keyof typeof Evalua
 // ---------------------------------------------------------------------------
 export const icResponsibilities = pgTable("ic_responsibilities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   icId: varchar("ic_id").notNull().references(() => users.id),
   responsibility: text("responsibility").notNull(),
   isActive: boolean("is_active").notNull().default(true),
@@ -612,7 +627,7 @@ export type EvaluationOutcome = typeof EVALUATION_OUTCOMES[number]["value"];
 // ---------------------------------------------------------------------------
 export const evaluations = pgTable("evaluations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   icId: varchar("ic_id").notNull().references(() => users.id),
   managerId: varchar("manager_id").notNull().references(() => users.id),
   periodStart: date("period_start").notNull(),
@@ -719,7 +734,7 @@ export type Evaluation = typeof evaluations.$inferSelect;
 // ---------------------------------------------------------------------------
 export const evaluationSections = pgTable("evaluation_sections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   evaluationId: varchar("evaluation_id").notNull().references(() => evaluations.id, { onDelete: "cascade" }),
   sectionNumber: integer("section_number").notNull(),
   sectionName: text("section_name").notNull(),
@@ -780,7 +795,7 @@ export const DEFAULT_EVALUATION_SECTIONS = [
 // ---------------------------------------------------------------------------
 export const feedbackInvitations = pgTable("feedback_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   evaluationId: varchar("evaluation_id").notNull().references(() => evaluations.id, { onDelete: "cascade" }),
   invitedById: varchar("invited_by_id").notNull().references(() => users.id),
   invitedUserId: varchar("invited_user_id").notNull().references(() => users.id),
@@ -807,7 +822,7 @@ export type FeedbackInvitation = typeof feedbackInvitations.$inferSelect;
 // ---------------------------------------------------------------------------
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull(),
   action: text("action").notNull(),
   details: text("details"),
@@ -870,7 +885,7 @@ export type NotificationTypeValue = (typeof NotificationType)[keyof typeof Notif
 // ---------------------------------------------------------------------------
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   actorId: varchar("actor_id"),
   type: text("type").notNull(),
@@ -900,7 +915,7 @@ export type Notification = typeof notifications.$inferSelect;
 // ---------------------------------------------------------------------------
 export const notificationPreferences = pgTable("notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id"),
+  organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull().unique().references(() => users.id),
   inAppEnabled: boolean("in_app_enabled").notNull().default(true),
   emailEnabled: boolean("email_enabled").notNull().default(true),
@@ -968,6 +983,83 @@ export const sessions = pgTable("sessions", {
 export const insertSessionSchema = createInsertSchema(sessions);
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// SEO / marketing content — previously JSON-file-backed (data/*.json), moved
+// to Postgres because Replit Autoscale filesystems are ephemeral and
+// per-instance (P3-1).
+// ---------------------------------------------------------------------------
+export const emailSubscribers = pgTable("email_subscribers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  source: text("source").notNull(),
+  subscribedAt: timestamp("subscribed_at").notNull().defaultNow(),
+});
+
+export type EmailSubscriberRow = typeof emailSubscribers.$inferSelect;
+
+export const blogArticlesTable = pgTable("blog_articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  seoTitle: text("seo_title"),
+  metaDescription: text("meta_description").notNull(),
+  publishedDate: text("published_date").notNull(),
+  updatedDate: text("updated_date").notNull(),
+  readingMinutes: integer("reading_minutes").notNull(),
+  excerpt: text("excerpt").notNull(),
+  bodyHtml: text("body_html").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type BlogArticleRow = typeof blogArticlesTable.$inferSelect;
+
+export const blogViewStats = pgTable("blog_view_stats", {
+  slug: text("slug").primaryKey(),
+  views: integer("views").notNull().default(0),
+  referrers: jsonb("referrers").notNull().default({}),
+});
+
+export type BlogViewStatsRow = typeof blogViewStats.$inferSelect;
+
+export const programmaticIndustries = pgTable("programmatic_industries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  shortName: text("short_name").notNull(),
+  heroTitle: text("hero_title").notNull(),
+  metaTitle: text("meta_title").notNull(),
+  metaDescription: text("meta_description").notNull(),
+  intro: text("intro").notNull(),
+  painPoints: jsonb("pain_points").notNull().$type<string[]>(),
+  useCases: jsonb("use_cases").notNull().$type<{ title: string; description: string }[]>(),
+  faqs: jsonb("faqs").notNull().$type<{ q: string; a: string }[]>(),
+  updatedDate: text("updated_date").notNull(),
+  status: text("status").notNull().default("published"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type ProgrammaticIndustryRow = typeof programmaticIndustries.$inferSelect;
+
+export const programmaticCompetitors = pgTable("programmatic_competitors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  competitorName: text("competitor_name").notNull(),
+  metaTitle: text("meta_title").notNull(),
+  metaDescription: text("meta_description").notNull(),
+  intro: text("intro").notNull(),
+  positioning: text("positioning").notNull(),
+  competitorWeaknesses: jsonb("competitor_weaknesses").notNull().$type<string[]>(),
+  axleStrengths: jsonb("axle_strengths").notNull().$type<string[]>(),
+  comparison: jsonb("comparison").notNull().$type<{ feature: string; axle: string; competitor: string }[]>(),
+  pricingNote: text("pricing_note").notNull(),
+  faqs: jsonb("faqs").notNull().$type<{ q: string; a: string }[]>(),
+  updatedDate: text("updated_date").notNull(),
+  status: text("status").notNull().default("published"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type ProgrammaticCompetitorRow = typeof programmaticCompetitors.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Shared price helper — used by both server metrics and billing display

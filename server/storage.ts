@@ -66,7 +66,7 @@ import {
   DEFAULT_EVALUATION_SECTIONS,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, or, inArray, isNull } from "drizzle-orm";
+import { eq, and, desc, or, inArray, isNull, sql, count } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const SALT_ROUNDS = 12;
@@ -139,7 +139,7 @@ export interface IStorage {
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<boolean>;
-  getNextInvoiceNumber(userId: string): Promise<string>;
+  getNextInvoiceNumber(organizationId: string): Promise<string>;
 
   getInvoiceLineItems(invoiceId: string): Promise<InvoiceLineItem[]>;
   createInvoiceLineItem(lineItem: InsertInvoiceLineItem): Promise<InvoiceLineItem>;
@@ -167,7 +167,7 @@ export interface IStorage {
   getEvaluationSection(id: string): Promise<EvaluationSection | undefined>;
   createEvaluationSection(section: InsertEvaluationSection): Promise<EvaluationSection>;
   updateEvaluationSection(id: string, updates: Partial<EvaluationSection>): Promise<EvaluationSection | undefined>;
-  createDefaultSectionsForEvaluation(evaluationId: string): Promise<EvaluationSection[]>;
+  createDefaultSectionsForEvaluation(evaluationId: string, organizationId: string): Promise<EvaluationSection[]>;
 
   getFeedbackInvitation(id: string): Promise<FeedbackInvitation | undefined>;
   getFeedbackInvitationsByEvaluation(evaluationId: string): Promise<FeedbackInvitation[]>;
@@ -266,7 +266,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    // Soft-delete: hard deletes fail on any contractor with timesheets/invoices/etc.
+    // (mixed cascade/no-action FK behavior), so deactivate and anonymize instead.
+    const result = await db
+      .update(users)
+      .set({
+        isActive: false,
+        email: `deleted-${id}@deleted.axlehq.app`,
+        username: `deleted-${id}`,
+      })
+      .where(eq(users.id, id))
+      .returning();
     return result.length > 0;
   }
 
@@ -303,10 +313,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSupervisors(organizationId: string): Promise<User[]> {
-    if (organizationId === ALL_ORGS) {
-      return db.select().from(users);
-    }
-    return db.select().from(users).where(eq(users.organizationId, organizationId));
+    // A "supervisor" is anyone who can approve on someone else's behalf: an
+    // admin/owner, or an IC who has at least one direct report. Mirrors the
+    // definition used by hasSupervisorPrivileges/getManagers in routes.ts.
+    return this.getManagers(organizationId);
   }
 
   async getOOORequest(id: string): Promise<OOORequest | undefined> {
@@ -504,8 +514,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
-    const result = await db.insert(invoices).values(invoice).returning();
-    return result[0];
+    // Invoice numbers must be unique per org (DB-enforced via a unique index),
+    // so compute the count and insert inside one transaction serialized by an
+    // advisory lock — otherwise two concurrent submissions can race on the
+    // same JS-computed count and produce duplicate numbers.
+    const organizationId = invoice.organizationId ?? "";
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${organizationId} || ':' || ${invoice.year}))`);
+      const [{ value: existingCount }] = await tx
+        .select({ value: count() })
+        .from(invoices)
+        .where(and(eq(invoices.organizationId, organizationId), eq(invoices.year, invoice.year)));
+      const invoiceNumber = `INV-${invoice.year}-${(existingCount + 1).toString().padStart(3, "0")}`;
+      const [row] = await tx
+        .insert(invoices)
+        .values({ ...invoice, invoiceNumber })
+        .returning();
+      return row;
+    });
   }
 
   async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined> {
@@ -519,11 +545,15 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getNextInvoiceNumber(userId: string): Promise<string> {
-    const userInvoices = await this.getInvoicesByUser(userId);
+  async getNextInvoiceNumber(organizationId: string): Promise<string> {
+    // Best-effort preview only (not used for the number actually assigned at
+    // creation, see createInvoice) — a SQL count is enough here.
     const year = new Date().getFullYear();
-    const count = userInvoices.filter(i => i.year === year).length + 1;
-    return `INV-${year}-${count.toString().padStart(3, "0")}`;
+    const [{ value: existingCount }] = await db
+      .select({ value: count() })
+      .from(invoices)
+      .where(and(eq(invoices.organizationId, organizationId), eq(invoices.year, year)));
+    return `INV-${year}-${(existingCount + 1).toString().padStart(3, "0")}`;
   }
 
   async getInvoiceLineItems(invoiceId: string): Promise<InvoiceLineItem[]> {
@@ -635,11 +665,12 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createDefaultSectionsForEvaluation(evaluationId: string): Promise<EvaluationSection[]> {
+  async createDefaultSectionsForEvaluation(evaluationId: string, organizationId: string): Promise<EvaluationSection[]> {
     const sections: EvaluationSection[] = [];
     for (const template of DEFAULT_EVALUATION_SECTIONS) {
       const section = await this.createEvaluationSection({
         evaluationId,
+        organizationId,
         sectionNumber: template.sectionNumber,
         sectionName: template.sectionName,
         question: template.question,
@@ -696,8 +727,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {
-    const unread = await this.getUnreadNotificationsByUser(userId);
-    return unread.length;
+    const [row] = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return row?.count ?? 0;
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {

@@ -11,8 +11,8 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function getRelatedArticles(currentSlug: string, count = 3): BlogArticle[] {
-  const articles = getArticles();
+async function getRelatedArticles(currentSlug: string, count = 3): Promise<BlogArticle[]> {
+  const articles = await getArticles();
   const others = articles.filter((a) => a.slug !== currentSlug);
   const idx = articles.findIndex((a) => a.slug === currentSlug);
   const offset = (idx * 3) % (others.length || 1);
@@ -55,8 +55,8 @@ export interface BlogPageOptions {
   error?: string;
 }
 
-export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
-  const articles = getArticles();
+export async function getBlogIndexHtml(opts: BlogPageOptions = {}): Promise<string> {
+  const articles = await getArticles();
   const cardsHtml = articles
     .map(
       (a) => `
@@ -109,11 +109,11 @@ export function getBlogIndexHtml(opts: BlogPageOptions = {}): string {
   });
 }
 
-export function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): string | null {
-  const article = getArticleBySlug(slug);
+export async function getBlogArticleHtml(slug: string, opts: BlogPageOptions = {}): Promise<string | null> {
+  const article = await getArticleBySlug(slug);
   if (!article) return null;
 
-  const related = getRelatedArticles(slug);
+  const related = await getRelatedArticles(slug);
   const relatedCardsHtml = related
     .map(
       (r) => `
