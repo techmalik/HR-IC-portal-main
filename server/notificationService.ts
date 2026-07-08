@@ -220,8 +220,8 @@ export async function notifyTimesheetSubmitted(
   // Collect unique recipient IDs to avoid duplicate notifications
   const recipientIds = new Set<string>();
 
-  // Add all admins (except the submitter)
-  const admins = await storage.getUsersByRole("admin");
+  // Add all admins in the submitter's org (except the submitter)
+  const admins = await storage.getUsersByRole("admin", submitter.organizationId || "");
   for (const admin of admins) {
     if (admin.id !== submitter.id) {
       recipientIds.add(admin.id);
@@ -283,9 +283,9 @@ export async function notifyTimesheetApproved(
     });
   }
 
-  // Notify admins if reviewer is a supervisor (not admin) who approved their team member's timesheet
+  // Notify admins in the timesheet owner's org if reviewer is a supervisor (not admin) who approved their team member's timesheet
   if (reviewer.role !== "admin") {
-    const admins = await storage.getUsersByRole("admin");
+    const admins = await storage.getUsersByRole("admin", timesheetOwner?.organizationId || reviewer.organizationId || "");
     for (const admin of admins) {
       await createNotification(admin.id, {
         type: "timesheet_approved",
@@ -338,9 +338,9 @@ export async function notifyTimesheetRejected(
     });
   }
 
-  // Notify admins if reviewer is a supervisor (not admin) who rejected their team member's timesheet
+  // Notify admins in the timesheet owner's org if reviewer is a supervisor (not admin) who rejected their team member's timesheet
   if (reviewer.role !== "admin") {
-    const admins = await storage.getUsersByRole("admin");
+    const admins = await storage.getUsersByRole("admin", timesheetOwner?.organizationId || reviewer.organizationId || "");
     for (const admin of admins) {
       await createNotification(admin.id, {
         type: "timesheet_rejected",
@@ -426,7 +426,7 @@ export async function notifyInvoiceUploaded(
   invoice: any,
   uploader: User
 ): Promise<void> {
-  const admins = await storage.getUsersByRole("admin");
+  const admins = await storage.getUsersByRole("admin", uploader.organizationId || "");
   const emailDetails = {
     "Invoice Number": invoice.invoiceNumber,
     "Period": `${invoice.month}/${invoice.year}`,
@@ -527,8 +527,8 @@ export async function notifyContractExpiring(
   contract: Contract,
   contractor: User
 ): Promise<void> {
-  const admins = await storage.getUsersByRole("admin", contractor.organizationId || undefined);
-  const owners = await storage.getUsersByRole("owner", contractor.organizationId || undefined);
+  const admins = await storage.getUsersByRole("admin", contractor.organizationId || "");
+  const owners = await storage.getUsersByRole("owner", contractor.organizationId || "");
   const recipients = [...admins, ...owners];
   const seen = new Set<string>();
   const daysUntil = Math.ceil(

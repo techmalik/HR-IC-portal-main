@@ -124,6 +124,8 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_LOGIN_ATTEMPTS = 5;
 
+const MIN_PASSWORD_LENGTH = 10;
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const attempts = loginAttempts.get(ip);
@@ -142,8 +144,15 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-function resetRateLimit(ip: string): void {
-  loginAttempts.delete(ip);
+function resetRateLimit(key: string): void {
+  loginAttempts.delete(key);
+}
+
+// req.ip resolves the real client address from X-Forwarded-For once
+// `trust proxy` is set (server/index.ts) — fall back to the raw socket for
+// safety if that's ever misconfigured.
+function getClientIp(req: Request): string {
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
 // Get current user from session cookie
@@ -537,16 +546,19 @@ export async function registerRoutes(
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
-    const clientIp = req.socket?.remoteAddress || req.ip || 'unknown';
-    
-    if (!checkRateLimit(clientIp)) {
-      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
-    }
-    
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
+    }
+
+    // Key on ip+username so one attacker guessing one account can't lock out
+    // every user sharing that IP, and so distributed guessing against many
+    // accounts from one IP still gets throttled per account.
+    const clientIp = getClientIp(req);
+    const rateLimitKey = `${clientIp}:${String(username).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
     }
 
     const user = await storage.getUserByUsername(username);
@@ -580,7 +592,7 @@ export async function registerRoutes(
     }
 
     // Successful login - reset rate limit
-    resetRateLimit(clientIp);
+    resetRateLimit(rateLimitKey);
 
     const sessionToken = await createSession(user.id, user.username);
 
@@ -626,8 +638,15 @@ export async function registerRoutes(
       return res.status(400).json({ error: "All fields are required: firstName, lastName, email, password, organizationName" });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    // Org-creation is unthrottled otherwise — key on ip+email so spamming
+    // signups against one address (or one target email) gets rate-limited.
+    const rateLimitKey = `register:${getClientIp(req)}:${String(email).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many registration attempts. Please wait 1 minute." });
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     const existingByEmail = await storage.getUserByEmail(email);
@@ -726,14 +745,15 @@ export async function registerRoutes(
 
   // Back-office dedicated auth endpoints — use bo_session_token cookie
   app.post("/api/backoffice/auth/login", async (req, res) => {
-    const clientIp = req.socket?.remoteAddress || req.ip || "unknown";
-    if (!checkRateLimit(clientIp)) {
-      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
-    }
-
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
+    }
+
+    const clientIp = getClientIp(req);
+    const rateLimitKey = `bo:${clientIp}:${String(username).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
     }
 
     const user = await storage.getUserByUsername(username);
@@ -759,7 +779,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Access denied — platform admins only" });
     }
 
-    resetRateLimit(clientIp);
+    resetRateLimit(rateLimitKey);
 
     const sessionToken = await createSession(user.id, user.username, "backoffice");
 
@@ -1285,20 +1305,20 @@ export async function registerRoutes(
 
   // User routes - protected with auth middleware
   app.get("/api/users", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
-    const orgId = req.authenticatedUser!.organizationId ?? undefined;
+    const orgId = req.authenticatedUser!.organizationId ?? "";
     const users = await storage.getAllUsers(orgId);
     const usersWithoutPasswords = users.map(({ password: _, ...u }) => u);
     res.json(usersWithoutPasswords);
   }));
 
   app.get("/api/users/managers", authMiddleware, asyncHandler(async (req, res) => {
-    const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? undefined);
+    const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? "");
     const managersWithoutPasswords = managers.map(({ password: _, ...u }) => u);
     res.json(managersWithoutPasswords);
   }));
 
   app.get("/api/users/supervisors", authMiddleware, asyncHandler(async (req, res) => {
-    const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? undefined);
+    const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? "");
     const supervisorsWithoutPasswords = supervisors.map(({ password: _, ...u }) => u);
     res.json(supervisorsWithoutPasswords);
   }));
@@ -1309,7 +1329,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     
-    const users = await storage.getAllUsers(currentUser.organizationId ?? undefined);
+    const users = await storage.getAllUsers(currentUser.organizationId ?? "");
     // Return only essential info for display purposes
     const basicUsers = users.map(({ id, firstName, lastName, jobTitle, role }) => ({
       id,
@@ -1345,7 +1365,7 @@ export async function registerRoutes(
       const membersWithoutPasswords = members.map(({ password: _, ...u }) => u);
       res.json(membersWithoutPasswords);
     } else {
-      const ics = await storage.getUsersByRole("ic", currentUser.organizationId ?? undefined);
+      const ics = await storage.getUsersByRole("ic", currentUser.organizationId ?? "");
       const icsWithoutPasswords = ics.map(({ password: _, ...u }) => u);
       res.json(icsWithoutPasswords);
     }
@@ -1414,7 +1434,7 @@ export async function registerRoutes(
       }
       
       // Check for existing email
-      const allUsers = await storage.getAllUsers(currentUser.organizationId ?? undefined);
+      const allUsers = await storage.getAllUsers(currentUser.organizationId ?? "");
       const existingByEmail = allUsers.find(u => u.email === req.body.email);
       if (existingByEmail) {
         return res.status(400).json({ error: "Email already exists" });
@@ -1469,6 +1489,9 @@ export async function registerRoutes(
 
       if (!username || !password || !email || !firstName || !lastName) {
         return res.status(400).json({ error: "Required fields missing: username, password, email, firstName, lastName" });
+      }
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
       }
 
       const user = await storage.createUser(userData);
@@ -1674,8 +1697,8 @@ export async function registerRoutes(
     }
     
     const { newPassword, currentPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     // If currentPassword is provided (voluntary change via profile), verify it
@@ -1825,7 +1848,7 @@ export async function registerRoutes(
       const validRoles = ["ic", "admin"];
       if (currentUser.role === "owner") validRoles.push("owner");
 
-      const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? undefined);
+      const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? "");
       const existingEmails = new Set(existingOrgUsers.map(u => u.email?.toLowerCase()));
 
       const seenInPayload = new Set<string>();
@@ -1851,6 +1874,10 @@ export async function registerRoutes(
 
           if (!username || !password || !email || !firstName || !lastName) {
             console.error("Skipping bulk user — required fields missing:", email);
+            continue;
+          }
+          if (password.length < MIN_PASSWORD_LENGTH) {
+            console.error("Skipping bulk user — password too short:", email);
             continue;
           }
 
@@ -1969,7 +1996,7 @@ export async function registerRoutes(
         const requests = await storage.getOOORequestsByUser(currentUser.id);
         return res.json(requests);
       }
-      const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+      const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? "");
       res.json(requests);
     }
   });
@@ -1981,7 +2008,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
     
-    const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Enrich with user information
     const enrichedRequests = await Promise.all(
@@ -2002,7 +2029,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const { managerId } = req.query;
     
-    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Filter based on role - admins see all, IC supervisors see their team only
     if (currentUser.role === "admin" || currentUser.role === "owner") {
@@ -2033,7 +2060,7 @@ export async function registerRoutes(
   app.get("/api/leave-requests/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     
-    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Filter based on user role - only admins see all, IC supervisors see their team
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -2155,7 +2182,7 @@ export async function registerRoutes(
       const timesheets = await storage.getTimesheetsByUser(userId as string);
       res.json(timesheets);
     } else {
-      const timesheets = await storage.getAllTimesheets(req.authenticatedUser!.organizationId ?? undefined);
+      const timesheets = await storage.getAllTimesheets(req.authenticatedUser!.organizationId ?? "");
       // Enrich with user information
       const enrichedTimesheets = await Promise.all(
         timesheets.map(async (t) => {
@@ -2181,8 +2208,8 @@ export async function registerRoutes(
     const statusFilter = req.query.status as string | undefined;
     
     let timesheets = statusFilter
-      ? (await storage.getAllTimesheets(currentUser.organizationId ?? undefined)).filter(t => t.status === statusFilter)
-      : await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
+      ? (await storage.getAllTimesheets(currentUser.organizationId ?? "")).filter(t => t.status === statusFilter)
+      : await storage.getSubmittedTimesheets(currentUser.organizationId ?? "");
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     if (currentUser.role !== "admin") {
@@ -2212,7 +2239,7 @@ export async function registerRoutes(
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    let timesheets = await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
+    let timesheets = await storage.getSubmittedTimesheets(currentUser.organizationId ?? "");
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -2564,7 +2591,7 @@ export async function registerRoutes(
     if (!isSupervisor) {
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
-    const timesheets = await storage.getAllTimesheets(currentUser.organizationId ?? undefined);
+    const timesheets = await storage.getAllTimesheets(currentUser.organizationId ?? "");
     const enrichedTimesheets = await Promise.all(
       timesheets.map(async (t) => {
         const user = await storage.getUser(t.userId);
@@ -2617,13 +2644,13 @@ export async function registerRoutes(
       // No userId filter — team approval queue, scoped to direct reports for non-admin supervisors
       if (isAdmin) {
         requests = status === "pending"
-          ? await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined)
-          : await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+          ? await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "")
+          : await storage.getAllOvertimeRequests(currentUser.organizationId ?? "");
       } else {
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (teamMemberIds.length > 0) {
           // IC supervisor: team approval queue — direct reports only
-          const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+          const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? "");
           const allowedIds = new Set(teamMemberIds);
           requests = status === "pending"
             ? all.filter(r => allowedIds.has(r.userId) && r.status === "pending")
@@ -2653,7 +2680,7 @@ export async function registerRoutes(
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
 
     if (isAdmin) {
-      const requests = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+      const requests = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "");
       return res.json({ count: requests.length });
     }
 
@@ -2662,7 +2689,7 @@ export async function registerRoutes(
     if (teamMemberIds.length === 0) {
       return res.json({ count: 0 });
     }
-    const all = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+    const all = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "");
     res.json({ count: all.filter(r => teamMemberIds.includes(r.userId)).length });
   });
 
@@ -2887,7 +2914,7 @@ export async function registerRoutes(
       if (!isAdmin) {
         return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
       }
-      invoices = await storage.getAllInvoices(currentUser.organizationId ?? undefined);
+      invoices = await storage.getAllInvoices(currentUser.organizationId ?? "");
     }
     
     // Enrich invoices with user data and normalize file URLs
@@ -3300,7 +3327,7 @@ export async function registerRoutes(
     const isAdmin = user.role === "admin" || user.role === "owner";
 
     // Get pending invoices — scoped to direct reports for non-admin supervisors
-    const allPending = await storage.getPendingInvoices(user.organizationId ?? undefined);
+    const allPending = await storage.getPendingInvoices(user.organizationId ?? "");
     let scopedInvoices = allPending;
     if (!isAdmin) {
       const teamMemberIds = new Set(await getTeamMemberIds(user.id));
@@ -3341,7 +3368,7 @@ export async function registerRoutes(
     }
 
     const isAdmin = user.role === "admin" || user.role === "owner";
-    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
+    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? "");
 
     if (isAdmin) {
       return res.json({ count: pendingInvoices.length });
@@ -3516,7 +3543,7 @@ export async function registerRoutes(
       if (!isAdmin) {
         list = await storage.getContractsByUser(currentUser.id);
       } else {
-        list = await storage.getAllContracts(currentUser.organizationId ?? undefined);
+        list = await storage.getAllContracts(currentUser.organizationId ?? "");
       }
     }
     res.json(list.map((c) => ({ ...c, fileUrl: normalizeFileUrl(c.fileUrl) })));
@@ -3524,7 +3551,7 @@ export async function registerRoutes(
 
   app.get("/api/contracts/expiring", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    const all = await storage.getAllContracts(currentUser.organizationId ?? undefined);
+    const all = await storage.getAllContracts(currentUser.organizationId ?? "");
     const now = Date.now();
     const expiring = all.filter((c) => {
       const end = new Date(c.endDate).getTime();
@@ -3642,14 +3669,14 @@ export async function registerRoutes(
     if (scope === "team") {
       if (isAdmin) {
         // Admin/owner: full org view (all statuses)
-        list = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+        list = await storage.getAllExpenses(currentUser.organizationId ?? "");
       } else {
         // Non-admin supervisor: scope to current direct reports only
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (teamMemberIds.length === 0) {
           list = [];
         } else {
-          const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+          const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
           list = all.filter((e) => teamMemberIds.includes(e.userId));
         }
       }
@@ -3665,7 +3692,7 @@ export async function registerRoutes(
       }
       list = await storage.getExpensesByUser(userIdParam);
     } else if (isAdmin) {
-      list = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      list = await storage.getAllExpenses(currentUser.organizationId ?? "");
     } else {
       list = await storage.getExpensesByUser(currentUser.id);
     }
@@ -3701,14 +3728,14 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     if (isAdmin) {
-      const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
       const count = all.filter((e) => e.status === "pending").length;
       return res.json({ count });
     }
     // Non-admin supervisors: count pending expenses from direct reports only
     const teamMemberIds = await getTeamMemberIds(currentUser.id);
     if (teamMemberIds.length === 0) return res.json({ count: 0 });
-    const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+    const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
     const count = all.filter((e) => teamMemberIds.includes(e.userId) && e.status === "pending").length;
     res.json({ count });
   }));
@@ -3946,7 +3973,7 @@ export async function registerRoutes(
       } else if (icId) {
         return res.json(await storage.getEvaluationsByIC(icId as string));
       } else {
-        return res.json(await storage.getAllEvaluations(currentUser.organizationId ?? undefined));
+        return res.json(await storage.getAllEvaluations(currentUser.organizationId ?? ""));
       }
     }
 
@@ -3958,7 +3985,7 @@ export async function registerRoutes(
       // Supervisor requesting their team queue — filter by current direct reports (not stale managerId)
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length === 0) return res.json([]);
-      const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+      const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
       return res.json(allOrgEvals.filter(e => teamMemberIds.includes(e.icId)));
     }
     // Own evaluations (default or explicit ?icId=self)
@@ -3975,7 +4002,7 @@ export async function registerRoutes(
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length > 0) {
         // Filter by current direct reports (not stale managerId linkage)
-        const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+        const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
         const teamEvals = allOrgEvals.filter(e => teamMemberIds.includes(e.icId));
         return res.json({ count: teamEvals.filter(e => e.status === "ic_submitted").length });
       }
@@ -3985,7 +4012,7 @@ export async function registerRoutes(
     }
 
     // Admin/owner: org-wide count of evaluations pending any manager review
-    const allEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+    const allEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
     res.json({ count: allEvals.filter(e => e.status === "ic_submitted").length });
   });
 
@@ -4515,7 +4542,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only the evaluation's manager may invite feedback" });
       }
 
-      const users = await storage.getAllUsers(currentUser.organizationId ?? undefined);
+      const users = await storage.getAllUsers(currentUser.organizationId ?? "");
       const invitedUser = users.find(u => u.email === req.body.email);
 
       const invitation = await storage.createFeedbackInvitation({
@@ -4587,7 +4614,7 @@ export async function registerRoutes(
 
   // Activity logs routes - admin only
   app.get("/api/activity-logs", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
-    const logs = await storage.getActivityLogs(req.authenticatedUser!.organizationId ?? undefined);
+    const logs = await storage.getActivityLogs(req.authenticatedUser!.organizationId ?? "");
     res.json(logs);
   });
 
@@ -6066,7 +6093,9 @@ export async function registerRoutes(
     requireRole("admin", "owner"),
     asyncHandler(async (req, res) => {
       const { section } = req.params;
-      const orgId = req.authenticatedUser!.organizationId ?? undefined;
+      // Empty string never matches a real org id, so an admin/owner somehow
+      // without an organizationId sees zero rows instead of every org's data.
+      const orgId = req.authenticatedUser!.organizationId ?? "";
       const {
         parseFilters,
         getSpend,

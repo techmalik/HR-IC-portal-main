@@ -1,13 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
-import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerWebSocketClient, unregisterWebSocketClient } from "./notificationService";
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
-import { storage } from "./storage";
+import { storage, ALL_ORGS } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
 import {
   APP_HOST,
@@ -22,6 +21,11 @@ import {
 } from "./hostRouting";
 
 const app = express();
+// Replit (and any reverse proxy) terminates TLS in front of us, so
+// req.socket.remoteAddress is the proxy's own address for every request.
+// Trusting the proxy makes req.ip resolve the real client IP from
+// X-Forwarded-For instead, which the login rate limiters depend on.
+app.set("trust proxy", true);
 const httpServer = createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
@@ -71,8 +75,6 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -238,7 +240,7 @@ app.use((req, res, next) => {
 
       const checkExpiringContracts = async () => {
         try {
-          const all = await storage.getAllContracts();
+          const all = await storage.getAllContracts(ALL_ORGS);
           const now = Date.now();
           for (const c of all) {
             const end = new Date(c.endDate).getTime();
@@ -287,7 +289,7 @@ app.use((req, res, next) => {
           }
           const periodKey = timesheetReminderPeriodKey(targetMonth, targetYear);
 
-          const allUsers = await storage.getAllUsers();
+          const allUsers = await storage.getAllUsers(ALL_ORGS);
           for (const u of allUsers) {
             if (!u.isActive || u.role !== "ic") continue;
 

@@ -161,7 +161,7 @@ export interface SpendResult {
   totalInDisplay: number;
 }
 
-export async function getSpend(orgId: string | undefined, f: AnalyticsFilters): Promise<SpendResult> {
+export async function getSpend(orgId: string, f: AnalyticsFilters): Promise<SpendResult> {
   const [invoices, users] = await Promise.all([
     storage.getAllInvoices(orgId),
     storage.getAllUsers(orgId),
@@ -267,7 +267,7 @@ export interface HoursResult {
   trend: HoursTrendPoint[];
 }
 
-export async function getHours(orgId: string | undefined, f: AnalyticsFilters): Promise<HoursResult> {
+export async function getHours(orgId: string, f: AnalyticsFilters): Promise<HoursResult> {
   const [allTimesheets, users] = await Promise.all([
     storage.getAllTimesheets(orgId),
     storage.getAllUsers(orgId),
@@ -363,7 +363,7 @@ export interface OvertimeResult {
   trend: OvertimeTrendPoint[];
 }
 
-export async function getOvertime(orgId: string | undefined, f: AnalyticsFilters): Promise<OvertimeResult> {
+export async function getOvertime(orgId: string, f: AnalyticsFilters): Promise<OvertimeResult> {
   const [overtime, users] = await Promise.all([
     storage.getAllOvertimeRequests(orgId),
     storage.getAllUsers(orgId),
@@ -495,7 +495,7 @@ function daysByMonth(startDate: Date, endDate: Date, oooType: string): Map<strin
   return out;
 }
 
-export async function getOOO(orgId: string | undefined, f: AnalyticsFilters): Promise<OOOResult> {
+export async function getOOO(orgId: string, f: AnalyticsFilters): Promise<OOOResult> {
   const [allOOO, users] = await Promise.all([
     storage.getAllOOORequests(orgId),
     storage.getAllUsers(orgId),
@@ -665,7 +665,7 @@ function buildBucket(type: SLAType, label: string, decidedHours: number[], pendi
   };
 }
 
-export async function getSLA(orgId: string | undefined, f: AnalyticsFilters): Promise<SLAResult> {
+export async function getSLA(orgId: string, f: AnalyticsFilters): Promise<SLAResult> {
   const [timesheets, invoices, expenses, oooReqs, users] = await Promise.all([
     storage.getAllTimesheets(orgId),
     storage.getAllInvoices(orgId),
@@ -794,7 +794,7 @@ export interface HeadcountResult {
   churnUsers: HeadcountChurn[];
 }
 
-export async function getHeadcount(orgId: string | undefined, f: AnalyticsFilters): Promise<HeadcountResult> {
+export async function getHeadcount(orgId: string, f: AnalyticsFilters): Promise<HeadcountResult> {
   const [users, contracts] = await Promise.all([
     storage.getAllUsers(orgId),
     storage.getAllContracts(orgId),
