@@ -106,6 +106,12 @@ app.use((req, res, next) => {
       if (isMarketingDomain) {
         // On the marketing domain only public paths are allowed.
         const p = req.path;
+        const isBackoffice = p === "/back-office" || p.startsWith("/back-office/");
+        if (isBackoffice) {
+          // Back-office only exists on the app subdomain — forward there
+          // instead of bouncing to the marketing homepage.
+          return res.redirect(302, `https://app.axlehq.app${p}`);
+        }
         const isPublic =
           p === "/" ||
           p === "/login" ||
@@ -139,8 +145,9 @@ app.use((req, res, next) => {
           p.startsWith("/uploads/") ||
           p === "/favicon.ico" ||
           /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map)$/.test(p);
+        const isBackoffice = p === "/back-office" || p.startsWith("/back-office/");
 
-        if (!isApiRequest && !isStaticAsset) {
+        if (!isApiRequest && !isStaticAsset && !isBackoffice) {
           const token = req.cookies?.session_token;
           if (!token) {
             return res.redirect(302, "https://axlehq.app/login");
