@@ -117,6 +117,7 @@ app.use((req, res, next) => {
           p.startsWith("/api/blog/") ||
           p === "/api/billing/detect-currency" ||
           p === "/api/health" ||
+          p.startsWith("/api/support/") ||
           p.startsWith("/objects/") ||
           p.startsWith("/assets/") ||
           p.startsWith("/uploads/") ||

@@ -16,6 +16,7 @@ import { BackofficeLayout } from "@/components/backoffice-layout";
 import { UserRole } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { isMarketingHost, getMarketingOrigin } from "@/lib/subdomain";
+import { SupportBubble } from "@/components/SupportBubble";
 
 // Small shared pages loaded eagerly (no heavy deps, needed for error states)
 import NotFound from "@/pages/not-found";
@@ -666,6 +667,7 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
+            <SupportBubble />
             <ProtectedRoutes />
           </TooltipProvider>
         </AuthProvider>

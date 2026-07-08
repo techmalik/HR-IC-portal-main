@@ -378,6 +378,82 @@ export function isEmailServiceConfigured(): boolean {
   return !!resend;
 }
 
+export async function sendSupportTicketEmail(
+  fromEmail: string,
+  subject: string,
+  message: string,
+  attachments: Array<{ filename: string; content: Buffer }>
+): Promise<boolean> {
+  if (!resend) {
+    console.log("[EMAIL] Support ticket skipped — RESEND_API_KEY not set");
+    return false;
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background-color:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <tr><td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME} Support</h1>
+        </td></tr>
+        <tr><td style="padding:32px 32px 0;">
+          <span style="display:inline-block;background-color:#6366F115;color:#6366F1;padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">New Ticket</span>
+        </td></tr>
+        <tr><td style="padding:24px 32px;">
+          <table style="margin:0 0 20px;border-collapse:collapse;width:100%;">
+            <tr>
+              <td style="padding:4px 16px 4px 0;color:#71717a;font-size:14px;font-weight:500;white-space:nowrap;">From:</td>
+              <td style="padding:4px 0;color:#18181b;font-size:14px;">${fromEmail}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 16px 4px 0;color:#71717a;font-size:14px;font-weight:500;white-space:nowrap;">Subject:</td>
+              <td style="padding:4px 0;color:#18181b;font-size:14px;font-weight:600;">${subject}</td>
+            </tr>
+          </table>
+          <div style="background-color:#f9fafb;border:1px solid #e4e4e7;border-radius:6px;padding:20px;">
+            <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap;">${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+          </div>
+          ${attachments.length > 0 ? `<p style="margin:16px 0 0;color:#71717a;font-size:13px;">${attachments.length} attachment${attachments.length > 1 ? "s" : ""} included.</p>` : ""}
+        </td></tr>
+        <tr><td style="background-color:#fafafa;padding:24px 32px;border-top:1px solid #e4e4e7;">
+          <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.5;">Submitted via the ${APP_NAME} in-app support bubble. Reply directly to this email to respond to the user.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `New Support Ticket\n\nFrom: ${fromEmail}\nSubject: ${subject}\n\n${message}\n\n---\nSubmitted via the ${APP_NAME} in-app support bubble.`;
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: "techmaleek@gmail.com",
+      replyTo: fromEmail,
+      subject: `[${APP_NAME} Support] ${subject}`,
+      html,
+      text,
+      attachments: attachments.map((f) => ({
+        filename: f.filename,
+        content: f.content,
+      })),
+    });
+    if (result.error) {
+      console.error("[EMAIL] Support ticket email failed:", result.error);
+      return false;
+    }
+    console.log(`[EMAIL] Support ticket sent from ${fromEmail}: ${subject}`);
+    return true;
+  } catch (error) {
+    console.error("[EMAIL] Support ticket email error:", error);
+    return false;
+  }
+}
+
 // Sends a transactional billing email directly to an address (no preference check —
 // billing notifications are mandatory and cannot be opted out of).
 export async function sendBillingEmail(

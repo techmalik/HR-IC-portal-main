@@ -25,6 +25,7 @@ import { ExpenseCategory } from "@shared/schema";
 import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
 import { randomUUID } from "crypto";
+import multer from "multer";
 
 // Helper function to check if a date is a weekend (Saturday or Sunday)
 function isWeekend(dateString: string): boolean {
@@ -284,7 +285,7 @@ import {
   notifyEvaluationOutcome,
   createNotification,
 } from "./notificationService";
-import { sendPasswordResetEmail, sendBillingEmail } from "./emailService";
+import { sendPasswordResetEmail, sendBillingEmail, sendSupportTicketEmail } from "./emailService";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -328,6 +329,84 @@ export async function registerRoutes(
       timestamp: new Date().toISOString(),
     });
   }));
+
+  // Support ticket endpoint — public, no auth required
+  const supportUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 3 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only PNG, JPG, GIF, WebP, and PDF are allowed."));
+      }
+    },
+  });
+
+  app.post(
+    "/api/support/ticket",
+    (req, res, next) => {
+      supportUpload.array("attachments", 3)(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+          if (err.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({ error: "Each file must be under 5 MB." });
+          }
+          if (err.code === "LIMIT_FILE_COUNT") {
+            return res.status(400).json({ error: "Maximum 3 files allowed." });
+          }
+          return res.status(400).json({ error: err.message });
+        }
+        if (err) {
+          return res.status(400).json({ error: err.message });
+        }
+        next();
+      });
+    },
+    asyncHandler(async (req, res) => {
+      const { email, subject, message } = req.body;
+
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ error: "A valid email address is required." });
+      }
+      if (!subject || typeof subject !== "string" || subject.trim().length === 0) {
+        return res.status(400).json({ error: "Subject is required." });
+      }
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required." });
+      }
+      if (subject.trim().length > 200) {
+        return res.status(400).json({ error: "Subject must be 200 characters or fewer." });
+      }
+      if (message.trim().length > 5000) {
+        return res.status(400).json({ error: "Message must be 5000 characters or fewer." });
+      }
+
+      const files = (req.files as Express.Multer.File[]) || [];
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      if (totalSize > 15 * 1024 * 1024) {
+        return res.status(413).json({ error: "Total attachment size must not exceed 15 MB." });
+      }
+
+      const attachments = files.map((f) => ({
+        filename: f.originalname,
+        content: f.buffer,
+      }));
+
+      const sent = await sendSupportTicketEmail(
+        email.trim(),
+        subject.trim(),
+        message.trim(),
+        attachments
+      );
+
+      if (!sent) {
+        return res.status(500).json({ error: "Failed to send your message. Please try again later." });
+      }
+
+      return res.json({ ok: true });
+    })
+  );
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
