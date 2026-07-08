@@ -620,13 +620,6 @@ function ProtectedRoutes() {
     return <PublicRoutes />;
   }
 
-  // All back-office routes are handled by BackofficeSection. This check must
-  // come BEFORE the isLoading guard so the main-app auth probe never races
-  // against the back-office login page and fires a cross-domain redirect.
-  if (location === "/back-office/login" || location.startsWith("/back-office")) {
-    return <BackofficeSection />;
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -711,6 +704,21 @@ function ProtectedRoutes() {
 }
 
 function App() {
+  const [location] = useLocation();
+
+  // Back-office pages run in total isolation from the main app.
+  // No AuthProvider, ThemeProvider, or SupportBubble are mounted here,
+  // so the main-app auth system (AuthProvider + queryClient redirect logic)
+  // can never fire and send the user to the marketing-domain login page.
+  if (location === "/back-office/login" || location.startsWith("/back-office")) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Toaster />
+        <BackofficeSection />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
