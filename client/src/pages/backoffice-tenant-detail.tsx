@@ -213,6 +213,7 @@ function PlanModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/metrics"] });
       toast({ title: "Plan updated" });
       onClose();
     },
@@ -311,6 +312,7 @@ function SuspendModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/metrics"] });
       toast({ title: isSuspended ? "Organization reactivated" : "Organization suspended" });
       onClose();
     },

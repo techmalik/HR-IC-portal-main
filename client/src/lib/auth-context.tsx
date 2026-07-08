@@ -3,8 +3,8 @@ import type { User } from "@shared/schema";
 import { ForcePasswordChangeModal } from "@/components/force-password-change-modal";
 import { IdleTimeoutDialog } from "@/components/idle-timeout-dialog";
 import { TrialExpiredOverlay } from "@/components/trial-expired-overlay";
-import { AUTH_UNAUTHORIZED_EVENT, TRIAL_EXPIRED_EVENT } from "@/lib/queryClient";
-import { getMarketingOrigin } from "@/lib/subdomain";
+import { AUTH_UNAUTHORIZED_EVENT, TRIAL_EXPIRED_EVENT, queryClient } from "@/lib/queryClient";
+import { getMarketingOrigin, isMarketingHost } from "@/lib/subdomain";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_DURATION_S = 2 * 60;
@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch {}
     setUser(null);
+    queryClient.clear();
   }, []);
 
   const handleIdleLogout = useCallback(async () => {
@@ -152,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // handled in queryClient.ts.
     const onUnauthorized = () => {
       setUser(null);
+      queryClient.clear();
     };
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
     return () => {
@@ -173,6 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // The marketing domain (axlehq.app) only ever renders public pages —
+    // never probe auth or mount session-only UI (password/idle/trial modals)
+    // there, even for a visitor who happens to have a valid app-domain session.
+    if (isMarketingHost()) {
+      setIsLoading(false);
+      return;
+    }
     fetch("/api/auth/me", {
       credentials: "include",
     })

@@ -68,6 +68,7 @@ export default function OvertimeApprovalsPage() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/overtime-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/overtime-requests/pending-count"] });
       const typeLabel = variables.isWeekendWork ? "Weekend work" : "Overtime";
       toast({
         title: variables.status === "approved" ? `${typeLabel} approved` : `${typeLabel} rejected`,

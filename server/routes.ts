@@ -2913,8 +2913,11 @@ export async function registerRoutes(
       const startDate = new Date(request.startDate);
       const endDate = new Date(request.endDate);
 
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        if (d.getMonth() + 1 === monthInt && d.getFullYear() === yearInt) {
+      // startDate/endDate are date-only columns (UTC-midnight once parsed) — use
+      // the UTC getters/setters throughout so this doesn't drift a day depending
+      // on the server process's local timezone.
+      for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
+        if (d.getUTCMonth() + 1 === monthInt && d.getUTCFullYear() === yearInt) {
           datesInMonth.push({
             date: d.toISOString().split('T')[0],
             oooType: request.oooType,

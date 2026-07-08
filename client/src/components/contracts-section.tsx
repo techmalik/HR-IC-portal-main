@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,9 @@ export interface Contract {
 
 function getContractStatus(c: Contract): { label: string; variant: "default" | "secondary" | "destructive" | "outline"; tone: "ok" | "warn" | "expired" } {
   const now = new Date();
-  const end = new Date(c.endDate);
+  // parseISO reads a date-only string as local midnight (native `new Date()`
+  // reads it as UTC midnight), so this stays consistent with `now`.
+  const end = parseISO(c.endDate);
   const days = differenceInDays(end, now);
   if (days < 0) return { label: "Expired", variant: "destructive", tone: "expired" };
   if (days <= (c.noticePeriodDays || 30)) return { label: `Expires in ${days}d`, variant: "outline", tone: "warn" };
@@ -169,7 +171,7 @@ export function ContractsSection({ userId, canManage }: ContractsSectionProps) {
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">{c.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(c.startDate), "MMM d, yyyy")} – {format(new Date(c.endDate), "MMM d, yyyy")}
+                        {format(parseISO(c.startDate), "MMM d, yyyy")} – {format(parseISO(c.endDate), "MMM d, yyyy")}
                         <span className="ml-2">• {c.noticePeriodDays}d notice</span>
                       </p>
                     </div>

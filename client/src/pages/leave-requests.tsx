@@ -96,7 +96,7 @@ export default function LeaveRequestsPage() {
   };
 
   const getDurationDays = (start: string, end: string, isHalfDay: boolean) => {
-    const days = differenceInDays(new Date(end), new Date(start)) + 1;
+    const days = differenceInDays(parseISO(end), parseISO(start)) + 1;
     return isHalfDay ? days * 0.5 : days;
   };
 
@@ -162,8 +162,8 @@ export default function LeaveRequestsPage() {
               <p className="font-medium">{request.userName || "Unknown"}</p>
               <div className="flex items-center gap-2 flex-wrap mt-1">
                 <p className="text-sm text-muted-foreground">
-                  {format(new Date(request.startDate), "MMM d")} -{" "}
-                  {format(new Date(request.endDate), "MMM d, yyyy")}
+                  {format(parseISO(request.startDate), "MMM d")} -{" "}
+                  {format(parseISO(request.endDate), "MMM d, yyyy")}
                 </p>
                 <Badge variant="outline" className="text-xs">
                   <Clock className="w-3 h-3 mr-1" />
@@ -408,8 +408,8 @@ export default function LeaveRequestsPage() {
               <div className="p-4 rounded-md bg-muted/50">
                 <p className="font-medium">{selectedRequest.userName}</p>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {format(new Date(selectedRequest.startDate), "MMM d")} -{" "}
-                  {format(new Date(selectedRequest.endDate), "MMM d, yyyy")}
+                  {format(parseISO(selectedRequest.startDate), "MMM d")} -{" "}
+                  {format(parseISO(selectedRequest.endDate), "MMM d, yyyy")}
                 </p>
                 {selectedRequest.reason && (
                   <p className="text-sm text-muted-foreground mt-2">

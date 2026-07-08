@@ -68,14 +68,26 @@ export default function BackofficeAuditLogPage() {
     ? tenants.find((t) => t.name.toLowerCase().includes(orgSearch.trim().toLowerCase()))
     : undefined;
 
-  const params = new URLSearchParams();
-  if (actionFilter) params.set("action", actionFilter);
-  if (matchedOrg) params.set("orgId", matchedOrg.id);
+  const filters = { action: actionFilter, orgId: matchedOrg?.id };
 
-  const queryKey = `/api/backoffice/audit-log${params.toString() ? `?${params.toString()}` : ""}`;
-
+  // A structured key (not a single pre-built URL string) so that
+  // invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] }) — used
+  // elsewhere after mutations — matches this query via prefix matching
+  // regardless of which filters are active. Needs a custom queryFn since the
+  // default queryFn just joins the key array into a URL.
   const { data: logs = [], isLoading } = useQuery<AuditLogEntry[]>({
-    queryKey: [queryKey],
+    queryKey: ["/api/backoffice/audit-log", filters],
+    queryFn: async ({ queryKey }) => {
+      const [url, f] = queryKey as [string, typeof filters];
+      const params = new URLSearchParams();
+      if (f.action) params.set("action", f.action);
+      if (f.orgId) params.set("orgId", f.orgId);
+      const res = await fetch(`${url}${params.toString() ? `?${params.toString()}` : ""}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
     staleTime: 15_000,
   });
 
