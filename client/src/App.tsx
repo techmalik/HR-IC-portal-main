@@ -620,19 +620,19 @@ function ProtectedRoutes() {
     return <PublicRoutes />;
   }
 
+  // All back-office routes are handled by BackofficeSection. This check must
+  // come BEFORE the isLoading guard so the main-app auth probe never races
+  // against the back-office login page and fires a cross-domain redirect.
+  if (location === "/back-office/login" || location.startsWith("/back-office")) {
+    return <BackofficeSection />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  // All back-office routes are handled by BackofficeSection, which mounts
-  // BackofficeAuthProvider only on /back-office* to keep the bo_session probe
-  // away from normal app pages.
-  if (location === "/back-office/login" || location.startsWith("/back-office")) {
-    return <BackofficeSection />;
   }
 
   if (!user) {
