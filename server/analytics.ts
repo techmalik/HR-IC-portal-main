@@ -28,6 +28,14 @@ export interface MonthKey extends YearMonth {
 // Used when callers ask for spend in a single display currency. These are
 // static reference rates, suitable for analytics overviews. Override at the
 // org level via the `currency_rates` storage hook if/when it ships.
+//
+// STALE BY DESIGN, NOT LIVE: hand-set once (~2025) and never refreshed
+// automatically — do not use these for anything invoiced or billed (Paystack
+// charges use Paystack's own rate at transaction time; the landing page's
+// pricing calculator uses Axle's real published local prices, not this
+// table). If analytics accuracy starts to matter for FX-sensitive decisions,
+// replace this with a fetched-and-cached rate source instead of hand-editing
+// the numbers below.
 const FX_RATES_TO_USD: Record<string, number> = {
   USD: 1,
   EUR: 1.08,

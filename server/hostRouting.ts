@@ -94,3 +94,76 @@ export function isStaticAssetPath(path: string): boolean {
 export function isApiPath(path: string): boolean {
   return path.startsWith("/api/");
 }
+
+// ---------------------------------------------------------------------------
+// Pure routing decision — the production-only host middleware in
+// server/index.ts is a thin wrapper around this function. Kept separate (and
+// synchronous) so the redirect matrix can be unit-tested without spinning up
+// an HTTP server or mocking a session store.
+// ---------------------------------------------------------------------------
+export type HostRoutingDecision =
+  | { kind: "next" }
+  | { kind: "redirect"; status: 301 | 302; location: string }
+  // The app subdomain gates "/" and app-shell paths on a valid session
+  // cookie. Checking the cookie requires an async DB lookup, so the caller
+  // performs it and redirects to `loginRedirect` itself when the check
+  // fails; this function only decides that this check is required.
+  | { kind: "check-session"; loginRedirect: string };
+
+export function decideHostRouting(hostname: string, path: string): HostRoutingDecision {
+  // Host canonicalization — runs before any host-specific logic below.
+  if (hostname === MARKETING_WWW_HOST) {
+    return { kind: "redirect", status: 301, location: `https://${MARKETING_APEX_HOST}${path}` };
+  }
+  if (hostname === REPLIT_HOST) {
+    // Keep the health check reachable on every host Replit might route to.
+    if (path === "/api/health") {
+      return { kind: "next" };
+    }
+    return { kind: "redirect", status: 301, location: `https://${MARKETING_APEX_HOST}${path}` };
+  }
+
+  const isAppSubdomain = hostname === APP_HOST;
+  const isMarketingDomain = hostname === MARKETING_APEX_HOST;
+
+  // Unknown host (Replit preview/dev URL, custom domains, etc.) — pass through untouched.
+  if (!isAppSubdomain && !isMarketingDomain) {
+    return { kind: "next" };
+  }
+
+  if (isApiPath(path) || isStaticAssetPath(path)) {
+    return { kind: "next" };
+  }
+
+  if (isBackofficePath(path)) {
+    // Back-office only exists on the app subdomain — forward there instead
+    // of bouncing to the marketing homepage, and skip the server-side
+    // session gate below (it uses its own bo_session_token cookie, checked
+    // client-side by BackofficeGuard).
+    if (isMarketingDomain) {
+      return { kind: "redirect", status: 302, location: `https://${APP_HOST}${path}` };
+    }
+    return { kind: "next" };
+  }
+
+  if (isMarketingDomain) {
+    // Private app-shell paths typed on the marketing domain forward to the
+    // app subdomain instead of silently rendering the landing page.
+    if (isAppShellPath(path)) {
+      return { kind: "redirect", status: 302, location: `https://${APP_HOST}${path}` };
+    }
+    // Everything else (SEO pages, sitemaps, robots.txt, /, /login, /signup,
+    // static, API) passes through — the SPA only renders public routes on
+    // this host regardless of auth state, so nothing private can leak.
+    return { kind: "next" };
+  }
+
+  // isAppSubdomain
+  if (isMarketingOnlyPath(path)) {
+    return { kind: "redirect", status: 301, location: `https://${MARKETING_APEX_HOST}${path}` };
+  }
+  if (path === "/" || isAppShellPath(path)) {
+    return { kind: "check-session", loginRedirect: `https://${MARKETING_APEX_HOST}/login` };
+  }
+  return { kind: "next" };
+}
