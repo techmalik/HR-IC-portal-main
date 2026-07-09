@@ -595,20 +595,20 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Axle Pro</div>
-                <div className="text-2xl font-bold text-gray-900 mb-0.5">${(contractorCount * 14).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
+                <div className="text-2xl font-bold text-gray-900 mb-0.5">${(contractorCount * 14).toLocaleString()}<span className="text-sm font-normal text-gray-400"> USD/mo</span></div>
                 <div className="text-[12px] text-gray-500">{contractorCount} ICs × $14</div>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Deel</div>
-                <div className="text-2xl font-bold text-gray-400 mb-0.5">${(contractorCount * 49).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
+                <div className="text-2xl font-bold text-gray-400 mb-0.5">${(contractorCount * 49).toLocaleString()}<span className="text-sm font-normal text-gray-400"> USD/mo</span></div>
                 <div className="text-[12px] text-gray-500">{contractorCount} ICs × $49</div>
               </div>
             </div>
             <div className="mt-4 bg-emerald-50 rounded-xl border border-emerald-100 px-5 py-3 flex items-center justify-between">
               <span className="text-[13px] text-emerald-800 font-medium">Your annual saving with Axle</span>
-              <span className="text-emerald-700 font-bold text-[17px]">${((contractorCount * 49 - contractorCount * 14) * 12).toLocaleString()} / year</span>
+              <span className="text-emerald-700 font-bold text-[17px]">${((contractorCount * 49 - contractorCount * 14) * 12).toLocaleString()} USD / year</span>
             </div>
-            <p className="text-[11px] text-gray-400 mt-3 text-center">Comparison based on Deel's published contractor management price of $49/IC/month.</p>
+            <p className="text-[11px] text-gray-400 mt-3 text-center">All figures in USD. Comparison based on Deel's published contractor management price of $49/IC/month.</p>
           </div>
         </div>
       </section>
@@ -683,28 +683,22 @@ export default function LandingPage() {
             <div>
               <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Resources</div>
               <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  Documentation
-                </a>
                 <a href="/blog" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Blog
                 </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                <a href="mailto:support@axlehq.app" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Support
                 </a>
               </div>
             </div>
             <div>
-              <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Company</div>
+              <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Legal</div>
               <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  About
-                </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  Careers
-                </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                <a href="/privacy" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Privacy
+                </a>
+                <a href="/terms" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                  Terms
                 </a>
               </div>
             </div>

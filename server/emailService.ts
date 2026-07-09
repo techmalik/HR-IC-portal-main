@@ -11,6 +11,16 @@ const APP_NAME = "Axle";
 const BRAND_COLOR = "#2563EB";
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "notifications@resend.dev";
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "techmaleek@gmail.com";
+
+// APP_BASE_URL (e.g. https://app.axlehq.app) is the real production URL.
+// REPLIT_DOMAINS is only a dev-environment fallback; without either, links
+// degrade to "#" rather than pointing at an unowned *.replit.app domain.
+function getAppBaseUrl(): string {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, "");
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
+  return replitDomain ? `https://${replitDomain}` : "#";
+}
 
 export interface EmailPayload {
   type: string;
@@ -131,9 +141,7 @@ function getDeepLink(baseUrl: string, payload: EmailPayload): string {
 function generateEmailHtml(payload: EmailPayload): string {
   const statusColor = getStatusColor(payload.type);
   const statusLabel = getStatusLabel(payload.type);
-  const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
-    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
-    : '#';
+  const baseUrl = getAppBaseUrl();
   const appUrl = getDeepLink(baseUrl, payload);
 
   return `
@@ -263,13 +271,18 @@ export async function sendNotificationEmail(
     }
 
     console.log(`[EMAIL] Sending email to ${user.email} with subject: [${APP_NAME}] ${payload.title}`);
-    
+
+    const preferencesUrl = `${getAppBaseUrl()}/profile`;
+
     const result = await resend.emails.send({
       from: FROM_EMAIL,
       to: user.email,
       subject: `[${APP_NAME}] ${payload.title}`,
       html: generateEmailHtml(payload),
       text: generatePlainText(payload),
+      headers: {
+        "List-Unsubscribe": `<${preferencesUrl}>`,
+      },
     });
 
     if (result.error) {
@@ -295,9 +308,7 @@ export async function sendPasswordResetEmail(
     return false;
   }
 
-  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "#";
+  const baseUrl = getAppBaseUrl();
 
   const html = `
 <!DOCTYPE html>
@@ -432,7 +443,7 @@ export async function sendSupportTicketEmail(
   try {
     const result = await resend.emails.send({
       from: FROM_EMAIL,
-      to: "techmaleek@gmail.com",
+      to: SUPPORT_EMAIL,
       replyTo: fromEmail,
       subject: `[${APP_NAME} Support] ${subject}`,
       html,
@@ -472,9 +483,7 @@ export async function sendBillingEmail(
     return false;
   }
 
-  const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "#";
+  const baseUrl = getAppBaseUrl();
   const ctaUrl = payload.ctaUrl || `${baseUrl}/billing`;
   const ctaLabel = payload.ctaLabel || "View Billing";
 

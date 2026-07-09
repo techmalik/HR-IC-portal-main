@@ -994,6 +994,7 @@ export const emailSubscribers = pgTable("email_subscribers", {
   email: text("email").notNull().unique(),
   source: text("source").notNull(),
   subscribedAt: timestamp("subscribed_at").notNull().defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
 });
 
 export type EmailSubscriberRow = typeof emailSubscribers.$inferSelect;

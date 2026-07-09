@@ -31,6 +31,8 @@ const LandingPage = lazyWithRetry(() => import("@/pages/landing"));
 const LoginPage = lazyWithRetry(() => import("@/pages/login"));
 const SignupPage = lazyWithRetry(() => import("@/pages/signup"));
 const CompetitiveAnalysisPage = lazyWithRetry(() => import("@/pages/competitive-analysis"));
+const PrivacyPolicyPage = lazyWithRetry(() => import("@/pages/legal-privacy"));
+const TermsOfServicePage = lazyWithRetry(() => import("@/pages/legal-terms"));
 
 // Authenticated pages — lazy-loaded so the public routes don't pay their cost
 const DashboardIC = lazyWithRetry(() => import("@/pages/dashboard-ic"));
@@ -529,6 +531,8 @@ function PublicRoutes() {
           <Route path="/login" component={LoginPage} />
           <Route path="/signup" component={SignupPage} />
           <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
+          <Route path="/privacy" component={PrivacyPolicyPage} />
+          <Route path="/terms" component={TermsOfServicePage} />
           <Route component={LandingPage} />
         </Switch>
       </Suspense>
@@ -628,7 +632,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis"];
+    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis", "/privacy", "/terms"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
       window.location.replace(`${getMarketingOrigin()}/login?redirect=${encodeURIComponent(location)}`);
@@ -645,6 +649,15 @@ function ProtectedRoutes() {
   // a double header/sidebar for authenticated users.
   if (location === "/competitive-analysis") {
     return <RouteErrorBoundary><Suspense fallback={pageFallback}><CompetitiveAnalysisPage /></Suspense></RouteErrorBoundary>;
+  }
+
+  // Legal pages are the same for logged-in and anonymous visitors — render
+  // standalone rather than inside the authenticated app shell/sidebar.
+  if (location === "/privacy") {
+    return <RouteErrorBoundary><Suspense fallback={pageFallback}><PrivacyPolicyPage /></Suspense></RouteErrorBoundary>;
+  }
+  if (location === "/terms") {
+    return <RouteErrorBoundary><Suspense fallback={pageFallback}><TermsOfServicePage /></Suspense></RouteErrorBoundary>;
   }
 
   const sidebarStyle = {

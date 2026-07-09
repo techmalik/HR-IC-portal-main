@@ -6536,6 +6536,41 @@ export async function registerRoutes(
     res.redirect(`${returnTo}?subscribed=1`);
   }));
 
+  // Public, signed one-click unsubscribe — link is safe to click straight
+  // from an email client (GET, no auth) since the token proves possession
+  // of the original subscribe link rather than the user's session.
+  app.get("/api/blog/unsubscribe", asyncHandler(async (req, res) => {
+    const { unsubscribe } = await import("./seo/emailCapture");
+    const email = (req.query.email ?? "").toString();
+    const token = (req.query.token ?? "").toString();
+    const result = await unsubscribe(email, token);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${result.ok ? "Unsubscribed" : "Unsubscribe"} — Axle</title></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background-color:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:60px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <tr><td style="padding:40px 32px;text-align:center;">
+          <h1 style="margin:0 0 12px;color:#18181b;font-size:20px;font-weight:600;">${
+            result.ok ? "You're unsubscribed" : "Unsubscribe failed"
+          }</h1>
+          <p style="margin:0;color:#52525b;font-size:14px;line-height:1.6;">${
+            result.ok
+              ? `${email} will no longer receive emails from the Axle blog.`
+              : result.error
+          }</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`);
+  }));
+
   app.get("/blog", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
     res.setHeader("Content-Type", "text/html; charset=utf-8");
