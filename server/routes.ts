@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
+import { seedDemoData } from "./demoSeed";
 import { db } from "./db";
 import { parseBulkBody, runBulk } from "./bulkReview";
 import { eq, desc, gte, sql, count, and, inArray } from "drizzle-orm";
@@ -598,8 +599,9 @@ export async function registerRoutes(
     }
 
     const user = await storage.getUserByUsername(username);
-    
-    if (!user) {
+
+    // Sample/demo accounts are indistinguishable from nonexistent ones.
+    if (!user || user.isDemo) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -737,6 +739,15 @@ export async function registerRoutes(
     });
 
     const sessionToken = await createSession(user.id, user.username);
+
+    // Seed the sample contractor (Aisha Koni) with example timesheets,
+    // an evaluation, and time-off requests. Best-effort: signup must
+    // succeed even if seeding fails.
+    try {
+      await seedDemoData(organization.id, organization.slug, user.id);
+    } catch (e) {
+      console.error("Failed to seed demo data for new organization:", e);
+    }
 
     try {
       await storage.createActivityLog({
@@ -1627,6 +1638,15 @@ export async function registerRoutes(
       }
     }
 
+    // Keep the sample contractor pristine: she can never gain privileges or
+    // be suspended (removal goes through the hard-delete demo-data path).
+    if ("role" in req.body || "isActive" in req.body) {
+      const demoTarget = await storage.getUser(targetUserId);
+      if (demoTarget?.isDemo) {
+        return res.status(400).json({ error: "Cannot change the role or status of a sample user" });
+      }
+    }
+
     // Nobody may edit their own role. Only an owner may grant/revoke the
     // owner role; a plain admin may only move a user between admin/ic.
     if ("role" in req.body) {
@@ -1863,9 +1883,16 @@ export async function registerRoutes(
     if (!checkOrgBoundary(req.authenticatedUser!, targetUser)) {
       return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
     }
-    const success = await storage.deleteUser(req.params.id);
-    if (!success) {
-      return res.status(404).json({ error: "User not found" });
+    if (targetUser.isDemo) {
+      // Sample users are hard-deleted with all their sample records instead
+      // of soft-deleted, which would leave an anonymized "suspended" ghost
+      // plus orphaned sample timesheets/evaluations.
+      await storage.deleteDemoData(targetUser.organizationId!);
+    } else {
+      const success = await storage.deleteUser(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "User not found" });
+      }
     }
 
     try {
@@ -1882,6 +1909,34 @@ export async function registerRoutes(
     }
 
     res.status(204).send();
+  });
+
+  // Remove the seeded sample contractor and all of her sample records.
+  // Scoped to the caller's own org and to isDemo rows only; idempotent.
+  app.delete("/api/demo-data", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
+    const organizationId = req.authenticatedUser!.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ error: "No organization" });
+    }
+
+    const removed = await storage.deleteDemoData(organizationId);
+
+    if (removed > 0) {
+      try {
+        await storage.createActivityLog({
+          userId: req.authenticatedUser!.id,
+          organizationId,
+          action: "Sample data removed",
+          details: "Removed the sample team member and all associated sample records",
+          entityType: "organization",
+          entityId: organizationId,
+        });
+      } catch (e) {
+        console.error("Failed to create activity log:", e);
+      }
+    }
+
+    res.json({ removed });
   });
 
   app.post("/api/users/bulk", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
@@ -2023,6 +2078,11 @@ export async function registerRoutes(
 
     if (!checkOrgBoundary(req.authenticatedUser!, user)) {
       return res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    }
+
+    // A reset would hand out working credentials for the sample account.
+    if (user.isDemo) {
+      return res.status(400).json({ error: "Cannot reset the password of a sample user" });
     }
 
     const tempPassword = "temp" + Math.random().toString(36).slice(2, 8);

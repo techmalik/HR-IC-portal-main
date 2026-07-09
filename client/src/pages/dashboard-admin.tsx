@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SampleDataBanner } from "@/components/sample-data-banner";
 import { useAuth } from "@/lib/auth-context";
 import { Link } from "wouter";
 import {
@@ -99,6 +100,8 @@ export default function DashboardAdmin() {
           </Button>
         </div>
       )}
+
+      <SampleDataBanner />
 
       {!trialExpired && daysLeftInTrial !== null && usage?.plan === "free" && daysLeftInTrial <= 7 && (
         <div className="flex items-start gap-3 p-4 rounded-xl border-[1.5px] border-amber-200 bg-amber-50 text-amber-800" data-testid="banner-trial-ending">

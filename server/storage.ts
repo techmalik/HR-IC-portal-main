@@ -93,6 +93,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
+  deleteDemoData(organizationId: string): Promise<number>;
   getAllUsers(organizationId: string): Promise<User[]>;
   getUsersByRole(role: string, organizationId: string): Promise<User[]>;
   getUsersBySupervisor(supervisorId: string): Promise<User[]>;
@@ -279,6 +280,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async deleteDemoData(organizationId: string): Promise<number> {
+    // Hard-delete the seeded sample contractor(s) and every record that
+    // references them, in FK-safe order (overtime_requests has no cascade
+    // from timesheets; daily_entries/evaluation_sections/sessions cascade).
+    return db.transaction(async (tx) => {
+      const demoUsers = await tx.select({ id: users.id }).from(users).where(
+        and(eq(users.organizationId, organizationId), eq(users.isDemo, true))
+      );
+      if (demoUsers.length === 0) return 0;
+      const demoIds = demoUsers.map((u) => u.id);
+
+      await tx.delete(overtimeRequests).where(inArray(overtimeRequests.userId, demoIds));
+      await tx.delete(timesheets).where(inArray(timesheets.userId, demoIds));
+      await tx.delete(evaluations).where(inArray(evaluations.icId, demoIds));
+      await tx.delete(oooRequests).where(inArray(oooRequests.userId, demoIds));
+      // Defensive: not seeded, but any row here would block the user delete
+      // (e.g. an invoice generated from a sample timesheet before removal).
+      await tx.delete(invoices).where(inArray(invoices.userId, demoIds));
+      await tx.delete(notifications).where(inArray(notifications.userId, demoIds));
+      await tx.delete(notificationPreferences).where(inArray(notificationPreferences.userId, demoIds));
+      await tx.delete(icResponsibilities).where(inArray(icResponsibilities.icId, demoIds));
+      await tx.delete(feedbackInvitations).where(inArray(feedbackInvitations.invitedUserId, demoIds));
+      await tx.delete(icPaymentDetails).where(inArray(icPaymentDetails.userId, demoIds));
+      await tx.delete(users).where(inArray(users.id, demoIds));
+      return demoIds.length;
+    });
   }
 
   async getAllUsers(organizationId: string): Promise<User[]> {
@@ -811,7 +840,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserCountByOrganization(organizationId: string): Promise<number> {
     const result = await db.select().from(users).where(
-      and(eq(users.organizationId, organizationId), eq(users.isActive, true))
+      and(eq(users.organizationId, organizationId), eq(users.isActive, true), eq(users.isDemo, false))
     );
     return result.length;
   }

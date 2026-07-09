@@ -615,7 +615,17 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           ) : (
-            getRoleBadge(u)
+            <div className="flex items-center gap-1.5">
+              {getRoleBadge(u)}
+              {u.isDemo && (
+                <span
+                  className="text-[11.5px] font-medium bg-[#EDE9FE] text-[#6D28D9] px-[9px] py-[3px] rounded-full whitespace-nowrap"
+                  data-testid={`badge-sample-${u.id}`}
+                >
+                  Sample
+                </span>
+              )}
+            </div>
           )}
         </TableCell>
         <TableCell>
@@ -664,14 +674,16 @@ export default function UsersPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setUserToResetPassword(u)}
-                    data-testid={`button-reset-password-${u.id}`}
-                  >
-                    <KeyRound className="w-4 h-4 mr-2" />
-                    Reset Password
-                  </DropdownMenuItem>
-                  {u.id !== currentUser?.id && (
+                  {!u.isDemo && (
+                    <DropdownMenuItem
+                      onClick={() => setUserToResetPassword(u)}
+                      data-testid={`button-reset-password-${u.id}`}
+                    >
+                      <KeyRound className="w-4 h-4 mr-2" />
+                      Reset Password
+                    </DropdownMenuItem>
+                  )}
+                  {u.id !== currentUser?.id && !u.isDemo && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

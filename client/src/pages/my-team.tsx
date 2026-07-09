@@ -58,8 +58,18 @@ export default function MyTeamPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <div className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">
-                    {member.firstName} {member.lastName}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[12.5px] font-medium text-neutral-900 dark:text-neutral-50 truncate">
+                      {member.firstName} {member.lastName}
+                    </span>
+                    {member.isDemo && (
+                      <span
+                        className="text-[10.5px] font-medium bg-[#EDE9FE] text-[#6D28D9] px-[7px] py-[1px] rounded-full whitespace-nowrap shrink-0"
+                        data-testid={`badge-sample-${member.id}`}
+                      >
+                        Sample
+                      </span>
+                    )}
                   </div>
                   {member.jobTitle && (
                     <div className="text-[11.5px] text-neutral-400 truncate">{member.jobTitle}</div>

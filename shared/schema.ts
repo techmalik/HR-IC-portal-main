@@ -219,6 +219,9 @@ export const users = pgTable("users", {
   monthlyCap: integer("monthly_cap"),
   currency: text("currency").notNull().default("USD"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  // Sample/demo contractor seeded at org registration (excluded from seat
+  // counts, cannot log in, hard-deleted via "Remove sample data").
+  isDemo: boolean("is_demo").notNull().default(false),
   completedOnboarding: jsonb("completed_onboarding").default(sql`'{}'::jsonb`),
 }, (table) => [
   index("users_organization_id_idx").on(table.organizationId),
