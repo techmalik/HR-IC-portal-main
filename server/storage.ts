@@ -231,8 +231,9 @@ export interface IStorage {
   applyDiscountToSubscription(subscriptionId: string, discountCodeId: string, discountType: string, discountValue: number): Promise<Subscription | undefined>;
   removeDiscountFromSubscription(subscriptionId: string): Promise<Subscription | undefined>;
 
-  getBackofficeActivityLogs(opts?: { limit?: number; orgId?: string; action?: string }): Promise<BackofficeActivityLog[]>;
+  getBackofficeActivityLogs(opts?: { limit?: number; offset?: number; orgId?: string; action?: string }): Promise<{ logs: BackofficeActivityLog[]; total: number }>;
   createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog>;
+  getActivityLogsPage(opts?: { organizationId?: string; limit?: number; offset?: number }): Promise<{ logs: ActivityLog[]; total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -970,21 +971,38 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getBackofficeActivityLogs(opts: { limit?: number; orgId?: string; action?: string } = {}): Promise<BackofficeActivityLog[]> {
-    const { limit = 200, orgId, action } = opts;
+  async getBackofficeActivityLogs(opts: { limit?: number; offset?: number; orgId?: string; action?: string } = {}): Promise<{ logs: BackofficeActivityLog[]; total: number }> {
+    const { limit = 50, offset = 0, orgId, action } = opts;
     const conditions = [];
     if (orgId) conditions.push(eq(backofficeActivityLogs.targetOrgId, orgId));
     if (action) conditions.push(eq(backofficeActivityLogs.action, action));
-    const query = db.select().from(backofficeActivityLogs);
-    if (conditions.length > 0) {
-      return query.where(and(...conditions)).orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
-    }
-    return query.orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit);
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const logsQuery = db.select().from(backofficeActivityLogs);
+    const countQuery = db.select({ total: count() }).from(backofficeActivityLogs);
+    const [logs, [{ total }]] = await Promise.all([
+      (where ? logsQuery.where(where) : logsQuery).orderBy(desc(backofficeActivityLogs.createdAt)).limit(limit).offset(offset),
+      where ? countQuery.where(where) : countQuery,
+    ]);
+    return { logs, total: Number(total) };
   }
 
   async createBackofficeActivityLog(log: InsertBackofficeActivityLog): Promise<BackofficeActivityLog> {
     const result = await db.insert(backofficeActivityLogs).values(log).returning();
     return result[0];
+  }
+
+  async getActivityLogsPage(opts: { organizationId?: string; limit?: number; offset?: number } = {}): Promise<{ logs: ActivityLog[]; total: number }> {
+    const { organizationId, limit = 50, offset = 0 } = opts;
+    const where = organizationId && organizationId !== ALL_ORGS ? eq(activityLogs.organizationId, organizationId) : undefined;
+
+    const logsQuery = db.select().from(activityLogs);
+    const countQuery = db.select({ total: count() }).from(activityLogs);
+    const [logs, [{ total }]] = await Promise.all([
+      (where ? logsQuery.where(where) : logsQuery).orderBy(desc(activityLogs.createdAt)).limit(limit).offset(offset),
+      where ? countQuery.where(where) : countQuery,
+    ]);
+    return { logs, total: Number(total) };
   }
 }
 

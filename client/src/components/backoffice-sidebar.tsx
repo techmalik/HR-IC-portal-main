@@ -2,11 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutGrid,
   Home,
-  DollarSign,
-  UserSearch,
-  MessageSquare,
   Activity,
-  Shield,
   BookOpen,
   Layers,
   Upload,
@@ -37,7 +33,6 @@ const sections: NavSection[] = [
     items: [
       { label: "All tenants", href: "/back-office/tenants", icon: Home },
       { label: "Discounts", href: "/back-office/discounts", icon: Tag },
-      { label: "Billing", href: "/back-office/billing", icon: DollarSign },
     ],
   },
   {
@@ -48,18 +43,10 @@ const sections: NavSection[] = [
     ],
   },
   {
-    label: "Support",
-    items: [
-      { label: "User lookup", href: "/back-office/support", icon: UserSearch },
-      { label: "Tickets", href: "/back-office/tickets", icon: MessageSquare },
-    ],
-  },
-  {
     label: "System",
     items: [
       { label: "Audit log", href: "/back-office/audit-log", icon: ClipboardList },
       { label: "System logs", href: "/back-office/logs", icon: Activity },
-      { label: "Feature flags", href: "/back-office/flags", icon: Shield },
       { label: "File migration", href: "/back-office/migrate", icon: Upload },
     ],
   },

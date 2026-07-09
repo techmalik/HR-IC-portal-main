@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
 import { db } from "./db";
 import { parseBulkBody, runBulk } from "./bulkReview";
-import { eq, desc, gte, sql, count, and } from "drizzle-orm";
+import { eq, desc, gte, sql, count, and, inArray } from "drizzle-orm";
 import {
   timesheets as timesheetsTable,
   oooRequests as oooRequestsTable,
@@ -1153,7 +1153,11 @@ export async function registerRoutes(
 
   // Back-office: list all tenants (orgs + subscription summary)
   app.get("/api/backoffice/tenants", asyncHandler(async (req, res) => {
-    const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt));
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 1000);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+    const [{ total }] = await db.select({ total: count() }).from(organizationsTable);
+    const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt)).limit(limit).offset(offset);
     // Fetch ALL subscriptions (not just active) so suspended orgs appear correctly
     const allSubs = await db.select().from(subscriptionsTable);
     // Keep latest subscription per org (by createdAt)
@@ -1193,6 +1197,7 @@ export async function registerRoutes(
         subscriptionId: sub?.id ?? null,
       };
     });
+    res.setHeader("X-Total-Count", String(total));
     res.json(tenants);
   }));
 
@@ -1302,14 +1307,18 @@ export async function registerRoutes(
     res.json({ subscription: updated });
   }));
 
-  // Back-office: audit log (supports ?orgId=&action= filters)
+  // Back-office: audit log (supports ?orgId=&action=&limit=&offset= filters)
   app.get("/api/backoffice/audit-log", asyncHandler(async (req, res) => {
     const { orgId, action } = req.query as { orgId?: string; action?: string };
-    const logs = await storage.getBackofficeActivityLogs({
-      limit: 500,
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const { logs, total } = await storage.getBackofficeActivityLogs({
+      limit,
+      offset,
       orgId: orgId || undefined,
       action: action || undefined,
     });
+    res.setHeader("X-Total-Count", String(total));
     res.json(logs);
   }));
 
@@ -1330,13 +1339,46 @@ export async function registerRoutes(
       discountCode = await storage.getDiscountCode(sub.appliedDiscountId);
     }
 
+    const { logs: recentAuditLog } = await storage.getBackofficeActivityLogs({ orgId, limit: 10 });
+
     res.json({
       organization: org,
       subscription: sub ?? null,
       netPrice,
       discountCode,
       users: userList.map(({ password: _, ...u }) => u),
+      recentAuditLog,
     });
+  }));
+
+  // Back-office: recent cross-tenant activity (real business events, not synthetic logs)
+  app.get("/api/backoffice/activity-logs", asyncHandler(async (req, res) => {
+    const { orgId } = req.query as { orgId?: string };
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const { logs, total } = await storage.getActivityLogsPage({
+      organizationId: orgId || undefined,
+      limit,
+      offset,
+    });
+
+    const orgIds = Array.from(new Set(logs.map((l) => l.organizationId)));
+    const userIds = Array.from(new Set(logs.map((l) => l.userId)));
+    const [orgRows, userRows] = await Promise.all([
+      orgIds.length ? db.select({ id: organizationsTable.id, name: organizationsTable.name }).from(organizationsTable).where(inArray(organizationsTable.id, orgIds)) : [],
+      userIds.length ? db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [],
+    ]);
+    const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
+    const userEmailById = new Map(userRows.map((u) => [u.id, u.email]));
+
+    const enriched = logs.map((log) => ({
+      ...log,
+      organizationName: orgNameById.get(log.organizationId) ?? null,
+      actorEmail: userEmailById.get(log.userId) ?? null,
+    }));
+
+    res.setHeader("X-Total-Count", String(total));
+    res.json(enriched);
   }));
 
   // User routes - protected with auth middleware

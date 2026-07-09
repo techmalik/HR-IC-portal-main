@@ -64,6 +64,7 @@ const MigrateFilesPage = lazyWithRetry(() => import("@/pages/migrate-files"));
 const BackofficeLoginPage = lazyWithRetry(() => import("@/pages/backoffice-login"));
 const BackofficeOverviewPage = lazyWithRetry(() => import("@/pages/backoffice-overview"));
 const BackofficeTenantDetailPage = lazyWithRetry(() => import("@/pages/backoffice-tenant-detail"));
+const BackofficeTenantDrilldownPage = lazyWithRetry(() => import("@/pages/backoffice-tenant-drilldown"));
 const BackofficeDiscountsPage = lazyWithRetry(() => import("@/pages/backoffice-discounts"));
 const BackofficeLogsPage = lazyWithRetry(() => import("@/pages/backoffice-logs"));
 const BackofficeFlagsPage = lazyWithRetry(() => import("@/pages/backoffice-flags"));
@@ -536,13 +537,14 @@ function PublicRoutes() {
 }
 
 // Internal console for the Axle team (owner/engineers/support) to manage
-// tenants — mocked data only, gated the same way as other admin-only areas.
+// tenants — backed by real DB data, gated the same way as other admin-only areas.
 function BackOfficeRoutes() {
   return (
     <RouteErrorBoundary>
       <Suspense fallback={pageFallback}>
         <Switch>
           <Route path="/back-office" component={BackofficeOverviewPage} />
+          <Route path="/back-office/tenants/:orgId" component={BackofficeTenantDrilldownPage} />
           <Route path="/back-office/tenants" component={BackofficeTenantDetailPage} />
           <Route path="/back-office/discounts" component={BackofficeDiscountsPage} />
           <Route path="/back-office/logs" component={BackofficeLogsPage} />
