@@ -25,7 +25,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Lock } from "lucide-react";
 
 const passwordChangeSchema = z.object({
-  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  newPassword: z.string().min(10, "Password must be at least 10 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
@@ -94,7 +94,7 @@ export function ForcePasswordChangeModal({
             Change Your Password
           </DialogTitle>
           <DialogDescription>
-            You must change your password before continuing. Please choose a new password that is at least 6 characters long.
+            You must change your password before continuing. Please choose a new password that is at least 10 characters long.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

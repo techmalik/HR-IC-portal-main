@@ -1,5 +1,7 @@
-const SITE_URL = "https://axle.run";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/icons/icon-192.png`;
+import { CANONICAL_ORIGIN } from "./ssrShared";
+
+const SITE_URL = CANONICAL_ORIGIN;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 
 interface RouteMeta {
   title: string;

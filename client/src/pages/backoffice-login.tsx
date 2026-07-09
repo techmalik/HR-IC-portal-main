@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2, AlertCircle, ShieldAlert } from "lucide-react";
 import { useBackofficeAuth } from "@/lib/backoffice-auth-context";
+import { getMarketingOrigin } from "@/lib/subdomain";
 
 function LogoMark() {
   return (
@@ -142,7 +143,7 @@ export default function BackofficeLoginPage() {
 
         <p className="mt-4 text-center text-[11.5px] text-[#374151]">
           Not a platform admin?{" "}
-          <a href="/login" className="text-[#4B5563] hover:text-[#6B7280] underline transition-colors">
+          <a href={`${getMarketingOrigin() || ""}/login`} className="text-[#4B5563] hover:text-[#6B7280] underline transition-colors">
             Go to main login
           </a>
         </p>

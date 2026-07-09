@@ -181,6 +181,7 @@ export default function EvaluationsPage() {
 
   const invalidateEvaluations = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/evaluations/pending-count"] });
     if (isSupervisor && !isAdmin && user?.id) {
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations", { managerId: user.id }] });
     }
@@ -767,6 +768,7 @@ function EvaluationDetailView({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/evaluations/pending-count"] });
       toast({
         title: "Evaluation updated",
         description: "Your changes have been saved.",
@@ -821,6 +823,7 @@ function EvaluationDetailView({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/evaluations/pending-count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/evaluations", evaluation.id, "sections"] });
       toast({
         title: "Evaluation submitted",

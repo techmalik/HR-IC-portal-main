@@ -2,8 +2,9 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, ty
 import type { User } from "@shared/schema";
 import { ForcePasswordChangeModal } from "@/components/force-password-change-modal";
 import { IdleTimeoutDialog } from "@/components/idle-timeout-dialog";
-import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/queryClient";
-import { getMarketingOrigin } from "@/lib/subdomain";
+import { TrialExpiredOverlay } from "@/components/trial-expired-overlay";
+import { AUTH_UNAUTHORIZED_EVENT, TRIAL_EXPIRED_EVENT, queryClient } from "@/lib/queryClient";
+import { getMarketingOrigin, isMarketingHost } from "@/lib/subdomain";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const WARNING_DURATION_S = 2 * 60;
@@ -14,6 +15,7 @@ interface AuthUser extends Omit<User, 'mustChangePassword'> {
   hasDirectReports?: boolean;
   mustChangePassword?: boolean;
   isPlatformAdmin?: boolean;
+  trialExpired?: boolean;
 }
 
 interface RegisterResult {
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch {}
     setUser(null);
+    queryClient.clear();
   }, []);
 
   const handleIdleLogout = useCallback(async () => {
@@ -150,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // handled in queryClient.ts.
     const onUnauthorized = () => {
       setUser(null);
+      queryClient.clear();
     };
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
     return () => {
@@ -158,6 +162,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // A background API call can discover the trial expired (e.g. the org's
+    // trial ends while this tab is open) before the next /api/auth/me poll —
+    // flip the flag immediately so the blocking overlay shows up.
+    const onTrialExpired = () => {
+      setUser((current) => (current ? { ...current, trialExpired: true } : current));
+    };
+    window.addEventListener(TRIAL_EXPIRED_EVENT, onTrialExpired);
+    return () => {
+      window.removeEventListener(TRIAL_EXPIRED_EVENT, onTrialExpired);
+    };
+  }, []);
+
+  useEffect(() => {
+    // The marketing domain (axlehq.app) only ever renders public pages —
+    // never probe auth or mount session-only UI (password/idle/trial modals)
+    // there, even for a visitor who happens to have a valid app-domain session.
+    if (isMarketingHost()) {
+      setIsLoading(false);
+      return;
+    }
     fetch("/api/auth/me", {
       credentials: "include",
     })
@@ -245,6 +269,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId={user.id}
           onSuccess={handlePasswordChangeSuccess}
         />
+      )}
+      {user && !user.mustChangePassword && user.trialExpired && !isPlatformAdmin && (
+        <TrialExpiredOverlay isAdmin={isAdmin} onLogout={logout} />
       )}
       {user && (
         <IdleTimeoutDialog

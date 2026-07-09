@@ -73,8 +73,10 @@ export function getPreferenceCategory(
 async function shouldNotifyUser(userId: string, notificationType: string, isTeamAction: boolean = false): Promise<boolean> {
   const prefs = await storage.getNotificationPreferences(userId);
   if (!prefs) {
+    const user = await storage.getUser(userId);
     await storage.createNotificationPreferences({
       userId,
+      organizationId: user?.organizationId ?? "",
       inAppEnabled: true,
       emailEnabled: true,
       oooNotifications: true,
@@ -111,10 +113,12 @@ export async function createNotification(
   isTeamAction: boolean = false
 ): Promise<void> {
   const shouldNotifyInApp = await shouldNotifyUser(userId, payload.type, isTeamAction);
-  
+
   if (shouldNotifyInApp) {
+    const recipient = await storage.getUser(userId);
     const notification = await storage.createNotification({
       userId,
+      organizationId: recipient?.organizationId ?? "",
       actorId: payload.actorId || null,
       type: payload.type,
       title: payload.title,
@@ -220,8 +224,8 @@ export async function notifyTimesheetSubmitted(
   // Collect unique recipient IDs to avoid duplicate notifications
   const recipientIds = new Set<string>();
 
-  // Add all admins (except the submitter)
-  const admins = await storage.getUsersByRole("admin");
+  // Add all admins in the submitter's org (except the submitter)
+  const admins = await storage.getUsersByRole("admin", submitter.organizationId || "");
   for (const admin of admins) {
     if (admin.id !== submitter.id) {
       recipientIds.add(admin.id);
@@ -283,9 +287,9 @@ export async function notifyTimesheetApproved(
     });
   }
 
-  // Notify admins if reviewer is a supervisor (not admin) who approved their team member's timesheet
+  // Notify admins in the timesheet owner's org if reviewer is a supervisor (not admin) who approved their team member's timesheet
   if (reviewer.role !== "admin") {
-    const admins = await storage.getUsersByRole("admin");
+    const admins = await storage.getUsersByRole("admin", timesheetOwner?.organizationId || reviewer.organizationId || "");
     for (const admin of admins) {
       await createNotification(admin.id, {
         type: "timesheet_approved",
@@ -338,9 +342,9 @@ export async function notifyTimesheetRejected(
     });
   }
 
-  // Notify admins if reviewer is a supervisor (not admin) who rejected their team member's timesheet
+  // Notify admins in the timesheet owner's org if reviewer is a supervisor (not admin) who rejected their team member's timesheet
   if (reviewer.role !== "admin") {
-    const admins = await storage.getUsersByRole("admin");
+    const admins = await storage.getUsersByRole("admin", timesheetOwner?.organizationId || reviewer.organizationId || "");
     for (const admin of admins) {
       await createNotification(admin.id, {
         type: "timesheet_rejected",
@@ -426,7 +430,7 @@ export async function notifyInvoiceUploaded(
   invoice: any,
   uploader: User
 ): Promise<void> {
-  const admins = await storage.getUsersByRole("admin");
+  const admins = await storage.getUsersByRole("admin", uploader.organizationId || "");
   const emailDetails = {
     "Invoice Number": invoice.invoiceNumber,
     "Period": `${invoice.month}/${invoice.year}`,
@@ -527,8 +531,8 @@ export async function notifyContractExpiring(
   contract: Contract,
   contractor: User
 ): Promise<void> {
-  const admins = await storage.getUsersByRole("admin", contractor.organizationId || undefined);
-  const owners = await storage.getUsersByRole("owner", contractor.organizationId || undefined);
+  const admins = await storage.getUsersByRole("admin", contractor.organizationId || "");
+  const owners = await storage.getUsersByRole("owner", contractor.organizationId || "");
   const recipients = [...admins, ...owners];
   const seen = new Set<string>();
   const daysUntil = Math.ceil(

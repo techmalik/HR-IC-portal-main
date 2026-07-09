@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import { BackofficeLayout } from "@/components/backoffice-layout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Tag, X, Loader2, AlertTriangle, Settings2 } from "lucide-react";
+import { Tag, X, Loader2, AlertTriangle, Settings2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
-interface Tenant {
+const PAGE_SIZE = 25;
+
+async function fetchTenantsPage(offset: number): Promise<{ tenants: Tenant[]; total: number }> {
+  const res = await fetch(`/api/backoffice/tenants?limit=${PAGE_SIZE}&offset=${offset}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const tenants = (await res.json()) as Tenant[];
+  const total = Number(res.headers.get("X-Total-Count") ?? tenants.length);
+  return { tenants, total };
+}
+
+export interface Tenant {
   id: string;
   name: string;
   slug: string;
@@ -23,7 +36,7 @@ interface Tenant {
   subscriptionId: string | null;
 }
 
-interface DiscountCode {
+export interface DiscountCode {
   id: string;
   code: string;
   description: string | null;
@@ -33,7 +46,7 @@ interface DiscountCode {
   expiresAt: string | null;
 }
 
-function planPillClass(plan: string) {
+export function planPillClass(plan: string) {
   switch (plan.toLowerCase()) {
     case "enterprise": return "bg-[#111827] text-white";
     case "pro": return "bg-[#059669] text-white";
@@ -42,19 +55,19 @@ function planPillClass(plan: string) {
   }
 }
 
-function discountSummary(type: string | null, value: number | null) {
+export function discountSummary(type: string | null, value: number | null) {
   if (!type || value == null) return null;
   return type === "percentage" ? `${value}% off` : `$${value} off`;
 }
 
-const PLAN_MAX_SEATS: Record<string, number> = {
+export const PLAN_MAX_SEATS: Record<string, number> = {
   free: 3,
   starter: 10,
   pro: 50,
   enterprise: 999,
 };
 
-function DiscountModal({
+export function DiscountModal({
   tenant,
   discountCodes,
   onClose,
@@ -185,7 +198,7 @@ function DiscountModal({
   );
 }
 
-function PlanModal({
+export function PlanModal({
   tenant,
   onClose,
 }: {
@@ -213,6 +226,7 @@ function PlanModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/metrics"] });
       toast({ title: "Plan updated" });
       onClose();
     },
@@ -282,7 +296,7 @@ function PlanModal({
   );
 }
 
-function SuspendModal({
+export function SuspendModal({
   tenant,
   onClose,
 }: {
@@ -311,6 +325,7 @@ function SuspendModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/backoffice/audit-log"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backoffice/metrics"] });
       toast({ title: isSuspended ? "Organization reactivated" : "Organization suspended" });
       onClose();
     },
@@ -374,11 +389,16 @@ export default function BackofficeTenantDetailPage() {
   const [managingTenant, setManagingTenant] = useState<Tenant | null>(null);
   const [planTenant, setPlanTenant] = useState<Tenant | null>(null);
   const [suspendTenant, setSuspendTenant] = useState<Tenant | null>(null);
+  const [page, setPage] = useState(0);
 
-  const { data: tenants = [], isLoading } = useQuery<Tenant[]>({
-    queryKey: ["/api/backoffice/tenants"],
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/backoffice/tenants", { page }],
+    queryFn: () => fetchTenantsPage(page * PAGE_SIZE),
     staleTime: 15_000,
   });
+  const tenants = data?.tenants ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const { data: discountCodes = [] } = useQuery<DiscountCode[]>({
     queryKey: ["/api/backoffice/discount-codes"],
@@ -439,7 +459,13 @@ export default function BackofficeTenantDetailPage() {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="text-[13px] font-medium text-[#111827]">{t.name}</div>
+                    <Link
+                      href={`/back-office/tenants/${t.id}`}
+                      className="text-[13px] font-medium text-[#111827] hover:text-[#059669] hover:underline"
+                      data-testid={`link-tenant-detail-${t.slug}`}
+                    >
+                      {t.name}
+                    </Link>
                     {isSuspended && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 uppercase tracking-wide">
                         Suspended
@@ -509,6 +535,37 @@ export default function BackofficeTenantDetailPage() {
           })
         )}
       </div>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[12px] text-[#9CA3AF]">
+            Showing {page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)} of {total} tenants
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11.5px] px-2"
+              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+            <span className="text-[12px] text-[#6B7280]">
+              Page {page + 1} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11.5px] px-2"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </BackofficeLayout>
   );
 }

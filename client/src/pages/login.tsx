@@ -32,7 +32,7 @@ export default function LoginPage() {
   usePageMeta({
     title: "Log in — Axle",
     description: "Log in to your Axle account to manage timesheets, invoices, leave requests, and more.",
-    canonical: "https://axle.run/login",
+    canonical: "https://axlehq.app/login",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +41,10 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const searchParams = new URLSearchParams(window.location.search);
-  const redirectTo = searchParams.get("redirect") || "/";
+  const rawRedirect = searchParams.get("redirect") || "/";
+  // Only allow same-origin relative paths — must start with a single "/"
+  // (reject "//evil.com" and absolute URLs) to avoid an open redirect.
+  const redirectTo = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
   const sessionExpired = searchParams.get("expired") === "1";
 
   const form = useForm<LoginForm>({
@@ -59,7 +62,7 @@ export default function LoginPage() {
 
     if (success) {
       if (isSubdomainMode()) {
-        window.location.href = `${getAppOrigin()}/`;
+        window.location.href = `${getAppOrigin()}${redirectTo}`;
       } else {
         setLocation(redirectTo);
       }
@@ -158,10 +161,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel className="text-[13px] font-medium text-gray-700">Password</FormLabel>
-                      <span className="text-[12.5px] text-primary font-medium">Forgot password?</span>
-                    </div>
+                    <FormLabel className="text-[13px] font-medium text-gray-700">Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"

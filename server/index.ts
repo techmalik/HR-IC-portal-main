@@ -1,16 +1,21 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
-import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerWebSocketClient, unregisterWebSocketClient } from "./notificationService";
 import { getUserIdFromToken, cleanupExpiredSessions } from "./sessionManager";
-import { storage } from "./storage";
+import { storage, ALL_ORGS } from "./storage";
 import { notifyContractExpiring, notifyTimesheetReminder, timesheetReminderPeriodKey } from "./notificationService";
+import { decideHostRouting } from "./hostRouting";
 
 const app = express();
+// Replit (and any reverse proxy) terminates TLS in front of us, so
+// req.socket.remoteAddress is the proxy's own address for every request.
+// Trusting the proxy makes req.ip resolve the real client IP from
+// X-Forwarded-For instead, which the login rate limiters depend on.
+app.set("trust proxy", true);
 const httpServer = createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
@@ -61,8 +66,6 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -94,66 +97,25 @@ app.use((req, res, next) => {
   // In dev/preview (localhost or Replit preview URL) every request passes through unchanged.
   if (process.env.NODE_ENV === "production") {
     app.use(async (req: Request, res: Response, next: NextFunction) => {
-      const hostname = req.hostname;
-      const isAppSubdomain = hostname === "app.axlehq.app";
-      const isMarketingDomain = hostname === "axlehq.app" || hostname === "www.axlehq.app";
+      const decision = decideHostRouting(req.hostname, req.path);
 
-      // Unknown host (Replit preview URL, custom domains, etc.) — pass through untouched.
-      if (!isAppSubdomain && !isMarketingDomain) {
+      if (decision.kind === "next") {
         return next();
       }
-
-      if (isMarketingDomain) {
-        // On the marketing domain only public paths are allowed.
-        const p = req.path;
-        const isPublic =
-          p === "/" ||
-          p === "/login" ||
-          p === "/signup" ||
-          p === "/competitive-analysis" ||
-          p.startsWith("/blog") ||
-          p.startsWith("/seo") ||
-          p.startsWith("/api/auth/") ||
-          p.startsWith("/api/blog/") ||
-          p === "/api/billing/detect-currency" ||
-          p === "/api/health" ||
-          p.startsWith("/api/support/") ||
-          p.startsWith("/objects/") ||
-          p.startsWith("/assets/") ||
-          p.startsWith("/uploads/") ||
-          p === "/favicon.ico";
-
-        if (!isPublic) {
-          return res.redirect(302, "https://axlehq.app/");
-        }
-        return next();
+      if (decision.kind === "redirect") {
+        return res.redirect(decision.status, decision.location);
       }
 
-      if (isAppSubdomain) {
-        // On the app subdomain, unauthenticated HTML navigations redirect to login.
-        const p = req.path;
-        const isApiRequest = p.startsWith("/api/");
-        const isStaticAsset =
-          p.startsWith("/assets/") ||
-          p.startsWith("/objects/") ||
-          p.startsWith("/uploads/") ||
-          p === "/favicon.ico" ||
-          /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map)$/.test(p);
-
-        if (!isApiRequest && !isStaticAsset) {
-          const token = req.cookies?.session_token;
-          if (!token) {
-            return res.redirect(302, "https://axlehq.app/login");
-          }
-          const userId = await getUserIdFromToken(token);
-          if (!userId) {
-            return res.redirect(302, "https://axlehq.app/login");
-          }
-        }
-        return next();
+      // decision.kind === "check-session"
+      const token = req.cookies?.session_token;
+      if (!token) {
+        return res.redirect(302, decision.loginRedirect);
       }
-
-      next();
+      const userId = await getUserIdFromToken(token);
+      if (!userId) {
+        return res.redirect(302, decision.loginRedirect);
+      }
+      return next();
     });
   }
 
@@ -184,8 +146,8 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    console.error(err);
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
@@ -222,7 +184,7 @@ app.use((req, res, next) => {
 
       const checkExpiringContracts = async () => {
         try {
-          const all = await storage.getAllContracts();
+          const all = await storage.getAllContracts(ALL_ORGS);
           const now = Date.now();
           for (const c of all) {
             const end = new Date(c.endDate).getTime();
@@ -271,7 +233,7 @@ app.use((req, res, next) => {
           }
           const periodKey = timesheetReminderPeriodKey(targetMonth, targetYear);
 
-          const allUsers = await storage.getAllUsers();
+          const allUsers = await storage.getAllUsers(ALL_ORGS);
           for (const u of allUsers) {
             if (!u.isActive || u.role !== "ic") continue;
 

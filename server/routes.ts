@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, comparePassword } from "./storage";
 import { db } from "./db";
 import { parseBulkBody, runBulk } from "./bulkReview";
-import { eq, desc, gte, sql, count, and } from "drizzle-orm";
+import { eq, desc, gte, sql, count, and, inArray } from "drizzle-orm";
 import {
   timesheets as timesheetsTable,
   oooRequests as oooRequestsTable,
@@ -22,7 +22,7 @@ import { createSession, invalidateSession, getUserIdFromToken, getUserIdFromToke
 import type { User, UserRoleType, InsertContract, InsertExpense } from "@shared/schema";
 import { ExpenseCategory } from "@shared/schema";
 
-import { ObjectStorageService, registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { createMigrateFilesRouter } from "./migrate-files";
 import { randomUUID } from "crypto";
 import multer from "multer";
@@ -33,8 +33,6 @@ function isWeekend(dateString: string): boolean {
   const day = date.getUTCDay();
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
-
-const objectStorageService = new ObjectStorageService();
 
 // Allowed ISO 4217 currency codes for invoices/users — kept in sync with
 // `client/src/lib/currency.ts` SUPPORTED_CURRENCIES.
@@ -124,6 +122,8 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_LOGIN_ATTEMPTS = 5;
 
+const MIN_PASSWORD_LENGTH = 10;
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const attempts = loginAttempts.get(ip);
@@ -142,8 +142,28 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-function resetRateLimit(ip: string): void {
-  loginAttempts.delete(ip);
+function resetRateLimit(key: string): void {
+  loginAttempts.delete(key);
+}
+
+// req.ip resolves the real client address from X-Forwarded-For once
+// `trust proxy` is set (server/index.ts) — fall back to the raw socket for
+// safety if that's ever misconfigured.
+function getClientIp(req: Request): string {
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+// The dollar figures in PLAN_LIMITS are USD-only; what Paystack actually
+// charges per plan+currency lives in PAYSTACK_PRICES (amount is in the
+// smallest currency unit — cents/kobo). Use that as the source of truth for
+// any customer-facing price so a NGN-billed org doesn't see a USD number with
+// a Naira symbol slapped on it. Falls back to the USD constant for plans
+// PAYSTACK_PRICES doesn't cover (free, enterprise).
+async function getUnitPriceForCurrency(plan: string, currency: "NGN" | "USD"): Promise<number> {
+  const { PAYSTACK_PRICES } = await import("./paystackService");
+  const priced = PAYSTACK_PRICES[plan]?.[currency];
+  if (priced) return priced.amount / 100;
+  return PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
 }
 
 // Get current user from session cookie
@@ -176,19 +196,16 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
     }
   }
 
-  // Block access for users whose org subscription is suspended.
-  // Platform admins are exempt so they can still manage/reactivate.
-  if (user.organizationId) {
-    const allowedAdminEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isPlatformAdmin = allowedAdminEmails.includes(user.email.toLowerCase());
-    if (!isPlatformAdmin) {
-      const sub = await storage.getSubscriptionByOrganization(user.organizationId);
-      if (sub?.status === "suspended") {
-        return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
-      }
+  // Block access for users whose org subscription is suspended, and lock out
+  // orgs whose free trial has expired without a paid subscription.
+  // Platform admins are exempt from both so they can still manage/reactivate.
+  if (user.organizationId && !isPlatformAdminUser(user)) {
+    const sub = await storage.getSubscriptionByOrganization(user.organizationId);
+    if (sub?.status === "suspended") {
+      return res.status(403).json({ error: "Your organization's account has been suspended. Please contact support." });
+    }
+    if (isTrialExpired(sub) && !isExemptFromTrialLock(req)) {
+      return res.status(403).json({ error: "Your 7-day trial has ended. Subscribe to keep using Axle.", trialExpired: true });
     }
   }
 
@@ -249,9 +266,143 @@ function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
-  if (!currentUser.organizationId) return true;
+export function isPlatformAdminUser(user: User): boolean {
+  const allowedEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowedEmails.includes(user.email.toLowerCase());
+}
+
+// The free plan is trial-only: 7 days of full access, then a hard lockout
+// until the org subscribes to a paid plan. An org is never locked while it
+// holds a live Paystack subscription code, even if the plan hasn't flipped
+// to a paid tier yet (e.g. between checkout and the confirming webhook).
+export function isTrialExpired(
+  sub: { plan: string; trialEndsAt: Date | string | null; paystackSubscriptionCode: string | null } | null | undefined
+): boolean {
+  if (!sub) return false;
+  if (sub.plan !== "free") return false;
+  if (!sub.trialEndsAt) return false;
+  if (new Date(sub.trialEndsAt) >= new Date()) return false;
+  if (sub.paystackSubscriptionCode) return false;
+  return true;
+}
+
+// Paths that must stay reachable for a trial-locked org: logging out,
+// reading who-am-I (so the client can render the lock state), and the
+// billing/subscribe flow that's the only way out of the lock. Read-only
+// notifications are exempt too so the bell still works.
+export function isExemptFromTrialLock(req: Request): boolean {
+  const { path, method } = req;
+  if (method === "POST" && path === "/api/auth/logout") return true;
+  if (method === "GET" && path === "/api/billing") return true;
+  if (method === "POST" && path === "/api/billing/subscribe") return true;
+  if (method === "GET" && path.startsWith("/api/notifications")) return true;
+  return false;
+}
+
+// Fails closed: a user with no organizationId (and no platform-admin bypass)
+// is never considered same-org as anything.
+export function checkOrgBoundary(currentUser: User, targetUser: { organizationId: string | null }): boolean {
+  if (isPlatformAdminUser(currentUser)) return true;
+  if (!currentUser.organizationId) return false;
   return currentUser.organizationId === targetUser.organizationId;
+}
+
+// Sends 404 if the entity is missing, 403 on cross-org access, else returns true.
+// Callers must `if (!assertSameOrg(res, currentUser, entity)) return;`
+export function assertSameOrg(
+  res: Response,
+  currentUser: User,
+  entity: { organizationId: string | null } | null | undefined
+): boolean {
+  if (!entity) {
+    res.status(404).json({ error: "Not found" });
+    return false;
+  }
+  if (!checkOrgBoundary(currentUser, entity)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  return true;
+}
+
+// Guards writes made "on behalf of" another user (timesheet save/submit,
+// overtime requests): the caller must be the target user, an admin/owner in
+// the target's org, or the target's direct supervisor.
+export async function assertSelfOrSupervisorOf(
+  res: Response,
+  currentUser: User,
+  targetUserId: string,
+  opts: { allowSelf?: boolean } = { allowSelf: true }
+): Promise<boolean> {
+  if (opts.allowSelf !== false && currentUser.id === targetUserId) return true;
+  if (isPlatformAdminUser(currentUser)) return true;
+  const targetUser = await storage.getUser(targetUserId);
+  if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+  if (isAdmin) return true;
+  const reports = await storage.getUsersBySupervisor(currentUser.id);
+  if (reports.some((r) => r.id === targetUserId)) return true;
+  res.status(403).json({ error: "Forbidden - not your direct report" });
+  return false;
+}
+
+// Which side of an evaluation section the caller may write: the IC's
+// self-assessment fields, the manager's review fields, or (admin/owner) both.
+export function evaluationSectionAccess(
+  currentUser: User,
+  evaluation: { icId: string; managerId: string }
+): "ic" | "manager" | "both" | null {
+  if (currentUser.role === "admin" || currentUser.role === "owner") return "both";
+  if (currentUser.id === evaluation.managerId) return "manager";
+  if (currentUser.id === evaluation.icId) return "ic";
+  return null;
+}
+
+export function sanitizeEvaluationSectionUpdate(body: any, side: "ic" | "manager" | "both"): Record<string, any> {
+  const updates: Record<string, any> = {};
+  if ((side === "ic" || side === "both") && body) {
+    if (body.selfRating !== undefined) updates.selfRating = body.selfRating;
+    if (body.selfDocumentation !== undefined) updates.selfDocumentation = body.selfDocumentation;
+    if (body.improvementGoal !== undefined) updates.improvementGoal = body.improvementGoal;
+  }
+  if ((side === "manager" || side === "both") && body) {
+    if (body.managerRating !== undefined) updates.managerRating = body.managerRating;
+    if (body.managerFeedback !== undefined) updates.managerFeedback = body.managerFeedback;
+    if (body.founderFeedback !== undefined) updates.founderFeedback = body.founderFeedback;
+  }
+  return updates;
+}
+
+// Guards `?userId=` style reads/writes: the caller must either be the target
+// user themselves, or an admin/owner (or, with allowSupervisor, any user with
+// supervisor privileges) in the target user's organization.
+export async function assertSelfOrOrgAdmin(
+  res: Response,
+  currentUser: User,
+  targetUserId: string,
+  opts: { allowSupervisor?: boolean } = {}
+): Promise<boolean> {
+  if (currentUser.id === targetUserId) return true;
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+  const isAllowed =
+    isAdmin || isPlatformAdminUser(currentUser) ||
+    (opts.allowSupervisor === true && (await hasSupervisorPrivileges(currentUser.id)));
+  if (!isAllowed) {
+    res.status(403).json({ error: "Forbidden - Insufficient permissions" });
+    return false;
+  }
+  const targetUser = await storage.getUser(targetUserId);
+  if (!targetUser || !checkOrgBoundary(currentUser, targetUser)) {
+    res.status(403).json({ error: "Forbidden - Cross-organization access denied" });
+    return false;
+  }
+  return true;
 }
 
 // Check if user has supervisor privileges (either admin or IC with direct reports)
@@ -431,16 +582,19 @@ export async function registerRoutes(
 
   // Auth routes (no auth middleware - public endpoints)
   app.post("/api/auth/login", async (req, res) => {
-    const clientIp = req.socket?.remoteAddress || req.ip || 'unknown';
-    
-    if (!checkRateLimit(clientIp)) {
-      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
-    }
-    
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
+    }
+
+    // Key on ip+username so one attacker guessing one account can't lock out
+    // every user sharing that IP, and so distributed guessing against many
+    // accounts from one IP still gets throttled per account.
+    const clientIp = getClientIp(req);
+    const rateLimitKey = `${clientIp}:${String(username).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
     }
 
     const user = await storage.getUserByUsername(username);
@@ -474,14 +628,14 @@ export async function registerRoutes(
     }
 
     // Successful login - reset rate limit
-    resetRateLimit(clientIp);
+    resetRateLimit(rateLimitKey);
 
     const sessionToken = await createSession(user.id, user.username);
 
     try {
       await storage.createActivityLog({
         userId: user.id,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
         action: "User logged in",
         details: `${user.firstName} ${user.lastName} logged in`,
         entityType: "user",
@@ -505,12 +659,11 @@ export async function registerRoutes(
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    const loginAllowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const loginIsPlatformAdmin = loginAllowedPlatformAdmins.includes(user.email.toLowerCase());
-    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin: loginIsPlatformAdmin });
+    const loginIsPlatformAdmin = isPlatformAdminUser(user);
+    const loginTrialExpired = user.organizationId && !loginIsPlatformAdmin
+      ? isTrialExpired(await storage.getSubscriptionByOrganization(user.organizationId))
+      : false;
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin: loginIsPlatformAdmin, trialExpired: loginTrialExpired });
   });
 
   app.post("/api/auth/register", async (req, res) => {
@@ -520,8 +673,15 @@ export async function registerRoutes(
       return res.status(400).json({ error: "All fields are required: firstName, lastName, email, password, organizationName" });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    // Org-creation is unthrottled otherwise — key on ip+email so spamming
+    // signups against one address (or one target email) gets rate-limited.
+    const rateLimitKey = `register:${getClientIp(req)}:${String(email).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many registration attempts. Please wait 1 minute." });
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     const existingByEmail = await storage.getUserByEmail(email);
@@ -620,14 +780,15 @@ export async function registerRoutes(
 
   // Back-office dedicated auth endpoints — use bo_session_token cookie
   app.post("/api/backoffice/auth/login", async (req, res) => {
-    const clientIp = req.socket?.remoteAddress || req.ip || "unknown";
-    if (!checkRateLimit(clientIp)) {
-      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
-    }
-
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password required" });
+    }
+
+    const clientIp = getClientIp(req);
+    const rateLimitKey = `bo:${clientIp}:${String(username).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many login attempts. Please wait 1 minute." });
     }
 
     const user = await storage.getUserByUsername(username);
@@ -653,7 +814,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Access denied — platform admins only" });
     }
 
-    resetRateLimit(clientIp);
+    resetRateLimit(rateLimitKey);
 
     const sessionToken = await createSession(user.id, user.username, "backoffice");
 
@@ -717,12 +878,11 @@ export async function registerRoutes(
     const directReports = await storage.getUsersBySupervisor(user.id);
     const hasDirectReports = directReports.length > 0;
     const { password: _, ...userWithoutPassword } = user;
-    const allowedPlatformAdmins = (process.env.PLATFORM_ADMIN_EMAILS || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isPlatformAdmin = allowedPlatformAdmins.includes(user.email.toLowerCase());
-    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin });
+    const isPlatformAdmin = isPlatformAdminUser(user);
+    const trialExpired = user.organizationId && !isPlatformAdmin
+      ? isTrialExpired(await storage.getSubscriptionByOrganization(user.organizationId))
+      : false;
+    res.json({ ...userWithoutPassword, hasDirectReports, isPlatformAdmin, trialExpired });
   });
 
   // Back-office API namespace — platform admins only (uses bo_session_token)
@@ -991,7 +1151,11 @@ export async function registerRoutes(
 
   // Back-office: list all tenants (orgs + subscription summary)
   app.get("/api/backoffice/tenants", asyncHandler(async (req, res) => {
-    const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt));
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 1000);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+    const [{ total }] = await db.select({ total: count() }).from(organizationsTable);
+    const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt)).limit(limit).offset(offset);
     // Fetch ALL subscriptions (not just active) so suspended orgs appear correctly
     const allSubs = await db.select().from(subscriptionsTable);
     // Keep latest subscription per org (by createdAt)
@@ -1031,6 +1195,7 @@ export async function registerRoutes(
         subscriptionId: sub?.id ?? null,
       };
     });
+    res.setHeader("X-Total-Count", String(total));
     res.json(tenants);
   }));
 
@@ -1140,14 +1305,18 @@ export async function registerRoutes(
     res.json({ subscription: updated });
   }));
 
-  // Back-office: audit log (supports ?orgId=&action= filters)
+  // Back-office: audit log (supports ?orgId=&action=&limit=&offset= filters)
   app.get("/api/backoffice/audit-log", asyncHandler(async (req, res) => {
     const { orgId, action } = req.query as { orgId?: string; action?: string };
-    const logs = await storage.getBackofficeActivityLogs({
-      limit: 500,
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const { logs, total } = await storage.getBackofficeActivityLogs({
+      limit,
+      offset,
       orgId: orgId || undefined,
       action: action || undefined,
     });
+    res.setHeader("X-Total-Count", String(total));
     res.json(logs);
   }));
 
@@ -1168,31 +1337,64 @@ export async function registerRoutes(
       discountCode = await storage.getDiscountCode(sub.appliedDiscountId);
     }
 
+    const { logs: recentAuditLog } = await storage.getBackofficeActivityLogs({ orgId, limit: 10 });
+
     res.json({
       organization: org,
       subscription: sub ?? null,
       netPrice,
       discountCode,
       users: userList.map(({ password: _, ...u }) => u),
+      recentAuditLog,
     });
+  }));
+
+  // Back-office: recent cross-tenant activity (real business events, not synthetic logs)
+  app.get("/api/backoffice/activity-logs", asyncHandler(async (req, res) => {
+    const { orgId } = req.query as { orgId?: string };
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const { logs, total } = await storage.getActivityLogsPage({
+      organizationId: orgId || undefined,
+      limit,
+      offset,
+    });
+
+    const orgIds = Array.from(new Set(logs.map((l) => l.organizationId)));
+    const userIds = Array.from(new Set(logs.map((l) => l.userId)));
+    const [orgRows, userRows] = await Promise.all([
+      orgIds.length ? db.select({ id: organizationsTable.id, name: organizationsTable.name }).from(organizationsTable).where(inArray(organizationsTable.id, orgIds)) : [],
+      userIds.length ? db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds)) : [],
+    ]);
+    const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
+    const userEmailById = new Map(userRows.map((u) => [u.id, u.email]));
+
+    const enriched = logs.map((log) => ({
+      ...log,
+      organizationName: orgNameById.get(log.organizationId) ?? null,
+      actorEmail: userEmailById.get(log.userId) ?? null,
+    }));
+
+    res.setHeader("X-Total-Count", String(total));
+    res.json(enriched);
   }));
 
   // User routes - protected with auth middleware
   app.get("/api/users", authMiddleware, requireRole("admin", "owner"), asyncHandler(async (req, res) => {
-    const orgId = req.authenticatedUser!.organizationId ?? undefined;
+    const orgId = req.authenticatedUser!.organizationId ?? "";
     const users = await storage.getAllUsers(orgId);
     const usersWithoutPasswords = users.map(({ password: _, ...u }) => u);
     res.json(usersWithoutPasswords);
   }));
 
   app.get("/api/users/managers", authMiddleware, asyncHandler(async (req, res) => {
-    const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? undefined);
+    const managers = await storage.getManagers(req.authenticatedUser!.organizationId ?? "");
     const managersWithoutPasswords = managers.map(({ password: _, ...u }) => u);
     res.json(managersWithoutPasswords);
   }));
 
   app.get("/api/users/supervisors", authMiddleware, asyncHandler(async (req, res) => {
-    const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? undefined);
+    const supervisors = await storage.getSupervisors(req.authenticatedUser!.organizationId ?? "");
     const supervisorsWithoutPasswords = supervisors.map(({ password: _, ...u }) => u);
     res.json(supervisorsWithoutPasswords);
   }));
@@ -1203,7 +1405,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
     
-    const users = await storage.getAllUsers(currentUser.organizationId ?? undefined);
+    const users = await storage.getAllUsers(currentUser.organizationId ?? "");
     // Return only essential info for display purposes
     const basicUsers = users.map(({ id, firstName, lastName, jobTitle, role }) => ({
       id,
@@ -1239,7 +1441,7 @@ export async function registerRoutes(
       const membersWithoutPasswords = members.map(({ password: _, ...u }) => u);
       res.json(membersWithoutPasswords);
     } else {
-      const ics = await storage.getUsersByRole("ic", currentUser.organizationId ?? undefined);
+      const ics = await storage.getUsersByRole("ic", currentUser.organizationId ?? "");
       const icsWithoutPasswords = ics.map(({ password: _, ...u }) => u);
       res.json(icsWithoutPasswords);
     }
@@ -1308,7 +1510,7 @@ export async function registerRoutes(
       }
       
       // Check for existing email
-      const allUsers = await storage.getAllUsers(currentUser.organizationId ?? undefined);
+      const allUsers = await storage.getAllUsers(currentUser.organizationId ?? "");
       const existingByEmail = allUsers.find(u => u.email === req.body.email);
       if (existingByEmail) {
         return res.status(400).json({ error: "Email already exists" });
@@ -1364,13 +1566,16 @@ export async function registerRoutes(
       if (!username || !password || !email || !firstName || !lastName) {
         return res.status(400).json({ error: "Required fields missing: username, password, email, firstName, lastName" });
       }
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+      }
 
       const user = await storage.createUser(userData);
       
       try {
         await storage.createActivityLog({
           userId: req.body.createdBy || user.id,
-          organizationId: req.authenticatedUser!.organizationId,
+          organizationId: req.authenticatedUser!.organizationId!,
           action: "User created",
           details: `Created user ${user.firstName} ${user.lastName}`,
           entityType: "user",
@@ -1419,6 +1624,24 @@ export async function registerRoutes(
         if (field in req.body) {
           return res.status(403).json({ error: `Cannot modify ${field} - admin only` });
         }
+      }
+    }
+
+    // Nobody may edit their own role. Only an owner may grant/revoke the
+    // owner role; a plain admin may only move a user between admin/ic.
+    if ("role" in req.body) {
+      if (isSelf) {
+        return res.status(403).json({ error: "Cannot modify your own role" });
+      }
+      const isOwner = currentUser.role === "owner";
+      const targetCurrentUser = await storage.getUser(targetUserId);
+      const newRole = req.body.role;
+      const isRoleChange = !targetCurrentUser || targetCurrentUser.role !== newRole;
+      if (isRoleChange && (newRole === "owner" || targetCurrentUser?.role === "owner") && !isOwner) {
+        return res.status(403).json({ error: "Only an owner may grant or revoke the owner role" });
+      }
+      if (newRole !== "admin" && newRole !== "ic" && newRole !== "owner") {
+        return res.status(400).json({ error: "Invalid role" });
       }
     }
 
@@ -1550,8 +1773,8 @@ export async function registerRoutes(
     }
     
     const { newPassword, currentPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     // If currentPassword is provided (voluntary change via profile), verify it
@@ -1575,7 +1798,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: targetUserId,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "Password changed",
         details: `Password changed successfully`,
         entityType: "user",
@@ -1648,7 +1871,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "User deleted",
         details: `User account removed`,
         entityType: "user",
@@ -1701,7 +1924,7 @@ export async function registerRoutes(
       const validRoles = ["ic", "admin"];
       if (currentUser.role === "owner") validRoles.push("owner");
 
-      const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? undefined);
+      const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? "");
       const existingEmails = new Set(existingOrgUsers.map(u => u.email?.toLowerCase()));
 
       const seenInPayload = new Set<string>();
@@ -1727,6 +1950,10 @@ export async function registerRoutes(
 
           if (!username || !password || !email || !firstName || !lastName) {
             console.error("Skipping bulk user — required fields missing:", email);
+            continue;
+          }
+          if (password.length < MIN_PASSWORD_LENGTH) {
+            console.error("Skipping bulk user — password too short:", email);
             continue;
           }
 
@@ -1804,7 +2031,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: req.params.id,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
         action: "Password reset",
         details: `Password reset for ${user.firstName} ${user.lastName}`,
         entityType: "user",
@@ -1833,10 +2060,10 @@ export async function registerRoutes(
     
     // Users can only see their own requests unless admin or dynamic supervisor
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
-    
+
     if (userId) {
-      if (!isSupervisor && userId !== currentUser.id) {
-        return res.status(403).json({ error: "Cannot view other users' requests" });
+      if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+        return;
       }
       const requests = await storage.getOOORequestsByUser(userId as string);
       res.json(requests);
@@ -1845,7 +2072,7 @@ export async function registerRoutes(
         const requests = await storage.getOOORequestsByUser(currentUser.id);
         return res.json(requests);
       }
-      const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+      const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? "");
       res.json(requests);
     }
   });
@@ -1857,7 +2084,7 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
     
-    const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    const requests = await storage.getAllOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Enrich with user information
     const enrichedRequests = await Promise.all(
@@ -1878,7 +2105,7 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const { managerId } = req.query;
     
-    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Filter based on role - admins see all, IC supervisors see their team only
     if (currentUser.role === "admin" || currentUser.role === "owner") {
@@ -1909,7 +2136,7 @@ export async function registerRoutes(
   app.get("/api/leave-requests/pending-count", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     
-    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? undefined);
+    let requests = await storage.getPendingOOORequests(req.authenticatedUser!.organizationId ?? "");
     
     // Filter based on user role - only admins see all, IC supervisors see their team
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -1924,27 +2151,30 @@ export async function registerRoutes(
     try {
       const currentUser = req.authenticatedUser!;
       
-      // Users can only create requests for themselves
-      if (req.body.userId !== currentUser.id) {
-        return res.status(403).json({ error: "Cannot create requests for other users" });
-      }
-      
-      const request = await storage.createOOORequest({ ...req.body, organizationId: currentUser.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+      // Users can only create requests for themselves, always starting pending
+      const { startDate, endDate, oooType, reason, managerId } = req.body;
+      const request = await storage.createOOORequest({
+        startDate,
+        endDate,
+        oooType,
+        reason,
+        managerId,
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId!,
+        status: "pending",
+      });
 
       try {
         await storage.createActivityLog({
-          userId: req.body.userId,
-          organizationId: currentUser.organizationId,
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId!,
           action: "OOO request created",
-          details: `Requested time off from ${req.body.startDate} to ${req.body.endDate}`,
+          details: `Requested time off from ${startDate} to ${endDate}`,
           entityType: "ooo_request",
           entityId: request.id,
         });
 
-        if (submitter) {
-          await notifyOOOSubmitted(request, submitter);
-        }
+        await notifyOOOSubmitted(request, currentUser);
       } catch (e) {
         console.error("Failed to create activity log or notification:", e);
       }
@@ -1958,22 +2188,27 @@ export async function registerRoutes(
   app.patch("/api/ooo-requests/:id", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const existingRequest = await storage.getOOORequest(req.params.id);
-    if (!existingRequest) {
-      return res.status(404).json({ error: "Request not found" });
+    if (!assertSameOrg(res, currentUser, existingRequest)) return;
+
+    const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+    const isRequesterSupervisor = existingRequest!.managerId === currentUser.id;
+    if (!isAdmin && !isRequesterSupervisor) {
+      return res.status(403).json({ error: "Forbidden - only an admin/owner or the requester's supervisor may review this request" });
     }
 
-    if (req.body.reviewedBy) {
-      req.body.reviewedBy = currentUser.id;
-    }
-
-    if (currentUser.id === existingRequest.userId && 
-        (req.body.status === "approved" || req.body.status === "rejected") &&
-        currentUser.role !== "admin") {
+    if (currentUser.id === existingRequest!.userId && !isAdmin) {
       return res.status(403).json({ error: "You cannot approve or reject your own request" });
     }
 
+    const { status, reviewNote } = req.body;
+    if (status !== "approved" && status !== "rejected" && status !== "pending") {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
     const request = await storage.updateOOORequest(req.params.id, {
-      ...req.body,
+      status,
+      reviewNote,
+      reviewedBy: currentUser.id,
       reviewedAt: new Date(),
     });
 
@@ -1983,23 +2218,18 @@ export async function registerRoutes(
 
     try {
       await storage.createActivityLog({
-        userId: req.body.reviewedBy,
-        organizationId: currentUser.organizationId,
-        action: `OOO request ${req.body.status}`,
-        details: `Leave request was ${req.body.status}`,
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId!,
+        action: `OOO request ${status}`,
+        details: `Leave request was ${status}`,
         entityType: "ooo_request",
         entityId: request.id,
       });
 
-      if (req.body.reviewedBy && req.body.status) {
-        const reviewer = await storage.getUser(req.body.reviewedBy);
-        if (reviewer) {
-          if (req.body.status === "approved") {
-            await notifyOOOApproved(request, reviewer);
-          } else if (req.body.status === "rejected") {
-            await notifyOOORejected(request, reviewer, req.body.reviewNote);
-          }
-        }
+      if (status === "approved") {
+        await notifyOOOApproved(request, currentUser);
+      } else if (status === "rejected") {
+        await notifyOOORejected(request, currentUser, reviewNote);
       }
     } catch (e) {
       console.error("Failed to create activity log or notification:", e);
@@ -2010,8 +2240,13 @@ export async function registerRoutes(
 
   // Timesheet routes
   app.get("/api/timesheets", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year } = req.query;
-    
+
+    if (userId && !(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+      return;
+    }
+
     if (userId && month && year) {
       const timesheet = await storage.getTimesheetByUserAndMonth(
         userId as string,
@@ -2023,7 +2258,7 @@ export async function registerRoutes(
       const timesheets = await storage.getTimesheetsByUser(userId as string);
       res.json(timesheets);
     } else {
-      const timesheets = await storage.getAllTimesheets(req.authenticatedUser!.organizationId ?? undefined);
+      const timesheets = await storage.getAllTimesheets(req.authenticatedUser!.organizationId ?? "");
       // Enrich with user information
       const enrichedTimesheets = await Promise.all(
         timesheets.map(async (t) => {
@@ -2049,8 +2284,8 @@ export async function registerRoutes(
     const statusFilter = req.query.status as string | undefined;
     
     let timesheets = statusFilter
-      ? (await storage.getAllTimesheets(currentUser.organizationId ?? undefined)).filter(t => t.status === statusFilter)
-      : await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
+      ? (await storage.getAllTimesheets(currentUser.organizationId ?? "")).filter(t => t.status === statusFilter)
+      : await storage.getSubmittedTimesheets(currentUser.organizationId ?? "");
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     if (currentUser.role !== "admin") {
@@ -2080,7 +2315,7 @@ export async function registerRoutes(
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    let timesheets = await storage.getSubmittedTimesheets(currentUser.organizationId ?? undefined);
+    let timesheets = await storage.getSubmittedTimesheets(currentUser.organizationId ?? "");
     
     // Filter based on role - IC supervisors only see their team's timesheets, admins see all
     const isSupervisor = await hasSupervisorPrivileges(currentUser.id);
@@ -2094,17 +2329,25 @@ export async function registerRoutes(
   });
 
   app.get("/api/timesheets/:id/entries", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const timesheet = await storage.getTimesheet(req.params.id);
+    if (!assertSameOrg(res, currentUser, timesheet)) return;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, timesheet!.userId, { allowSupervisor: true }))) {
+      return;
+    }
     const entries = await storage.getDailyEntriesByTimesheet(req.params.id);
     res.json(entries);
   });
 
   app.post("/api/timesheets/save", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, userId))) return;
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
     // Prevent editing approved timesheets
@@ -2136,7 +2379,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "draft",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
     }
 
@@ -2146,7 +2389,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -2164,7 +2407,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: req.authenticatedUser!.organizationId!,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -2179,12 +2422,14 @@ export async function registerRoutes(
   }));
 
   app.post("/api/timesheets/submit", authMiddleware, asyncHandler(async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year, entries } = req.body;
 
     if (!userId || month === undefined || year === undefined || !Array.isArray(entries)) {
       return res.status(400).json({ error: "Required fields missing: userId, month, year, entries" });
     }
-    
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, userId))) return;
+
     let timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
     
     const totalHours = entries.reduce((sum: number, e: any) => sum + (e.hours || 0), 0);
@@ -2207,7 +2452,7 @@ export async function registerRoutes(
         year,
         totalHours,
         status: "submitted",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       const updated = await storage.updateTimesheet(created.id, {
         submittedAt: new Date(),
@@ -2224,7 +2469,7 @@ export async function registerRoutes(
         date: entry.date,
         hours: entry.hours,
         activityLog: entry.activityLog,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: req.authenticatedUser!.organizationId!,
       });
       
       // Auto-create overtime request for entries > 8 hours OR weekend work
@@ -2242,7 +2487,7 @@ export async function registerRoutes(
             requestedHours: entry.hours,
             status: "pending",
             isWeekendWork: isWeekendEntry,
-            organizationId: req.authenticatedUser!.organizationId,
+            organizationId: req.authenticatedUser!.organizationId!,
           });
         } else if (existingOT.isWeekendWork !== isWeekendEntry) {
           // Update existing request if weekend status changed
@@ -2255,7 +2500,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId,
-      organizationId: req.authenticatedUser!.organizationId,
+      organizationId: req.authenticatedUser!.organizationId!,
       action: "Timesheet submitted",
       details: `Submitted timesheet for ${month}/${year} with ${totalHours} hours`,
       entityType: "timesheet",
@@ -2422,7 +2667,7 @@ export async function registerRoutes(
     if (!isSupervisor) {
       return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
     }
-    const timesheets = await storage.getAllTimesheets(currentUser.organizationId ?? undefined);
+    const timesheets = await storage.getAllTimesheets(currentUser.organizationId ?? "");
     const enrichedTimesheets = await Promise.all(
       timesheets.map(async (t) => {
         const user = await storage.getUser(t.userId);
@@ -2475,13 +2720,13 @@ export async function registerRoutes(
       // No userId filter — team approval queue, scoped to direct reports for non-admin supervisors
       if (isAdmin) {
         requests = status === "pending"
-          ? await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined)
-          : await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+          ? await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "")
+          : await storage.getAllOvertimeRequests(currentUser.organizationId ?? "");
       } else {
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (teamMemberIds.length > 0) {
           // IC supervisor: team approval queue — direct reports only
-          const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? undefined);
+          const all = await storage.getAllOvertimeRequests(currentUser.organizationId ?? "");
           const allowedIds = new Set(teamMemberIds);
           requests = status === "pending"
             ? all.filter(r => allowedIds.has(r.userId) && r.status === "pending")
@@ -2511,7 +2756,7 @@ export async function registerRoutes(
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
 
     if (isAdmin) {
-      const requests = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+      const requests = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "");
       return res.json({ count: requests.length });
     }
 
@@ -2520,32 +2765,47 @@ export async function registerRoutes(
     if (teamMemberIds.length === 0) {
       return res.json({ count: 0 });
     }
-    const all = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? undefined);
+    const all = await storage.getPendingOvertimeRequests(currentUser.organizationId ?? "");
     res.json({ count: all.filter(r => teamMemberIds.includes(r.userId)).length });
   });
 
   app.post("/api/overtime-requests", authMiddleware, async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+      const { timesheetId, date, requestedHours, isWeekendWork } = req.body;
+
+      const timesheet = await storage.getTimesheet(timesheetId);
+      if (!assertSameOrg(res, currentUser, timesheet)) return;
+      if (!(await assertSelfOrSupervisorOf(res, currentUser, timesheet!.userId))) return;
+
       // Check for existing overtime request to prevent duplicates
       const existingRequest = await storage.getOvertimeRequestByTimesheetAndDate(
-        req.body.timesheetId,
-        req.body.date
+        timesheetId,
+        date
       );
-      
+
       if (existingRequest) {
         // Return existing request instead of creating a duplicate
         return res.json(existingRequest);
       }
-      
-      const request = await storage.createOvertimeRequest({ ...req.body, organizationId: req.authenticatedUser!.organizationId });
-      const submitter = await storage.getUser(req.body.userId);
+
+      const request = await storage.createOvertimeRequest({
+        userId: timesheet!.userId,
+        timesheetId,
+        date,
+        requestedHours,
+        isWeekendWork: !!isWeekendWork,
+        status: "pending",
+        organizationId: currentUser.organizationId!,
+      });
+      const submitter = await storage.getUser(timesheet!.userId);
 
       try {
         await storage.createActivityLog({
-          userId: req.body.userId,
-          organizationId: req.authenticatedUser!.organizationId,
+          userId: timesheet!.userId,
+          organizationId: currentUser.organizationId!,
           action: "Overtime request created",
-          details: `Requested ${req.body.requestedHours - 8} overtime hours for ${req.body.date}`,
+          details: `Requested ${requestedHours - 8} overtime hours for ${date}`,
           entityType: "overtime_request",
           entityId: request.id,
         });
@@ -2646,7 +2906,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Overtime request ${req.body.status}`,
         details: `Overtime request was ${req.body.status}`,
         entityType: "overtime_request",
@@ -2672,9 +2932,13 @@ export async function registerRoutes(
 
   // Get approved OOO dates for a user within a month
   app.get("/api/ooo-requests/approved-dates", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { userId, month, year } = req.query;
     if (!userId || !month || !year) {
       return res.status(400).json({ error: "userId, month, and year are required" });
+    }
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string, { allowSupervisor: true }))) {
+      return;
     }
 
     const requests = await storage.getOOORequestsByUser(userId as string);
@@ -2689,8 +2953,11 @@ export async function registerRoutes(
       const startDate = new Date(request.startDate);
       const endDate = new Date(request.endDate);
 
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        if (d.getMonth() + 1 === monthInt && d.getFullYear() === yearInt) {
+      // startDate/endDate are date-only columns (UTC-midnight once parsed) — use
+      // the UTC getters/setters throughout so this doesn't drift a day depending
+      // on the server process's local timezone.
+      for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
+        if (d.getUTCMonth() + 1 === monthInt && d.getUTCFullYear() === yearInt) {
           datesInMonth.push({
             date: d.toISOString().split('T')[0],
             oooType: request.oooType,
@@ -2726,7 +2993,7 @@ export async function registerRoutes(
       if (!isAdmin) {
         return res.status(403).json({ error: "Forbidden - Insufficient permissions" });
       }
-      invoices = await storage.getAllInvoices(currentUser.organizationId ?? undefined);
+      invoices = await storage.getAllInvoices(currentUser.organizationId ?? "");
     }
     
     // Enrich invoices with user data and normalize file URLs
@@ -2755,27 +3022,56 @@ export async function registerRoutes(
 
   app.post("/api/invoices", authMiddleware, async (req, res) => {
     try {
-      const { userId, month, year } = req.body;
-      
+      const currentUser = req.authenticatedUser!;
+      // Force userId to the caller — never trust the client for who an invoice belongs to
+      const userId = currentUser.id;
+      const {
+        month, year, issueDate, fileName, fileUrl, amount, subtotal,
+        contractorName, contractorAddress, contractorPhone, contractorEmail, contractorVatNo,
+        billToName, billToAddress, billToVatNo, bankDetails,
+      } = req.body;
+      // invoiceNumber is never trusted from the client — storage.createInvoice
+      // assigns it atomically, scoped per organization, to avoid duplicates.
+
       // Link invoice to timesheet if exists
       const timesheet = await storage.getTimesheetByUserAndMonth(userId, month, year);
 
+      // Prevent duplicate invoices for the same user/month/year
+      const existingInvoices = await storage.getInvoicesByUser(userId);
+      if (existingInvoices.some((inv) => inv.month === month && inv.year === year)) {
+        return res.status(409).json({ error: "An invoice for this month already exists" });
+      }
+
       // Default invoice currency to the contractor's preferred currency
       let invoiceCurrency = normalizeCurrencyInput(req.body.currency) || "";
-      if (!invoiceCurrency && userId) {
-        const invoiceUser = await storage.getUser(userId);
-        invoiceCurrency = normalizeCurrencyInput(invoiceUser?.currency) || "USD";
+      if (!invoiceCurrency) {
+        invoiceCurrency = normalizeCurrencyInput(currentUser.currency) || "USD";
       }
-      if (!invoiceCurrency) invoiceCurrency = "USD";
 
       const invoiceData = {
-        ...req.body,
+        userId,
+        month,
+        year,
+        issueDate,
+        fileName,
+        fileUrl,
+        amount,
+        subtotal,
+        contractorName,
+        contractorAddress,
+        contractorPhone,
+        contractorEmail,
+        contractorVatNo,
+        billToName,
+        billToAddress,
+        billToVatNo,
+        bankDetails,
         currency: invoiceCurrency,
-        status: "pending_review",
+        status: "pending_review" as const,
         timesheetId: timesheet?.id || null,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId!,
       };
-      
+
       const invoice = await storage.createInvoice(invoiceData);
 
       // When invoice is submitted, auto-submit timesheet if in draft status
@@ -2787,7 +3083,7 @@ export async function registerRoutes(
 
         await storage.createActivityLog({
           userId,
-          organizationId: req.authenticatedUser!.organizationId,
+          organizationId: req.authenticatedUser!.organizationId!,
           action: "Timesheet auto-submitted",
           details: `Timesheet for ${month}/${year} submitted for approval with invoice`,
           entityType: "timesheet",
@@ -2796,10 +3092,10 @@ export async function registerRoutes(
       }
 
       await storage.createActivityLog({
-        userId: req.body.userId,
-        organizationId: req.authenticatedUser!.organizationId,
+        userId,
+        organizationId: currentUser.organizationId!,
         action: "Invoice submitted for review",
-        details: `Submitted invoice ${req.body.fileName} for approval`,
+        details: `Submitted invoice ${fileName} for approval`,
         entityType: "invoice",
         entityId: invoice.id,
       });
@@ -2837,7 +3133,17 @@ export async function registerRoutes(
 
   app.get("/api/invoices/next-number/:userId", authMiddleware, async (req, res) => {
     try {
-      const invoiceNumber = await storage.getNextInvoiceNumber(req.params.userId);
+      const currentUser = req.authenticatedUser!;
+      if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.userId, { allowSupervisor: true }))) {
+        return;
+      }
+      const targetUser = await storage.getUser(req.params.userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Preview only — the number actually assigned to the invoice is computed
+      // atomically at creation time and may differ if another invoice lands first.
+      const invoiceNumber = await storage.getNextInvoiceNumber(targetUser.organizationId ?? "");
       res.json({ invoiceNumber });
     } catch (error) {
       res.status(500).json({ error: "Failed to get next invoice number" });
@@ -2871,13 +3177,11 @@ export async function registerRoutes(
   });
 
   app.delete("/api/invoices/:id", authMiddleware, async (req, res) => {
-    const invoice = await storage.getInvoice(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({ error: "Invoice not found" });
-    }
-    
+    const invoiceOrUndefined = await storage.getInvoice(req.params.id);
     const user = req.authenticatedUser!;
-    
+    if (!assertSameOrg(res, user, invoiceOrUndefined)) return;
+    const invoice = invoiceOrUndefined!;
+
     // Only allow deleting rejected invoices or pending ones by the owner
     if (invoice.status === "approved") {
       return res.status(403).json({ error: "Cannot delete approved invoices" });
@@ -2885,7 +3189,7 @@ export async function registerRoutes(
     if (invoice.status === "paid") {
       return res.status(403).json({ error: "Cannot delete paid invoices" });
     }
-    
+
     if (invoice.userId !== user.id && user.role !== "admin") {
       return res.status(403).json({ error: "Not authorized to delete this invoice" });
     }
@@ -2906,6 +3210,10 @@ export async function registerRoutes(
 
     const user = req.authenticatedUser!;
     const { status, reviewNote } = req.body;
+    const ALLOWED_STATUSES = ["approved", "rejected", "revision_requested"];
+    if (status !== undefined && !ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({ error: "Invalid status. Use the dedicated mark-paid endpoint to mark an invoice paid." });
+    }
 
     // Prevent self-approval
     if (user.id === invoice.userId && (status === "approved" || status === "rejected")) {
@@ -2944,7 +3252,8 @@ export async function registerRoutes(
     }
 
     const updates: any = {
-      ...req.body,
+      status,
+      reviewNote,
       reviewedBy: user.id,
       reviewedAt: new Date(),
     };
@@ -3070,7 +3379,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: user.id,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
         action: "Invoice marked as paid",
         details: `Marked invoice ${invoice.invoiceNumber} as paid${paymentReference ? ` (ref: ${paymentReference})` : ""}`,
         entityType: "invoice",
@@ -3104,7 +3413,7 @@ export async function registerRoutes(
     const isAdmin = user.role === "admin" || user.role === "owner";
 
     // Get pending invoices — scoped to direct reports for non-admin supervisors
-    const allPending = await storage.getPendingInvoices(user.organizationId ?? undefined);
+    const allPending = await storage.getPendingInvoices(user.organizationId ?? "");
     let scopedInvoices = allPending;
     if (!isAdmin) {
       const teamMemberIds = new Set(await getTeamMemberIds(user.id));
@@ -3145,7 +3454,7 @@ export async function registerRoutes(
     }
 
     const isAdmin = user.role === "admin" || user.role === "owner";
-    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? undefined);
+    const pendingInvoices = await storage.getPendingInvoices(user.organizationId ?? "");
 
     if (isAdmin) {
       return res.json({ count: pendingInvoices.length });
@@ -3158,16 +3467,28 @@ export async function registerRoutes(
 
   // Invoice Line Items routes - protected
   app.get("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const invoice = await storage.getInvoice(req.params.invoiceId);
+    if (!assertSameOrg(res, currentUser, invoice)) return;
     const lineItems = await storage.getInvoiceLineItems(req.params.invoiceId);
     res.json(lineItems);
   });
 
   app.post("/api/invoices/:invoiceId/line-items", authMiddleware, async (req, res) => {
     try {
+      const currentUser = req.authenticatedUser!;
+      const invoice = await storage.getInvoice(req.params.invoiceId);
+      if (!assertSameOrg(res, currentUser, invoice)) return;
+
+      const { description, quantity, rate, total, sortOrder } = req.body;
       const lineItem = await storage.createInvoiceLineItem({
-        ...req.body,
+        description,
+        quantity,
+        rate,
+        total,
+        sortOrder,
         invoiceId: req.params.invoiceId,
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId!,
       });
       res.status(201).json(lineItem);
     } catch (error) {
@@ -3229,13 +3550,25 @@ export async function registerRoutes(
 
   // IC Responsibilities routes - protected
   app.get("/api/ic-responsibilities/:icId", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.icId, { allowSupervisor: true }))) {
+      return;
+    }
     const responsibilities = await storage.getIcResponsibilities(req.params.icId);
     res.json(responsibilities);
   });
 
   app.post("/api/ic-responsibilities", authMiddleware, async (req, res) => {
     try {
-      const responsibility = await storage.createIcResponsibility(req.body);
+      const currentUser = req.authenticatedUser!;
+      const { icId, responsibility: responsibilityText, isActive } = req.body;
+      if (!(await assertSelfOrSupervisorOf(res, currentUser, icId, { allowSelf: false }))) return;
+      const responsibility = await storage.createIcResponsibility({
+        icId,
+        responsibility: responsibilityText,
+        isActive,
+        organizationId: currentUser.organizationId!,
+      });
       res.status(201).json(responsibility);
     } catch (error) {
       res.status(500).json({ error: "Failed to create responsibility" });
@@ -3243,7 +3576,16 @@ export async function registerRoutes(
   });
 
   app.patch("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
-    const responsibility = await storage.updateIcResponsibility(req.params.id, req.body);
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getIcResponsibility(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, existing!.icId, { allowSelf: false }))) return;
+
+    const { responsibility: responsibilityText, isActive } = req.body;
+    const responsibility = await storage.updateIcResponsibility(req.params.id, {
+      responsibility: responsibilityText,
+      isActive,
+    });
     if (!responsibility) {
       return res.status(404).json({ error: "Responsibility not found" });
     }
@@ -3251,6 +3593,11 @@ export async function registerRoutes(
   });
 
   app.delete("/api/ic-responsibilities/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getIcResponsibility(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+    if (!(await assertSelfOrSupervisorOf(res, currentUser, existing!.icId, { allowSelf: false }))) return;
+
     const success = await storage.deleteIcResponsibility(req.params.id);
     if (!success) {
       return res.status(404).json({ error: "Responsibility not found" });
@@ -3282,7 +3629,7 @@ export async function registerRoutes(
       if (!isAdmin) {
         list = await storage.getContractsByUser(currentUser.id);
       } else {
-        list = await storage.getAllContracts(currentUser.organizationId ?? undefined);
+        list = await storage.getAllContracts(currentUser.organizationId ?? "");
       }
     }
     res.json(list.map((c) => ({ ...c, fileUrl: normalizeFileUrl(c.fileUrl) })));
@@ -3290,7 +3637,7 @@ export async function registerRoutes(
 
   app.get("/api/contracts/expiring", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    const all = await storage.getAllContracts(currentUser.organizationId ?? undefined);
+    const all = await storage.getAllContracts(currentUser.organizationId ?? "");
     const now = Date.now();
     const expiring = all.filter((c) => {
       const end = new Date(c.endDate).getTime();
@@ -3339,7 +3686,7 @@ export async function registerRoutes(
       }
 
       const insertPayload: InsertContract = {
-        organizationId: currentUser.organizationId ?? null,
+        organizationId: currentUser.organizationId!,
         userId,
         title: String(title),
         startDate: startDateStr,
@@ -3353,7 +3700,7 @@ export async function registerRoutes(
 
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: "Contract uploaded",
         details: `Uploaded contract "${title}" for ${contractor.firstName} ${contractor.lastName}`,
         entityType: "contract",
@@ -3382,7 +3729,7 @@ export async function registerRoutes(
     }
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Contract deleted",
       details: `Deleted contract "${contract.title}"`,
       entityType: "contract",
@@ -3408,14 +3755,14 @@ export async function registerRoutes(
     if (scope === "team") {
       if (isAdmin) {
         // Admin/owner: full org view (all statuses)
-        list = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+        list = await storage.getAllExpenses(currentUser.organizationId ?? "");
       } else {
         // Non-admin supervisor: scope to current direct reports only
         const teamMemberIds = await getTeamMemberIds(currentUser.id);
         if (teamMemberIds.length === 0) {
           list = [];
         } else {
-          const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+          const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
           list = all.filter((e) => teamMemberIds.includes(e.userId));
         }
       }
@@ -3431,7 +3778,7 @@ export async function registerRoutes(
       }
       list = await storage.getExpensesByUser(userIdParam);
     } else if (isAdmin) {
-      list = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      list = await storage.getAllExpenses(currentUser.organizationId ?? "");
     } else {
       list = await storage.getExpensesByUser(currentUser.id);
     }
@@ -3467,14 +3814,14 @@ export async function registerRoutes(
     const currentUser = req.authenticatedUser!;
     const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
     if (isAdmin) {
-      const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+      const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
       const count = all.filter((e) => e.status === "pending").length;
       return res.json({ count });
     }
     // Non-admin supervisors: count pending expenses from direct reports only
     const teamMemberIds = await getTeamMemberIds(currentUser.id);
     if (teamMemberIds.length === 0) return res.json({ count: 0 });
-    const all = await storage.getAllExpenses(currentUser.organizationId ?? undefined);
+    const all = await storage.getAllExpenses(currentUser.organizationId ?? "");
     const count = all.filter((e) => teamMemberIds.includes(e.userId) && e.status === "pending").length;
     res.json({ count });
   }));
@@ -3572,7 +3919,7 @@ export async function registerRoutes(
     const year = dateObj.getUTCFullYear();
 
     const insertPayload: InsertExpense = {
-      organizationId: owner.organizationId ?? null,
+      organizationId: owner.organizationId!,
       userId: owner.id,
       managerId: owner.supervisorId || owner.managerId || null,
       amount: Math.round(amountNum),
@@ -3591,7 +3938,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Expense submitted",
       details: `${owner.firstName} ${owner.lastName} submitted a ${categoryStr} expense for ${currencyCode} ${(amountNum / 100).toFixed(2)}`,
       entityType: "expense",
@@ -3647,7 +3994,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: statusStr === "approved" ? "Expense approved" : "Expense rejected",
       details: submitter
         ? `${statusStr === "approved" ? "Approved" : "Rejected"} expense for ${submitter.firstName} ${submitter.lastName}`
@@ -3689,7 +4036,7 @@ export async function registerRoutes(
 
     await storage.createActivityLog({
       userId: currentUser.id,
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
       action: "Expense deleted",
       details: `Deleted expense for ${expense.currency} ${(expense.amount / 100).toFixed(2)}`,
       entityType: "expense",
@@ -3712,7 +4059,7 @@ export async function registerRoutes(
       } else if (icId) {
         return res.json(await storage.getEvaluationsByIC(icId as string));
       } else {
-        return res.json(await storage.getAllEvaluations(currentUser.organizationId ?? undefined));
+        return res.json(await storage.getAllEvaluations(currentUser.organizationId ?? ""));
       }
     }
 
@@ -3724,7 +4071,7 @@ export async function registerRoutes(
       // Supervisor requesting their team queue — filter by current direct reports (not stale managerId)
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length === 0) return res.json([]);
-      const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+      const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
       return res.json(allOrgEvals.filter(e => teamMemberIds.includes(e.icId)));
     }
     // Own evaluations (default or explicit ?icId=self)
@@ -3741,7 +4088,7 @@ export async function registerRoutes(
       const teamMemberIds = await getTeamMemberIds(currentUser.id);
       if (teamMemberIds.length > 0) {
         // Filter by current direct reports (not stale managerId linkage)
-        const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+        const allOrgEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
         const teamEvals = allOrgEvals.filter(e => teamMemberIds.includes(e.icId));
         return res.json({ count: teamEvals.filter(e => e.status === "ic_submitted").length });
       }
@@ -3751,42 +4098,48 @@ export async function registerRoutes(
     }
 
     // Admin/owner: org-wide count of evaluations pending any manager review
-    const allEvals = await storage.getAllEvaluations(currentUser.organizationId ?? undefined);
+    const allEvals = await storage.getAllEvaluations(currentUser.organizationId ?? "");
     res.json({ count: allEvals.filter(e => e.status === "ic_submitted").length });
   });
 
   app.get("/api/evaluations/:id", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isSelf = evaluation!.icId === currentUser.id;
+    const isManager = evaluation!.managerId === currentUser.id;
+    if (!isAdminOrOwner && !isSelf && !isManager) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     res.json(evaluation);
   });
 
   app.get("/api/evaluations/:id/sections", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    const isSelf = evaluation!.icId === currentUser.id;
+    const isManager = evaluation!.managerId === currentUser.id;
+    if (!isAdminOrOwner && !isSelf && !isManager) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     const sections = await storage.getEvaluationSections(req.params.id);
     res.json(sections);
   });
 
   app.get("/api/users/:id/last-evaluation", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, req.params.id, { allowSupervisor: true }))) {
+      return;
+    }
     const evaluation = await storage.getLastCompletedEvaluation(req.params.id);
     res.json(evaluation || null);
   });
@@ -3807,19 +4160,33 @@ export async function registerRoutes(
       if (!req.body.managerId) {
         return res.status(400).json({ error: "Manager/supervisor is required for self-evaluations" });
       }
-      
-      // Validate that the manager exists and has supervisor privileges
+
+      // Validate that the manager exists, is in the same org, and has supervisor privileges
       const manager = await storage.getUser(req.body.managerId);
-      if (!manager) {
+      if (!manager || !checkOrgBoundary(currentUser, manager)) {
         return res.status(400).json({ error: "Selected supervisor does not exist" });
       }
-      
+
       const managerIsSupervisor = await hasSupervisorPrivileges(req.body.managerId);
       if (!managerIsSupervisor && manager.role !== "admin") {
         return res.status(400).json({ error: "Selected user is not a valid supervisor" });
       }
+    } else {
+      // Supervisor creating an evaluation on behalf of an IC: the IC must be
+      // in the caller's org, and (for non-admins) a direct report.
+      const ic = await storage.getUser(req.body.icId);
+      if (!ic || !checkOrgBoundary(currentUser, ic)) {
+        return res.status(400).json({ error: "Selected employee does not exist" });
+      }
+      const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+      if (!isAdminOrOwner) {
+        const teamMemberIds = await getTeamMemberIds(currentUser.id);
+        if (!teamMemberIds.includes(req.body.icId)) {
+          return res.status(403).json({ error: "You may only create evaluations for your direct reports" });
+        }
+      }
     }
-    
+
     // Build evaluation data with validated fields
     const evaluationData = {
       icId: isCreatingSelfEvaluation ? currentUser.id : req.body.icId,
@@ -3827,17 +4194,17 @@ export async function registerRoutes(
       periodStart: req.body.periodStart,
       periodEnd: req.body.periodEnd,
       status: "draft",
-      organizationId: currentUser.organizationId,
+      organizationId: currentUser.organizationId!,
     };
-    
+
     try {
       const evaluation = await storage.createEvaluation(evaluationData);
 
-      await storage.createDefaultSectionsForEvaluation(evaluation.id);
+      await storage.createDefaultSectionsForEvaluation(evaluation.id, evaluation.organizationId);
 
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: isCreatingSelfEvaluation ? "Self-evaluation started" : "Evaluation created",
         details: `Created performance evaluation for period ${req.body.periodStart} to ${req.body.periodEnd}`,
         entityType: "evaluation",
@@ -3894,6 +4261,7 @@ export async function registerRoutes(
 
     const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
     const isManagerAction = req.body.status === "manager_submitted" || req.body.status === "completed";
+    let isIcSelfSide = false;
 
     if (currentUser.role === "ic") {
       if (isManagerAction) {
@@ -3910,18 +4278,44 @@ export async function registerRoutes(
         if (existingEvaluation.icId !== currentUser.id) {
           return res.status(403).json({ error: "Forbidden" });
         }
+        isIcSelfSide = true;
       }
     } else if (!isAdminOrOwner) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const updates = { ...req.body };
-    
-    if (req.body.status === "ic_submitted") {
+    // Allowlist fields by role — an IC on the self-assessment side can only
+    // move their own status forward, never set manager-only outcome fields.
+    const {
+      status,
+      overallSelfRating,
+      expectationsForNextReview,
+      managerSummary,
+      newExperienceLevel,
+      outcomes,
+      overallScore,
+      overallManagerRating,
+    } = req.body;
+
+    const updates: Record<string, any> = {};
+    if (status !== undefined) updates.status = status;
+
+    if (isIcSelfSide) {
+      if (overallSelfRating !== undefined) updates.overallSelfRating = overallSelfRating;
+    } else {
+      if (expectationsForNextReview !== undefined) updates.expectationsForNextReview = expectationsForNextReview;
+      if (managerSummary !== undefined) updates.managerSummary = managerSummary;
+      if (newExperienceLevel !== undefined) updates.newExperienceLevel = newExperienceLevel;
+      if (outcomes !== undefined) updates.outcomes = outcomes;
+      if (overallScore !== undefined) updates.overallScore = overallScore;
+      if (overallManagerRating !== undefined) updates.overallManagerRating = overallManagerRating;
+    }
+
+    if (status === "ic_submitted") {
       updates.icSubmittedAt = new Date();
-    } else if (req.body.status === "manager_submitted" || req.body.status === "completed") {
+    } else if (status === "manager_submitted" || status === "completed") {
       updates.managerSubmittedAt = new Date();
-      if (req.body.status === "completed") {
+      if (status === "completed") {
         updates.completedAt = new Date();
       }
     }
@@ -3993,7 +4387,23 @@ export async function registerRoutes(
 
   // Evaluation sections routes - protected
   app.patch("/api/evaluation-sections/:id", authMiddleware, async (req, res) => {
-    const section = await storage.updateEvaluationSection(req.params.id, req.body);
+    const currentUser = req.authenticatedUser!;
+    const existingSection = await storage.getEvaluationSection(req.params.id);
+    if (!existingSection) {
+      return res.status(404).json({ error: "Section not found" });
+    }
+    const evaluation = await storage.getEvaluation(existingSection.evaluationId);
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const side = evaluationSectionAccess(currentUser, evaluation!);
+    if (!side) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const section = await storage.updateEvaluationSection(
+      req.params.id,
+      sanitizeEvaluationSectionUpdate(req.body, side)
+    );
     if (!section) {
       return res.status(404).json({ error: "Section not found" });
     }
@@ -4002,27 +4412,37 @@ export async function registerRoutes(
 
   app.post("/api/evaluations/:id/sections/bulk-update", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
-    
+
     const evaluation = await storage.getEvaluation(req.params.id);
-    if (!evaluation) {
-      return res.status(404).json({ error: "Evaluation not found" });
-    }
-    
-    if (currentUser.role === "ic" && evaluation.icId !== currentUser.id) {
+    if (!assertSameOrg(res, currentUser, evaluation)) return;
+
+    const side = evaluationSectionAccess(currentUser, evaluation!);
+    if (!side) {
       return res.status(403).json({ error: "Forbidden" });
     }
-    
+
     try {
       const { sections } = req.body;
+      if (!Array.isArray(sections)) {
+        return res.status(400).json({ error: "sections must be an array" });
+      }
       const updatedSections = [];
-      
+
       for (const sectionUpdate of sections) {
-        const updated = await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+        // Verify each section actually belongs to this evaluation before writing it
+        const existingSection = await storage.getEvaluationSection(sectionUpdate?.id);
+        if (!existingSection || existingSection.evaluationId !== req.params.id) {
+          continue;
+        }
+        const updated = await storage.updateEvaluationSection(
+          sectionUpdate.id,
+          sanitizeEvaluationSectionUpdate(sectionUpdate, side)
+        );
         if (updated) {
           updatedSections.push(updated);
         }
       }
-      
+
       res.json(updatedSections);
     } catch (error) {
       res.status(500).json({ error: "Failed to update sections" });
@@ -4074,17 +4494,30 @@ export async function registerRoutes(
     }
     
     try {
-      
-      // Save all sections first
+      const sectionSide: "ic" | "manager" = finalizeAs;
+
+      // Save all sections first — only sections that belong to this evaluation
       if (sections && sections.length > 0) {
         for (const sectionUpdate of sections) {
-          await storage.updateEvaluationSection(sectionUpdate.id, sectionUpdate);
+          const existingSection = await storage.getEvaluationSection(sectionUpdate?.id);
+          if (!existingSection || existingSection.evaluationId !== req.params.id) {
+            continue;
+          }
+          await storage.updateEvaluationSection(sectionUpdate.id, sanitizeEvaluationSectionUpdate(sectionUpdate, sectionSide));
         }
       }
-      
-      // Determine new status and timestamps
-      const updates: Record<string, any> = { ...evaluationUpdates };
-      
+
+      // Determine new status and timestamps. evaluationUpdates only applies on
+      // the manager side — allowlisted to the fields the manager review form sends.
+      const updates: Record<string, any> = {};
+      if (finalizeAs === "manager" && evaluationUpdates) {
+        const { expectationsForNextReview, managerSummary, newExperienceLevel, outcomes } = evaluationUpdates;
+        if (expectationsForNextReview !== undefined) updates.expectationsForNextReview = expectationsForNextReview;
+        if (managerSummary !== undefined) updates.managerSummary = managerSummary;
+        if (newExperienceLevel !== undefined) updates.newExperienceLevel = newExperienceLevel;
+        if (outcomes !== undefined) updates.outcomes = outcomes;
+      }
+
       if (finalizeAs === "ic") {
         updates.status = "ic_submitted";
         updates.icSubmittedAt = new Date();
@@ -4170,8 +4603,14 @@ export async function registerRoutes(
 
   // Feedback invitation routes - protected
   app.get("/api/feedback-invitations", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
     const { evaluationId } = req.query;
     if (evaluationId) {
+      const evaluation = await storage.getEvaluation(evaluationId as string);
+      if (!assertSameOrg(res, currentUser, evaluation)) return;
+      if (!evaluationSectionAccess(currentUser, evaluation!)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const invitations = await storage.getFeedbackInvitationsByEvaluation(evaluationId as string);
       res.json(invitations);
     } else {
@@ -4181,19 +4620,28 @@ export async function registerRoutes(
 
   app.post("/api/feedback-invitations", authMiddleware, async (req, res) => {
     try {
-      const users = await storage.getAllUsers(req.authenticatedUser!.organizationId ?? undefined);
+      const currentUser = req.authenticatedUser!;
+      const evaluation = await storage.getEvaluation(req.body.evaluationId);
+      if (!assertSameOrg(res, currentUser, evaluation)) return;
+      const side = evaluationSectionAccess(currentUser, evaluation!);
+      if (side !== "manager" && side !== "both") {
+        return res.status(403).json({ error: "Only the evaluation's manager may invite feedback" });
+      }
+
+      const users = await storage.getAllUsers(currentUser.organizationId ?? "");
       const invitedUser = users.find(u => u.email === req.body.email);
-      
+
       const invitation = await storage.createFeedbackInvitation({
-        ...req.body,
+        evaluationId: req.body.evaluationId,
+        invitedById: currentUser.id,
         invitedUserId: invitedUser?.id || "unknown",
-        organizationId: req.authenticatedUser!.organizationId,
+        organizationId: currentUser.organizationId!,
       });
 
       try {
         await storage.createActivityLog({
-          userId: req.body.invitedById,
-          organizationId: req.authenticatedUser!.organizationId,
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId!,
           action: "Feedback invitation sent",
           details: `Invited ${req.body.email} to provide feedback`,
           entityType: "evaluation",
@@ -4204,17 +4652,14 @@ export async function registerRoutes(
       }
 
       // Notify the invited user (in-app + email) when they're a known user.
-      if (invitedUser && req.body.evaluationId) {
+      if (invitedUser) {
         try {
-          const evaluation = await storage.getEvaluation(req.body.evaluationId);
           let icName = "a team member";
-          if (evaluation) {
-            const ic = await storage.getUser(evaluation.icId);
-            if (ic) icName = `${ic.firstName} ${ic.lastName}`;
-          }
+          const ic = await storage.getUser(evaluation!.icId);
+          if (ic) icName = `${ic.firstName} ${ic.lastName}`;
           await notifyFeedbackRequested(
             req.body.evaluationId,
-            req.body.invitedById || req.authenticatedUser!.id,
+            currentUser.id,
             invitedUser.id,
             icName,
           );
@@ -4230,11 +4675,23 @@ export async function registerRoutes(
   });
 
   app.patch("/api/feedback-invitations/:id", authMiddleware, async (req, res) => {
+    const currentUser = req.authenticatedUser!;
+    const existing = await storage.getFeedbackInvitation(req.params.id);
+    if (!assertSameOrg(res, currentUser, existing)) return;
+
+    const isAdminOrOwner = currentUser.role === "admin" || currentUser.role === "owner";
+    if (existing!.invitedUserId !== currentUser.id && !isAdminOrOwner) {
+      return res.status(403).json({ error: "Forbidden - only the invited reviewer may submit this feedback" });
+    }
+
+    const { feedback, rating, status } = req.body;
     const invitation = await storage.updateFeedbackInvitation(req.params.id, {
-      ...req.body,
-      completedAt: req.body.status === "completed" ? new Date() : undefined,
+      feedback,
+      rating,
+      status,
+      completedAt: status === "completed" ? new Date() : undefined,
     });
-    
+
     if (!invitation) {
       return res.status(404).json({ error: "Invitation not found" });
     }
@@ -4243,7 +4700,7 @@ export async function registerRoutes(
 
   // Activity logs routes - admin only
   app.get("/api/activity-logs", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
-    const logs = await storage.getActivityLogs(req.authenticatedUser!.organizationId ?? undefined);
+    const logs = await storage.getActivityLogs(req.authenticatedUser!.organizationId ?? "");
     res.json(logs);
   });
 
@@ -4254,12 +4711,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
-    // Users can only access their own notifications (admins/cofounders can access any)
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+
+    // Users can only access their own notifications (admins/owners can access any in their org)
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string))) return;
+
     if (status === "unread") {
       const notifications = await storage.getUnreadNotificationsByUser(userId as string);
       res.json(notifications);
@@ -4273,12 +4728,10 @@ export async function registerRoutes(
   app.get("/api/notifications/count/:userId", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const userId = req.params.userId;
-    
+
     // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     const count = await storage.getUnreadNotificationCount(userId);
     res.json({ count });
   });
@@ -4289,12 +4742,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
+
     // Users can only access their own notification count
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId as string))) return;
+
     const count = await storage.getUnreadNotificationCount(userId as string);
     res.json({ count });
   });
@@ -4307,12 +4758,10 @@ export async function registerRoutes(
     if (userId === "count" || userId === "read-all") {
       return res.status(404).json({ error: "Not found" });
     }
-    
+
     // Users can only access their own notifications
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     const notifications = await storage.getNotificationsByUser(userId);
     res.json(notifications);
   });
@@ -4320,16 +4769,14 @@ export async function registerRoutes(
   app.patch("/api/notifications/:id/read", authMiddleware, async (req, res) => {
     const currentUser = req.authenticatedUser!;
     const notification = await storage.getNotification(req.params.id);
-    
+
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
-    
+
     // Users can only mark their own notifications as read
-    if (notification.userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, notification.userId))) return;
+
     const updated = await storage.markNotificationAsRead(req.params.id);
     res.json(updated);
   });
@@ -4340,12 +4787,10 @@ export async function registerRoutes(
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    
+
     // Users can only mark their own notifications as read
-    if (userId !== currentUser.id && currentUser.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
+    if (!(await assertSelfOrOrgAdmin(res, currentUser, userId))) return;
+
     await storage.markAllNotificationsAsRead(userId);
     res.json({ success: true });
   });
@@ -4365,8 +4810,13 @@ export async function registerRoutes(
     
     let prefs = await storage.getNotificationPreferences(userId as string);
     if (!prefs) {
+      const targetUser = await storage.getUser(userId as string);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
       prefs = await storage.createNotificationPreferences({
         userId: userId as string,
+        organizationId: targetUser.organizationId!,
         inAppEnabled: true,
         emailEnabled: false,
         oooNotifications: true,
@@ -4429,7 +4879,15 @@ export async function registerRoutes(
     if (!currentUser.organizationId) {
       return res.status(404).json({ error: "No organization associated with this user" });
     }
-    const updated = await storage.updateOrganization(currentUser.organizationId, req.body);
+    const { name, logoUrl, billingEmail, address, vatNumber } = req.body;
+    const allowedUpdates: Record<string, any> = {};
+    if (name !== undefined) allowedUpdates.name = name;
+    if (logoUrl !== undefined) allowedUpdates.logoUrl = logoUrl;
+    if (billingEmail !== undefined) allowedUpdates.billingEmail = billingEmail;
+    if (address !== undefined) allowedUpdates.address = address;
+    if (vatNumber !== undefined) allowedUpdates.vatNumber = vatNumber;
+
+    const updated = await storage.updateOrganization(currentUser.organizationId, allowedUpdates);
     if (!updated) {
       return res.status(404).json({ error: "Organization not found" });
     }
@@ -4447,7 +4905,8 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Billing information not found" });
     }
     const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
-    const unitPrice = PLAN_LIMITS[subscription.plan as keyof typeof PLAN_LIMITS]?.unitPrice ?? 0;
+    const billingCurrency = (subscription.billingCurrency as "NGN" | "USD") || "USD";
+    const unitPrice = await getUnitPriceForCurrency(subscription.plan, billingCurrency);
     const basePrice = unitPrice * currentSeats;
     const netPrice = computeNetPrice(basePrice, subscription.discountType, subscription.discountValue);
 
@@ -4465,6 +4924,7 @@ export async function registerRoutes(
         billingEmail: organization.billingEmail,
       },
       billing: {
+        currency: billingCurrency,
         basePrice,
         netPrice,
         discountType: subscription.discountType ?? null,
@@ -4492,12 +4952,18 @@ export async function registerRoutes(
       ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
       : null;
 
-    const { PLAN_LIMITS: limits } = await import("@shared/schema");
-    const unitPrice = limits[plan]?.unitPrice ?? 0;
+    const billingCurrency = (subscription?.billingCurrency as "NGN" | "USD") || "USD";
+    const unitPrice = await getUnitPriceForCurrency(plan, billingCurrency);
     const estimatedMonthlyCost = unitPrice > 0 ? currentSeats * unitPrice : 0;
 
-    res.json({ currentSeats, maxSeats, plan, percentUsed, trialEndsAt, trialExpired, daysLeftInTrial, estimatedMonthlyCost });
+    res.json({ currentSeats, maxSeats, plan, percentUsed, trialEndsAt, trialExpired, daysLeftInTrial, estimatedMonthlyCost, currency: billingCurrency });
   });
+
+  // Downgrades only — this updates the DB plan directly with no payment
+  // involved, so it must never be able to move an org onto a higher-paying
+  // plan for free. Upgrades go through POST /api/billing/subscribe, which
+  // actually charges via Paystack.
+  const PLAN_TIER_RANK: Record<string, number> = { free: 0, starter: 1, pro: 2, enterprise: 3 };
 
   app.post("/api/billing/change-plan", authMiddleware, requireRole("admin", "owner"), async (req, res) => {
     const currentUser = req.authenticatedUser!;
@@ -4505,7 +4971,6 @@ export async function registerRoutes(
     if (!currentUser.organizationId) {
       return res.status(400).json({ error: "User is not associated with an organization" });
     }
-    const { PLAN_LIMITS } = await import("@shared/schema");
     const validPlans = Object.keys(PLAN_LIMITS);
     if (!plan || !validPlans.includes(plan)) {
       return res.status(400).json({ error: "Invalid plan. Must be one of: " + validPlans.join(", ") });
@@ -4516,6 +4981,11 @@ export async function registerRoutes(
     const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
     if (!subscription) {
       return res.status(404).json({ error: "Subscription not found" });
+    }
+    if (PLAN_TIER_RANK[plan] >= PLAN_TIER_RANK[subscription.plan]) {
+      return res.status(400).json({
+        error: "This endpoint only supports downgrades. Use the subscribe flow to upgrade your plan.",
+      });
     }
     const currentSeats = await storage.getUserCountByOrganization(currentUser.organizationId);
     const newLimits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
@@ -4566,13 +5036,13 @@ export async function registerRoutes(
 
     const { plan, currency } = req.body;
     const validPlans = ["starter", "pro"];
-    const validCurrencies = ["NGN", "USD", "EUR"];
+    const validCurrencies = ["NGN", "USD"];
 
     if (!plan || !validPlans.includes(plan)) {
       return res.status(400).json({ error: "Plan must be 'starter' or 'pro'" });
     }
     if (!currency || !validCurrencies.includes(currency)) {
-      return res.status(400).json({ error: "Currency must be NGN, USD, or EUR" });
+      return res.status(400).json({ error: "Currency must be NGN or USD" });
     }
 
     const {
@@ -4588,6 +5058,25 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Organization not found" });
     }
 
+    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
+
+    // Guard against double-subscribe: re-submitting the same active plan+currency
+    // would create a second live Paystack subscription and double-charge the org.
+    // Switching plan or currency is still allowed — the old subscription is
+    // disabled once the new one is confirmed active (see the webhook handler).
+    const alreadyOnThisPlan =
+      subscription?.status === "active" &&
+      !!subscription.paystackSubscriptionCode &&
+      subscription.plan === plan &&
+      subscription.billingCurrency === currency;
+    if (alreadyOnThisPlan) {
+      return res.status(400).json({ error: "You already have an active subscription on this plan. Manage or cancel it from the billing page instead." });
+    }
+    const previousSubscriptionCode =
+      subscription?.status === "active" && subscription.paystackSubscriptionCode
+        ? subscription.paystackSubscriptionCode
+        : null;
+
     const billingEmail = organization.billingEmail || currentUser.email;
 
     // Look up or create the Paystack customer
@@ -4598,18 +5087,29 @@ export async function registerRoutes(
     const allPlans = await listPlans();
     let paystackPlan = allPlans.find((p: any) => p.name === planName && p.currency === currency);
 
+    const price = PAYSTACK_PRICES[plan]?.[currency as "NGN" | "USD"];
+    if (!price) {
+      return res.status(500).json({ error: "Price configuration missing" });
+    }
+
     if (!paystackPlan) {
-      const price = PAYSTACK_PRICES[plan]?.[currency as "NGN" | "USD" | "EUR"];
-      if (!price) {
-        return res.status(500).json({ error: "Price configuration missing" });
-      }
       paystackPlan = await createPlan({
         name: planName,
         amount: price.amount,
-        currency: currency as "NGN" | "USD" | "EUR",
+        currency: currency as "NGN" | "USD",
         interval: "monthly",
       });
     }
+
+    // Apply any sales-negotiated discount already on the subscription to the
+    // first charge — Paystack Plans are shared across customers so recurring
+    // renewals still bill the plan's list price, but at least the checkout
+    // charge the customer sees matches what they were quoted.
+    const discountValueInSmallestUnit =
+      subscription?.discountType === "fixed"
+        ? (subscription.discountValue ?? 0) * 100
+        : subscription?.discountValue ?? null;
+    const chargeAmount = computeNetPrice(price.amount, subscription?.discountType, discountValueInSmallestUnit);
 
     // Build callback URL
     const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
@@ -4619,18 +5119,19 @@ export async function registerRoutes(
     const txn = await initializeTransaction({
       email: billingEmail,
       planCode: paystackPlan.plan_code,
-      currency: currency as "NGN" | "USD" | "EUR",
+      currency: currency as "NGN" | "USD",
       callbackUrl,
+      amount: chargeAmount,
       metadata: {
         plan,
         currency,
         organizationId: currentUser.organizationId,
         paystackCustomerCode: customer.customer_code,
+        previousSubscriptionCode,
       },
     });
 
     // Store the customer code now so the webhook can match later
-    const subscription = await storage.getSubscriptionByOrganization(currentUser.organizationId);
     if (subscription && !subscription.paystackCustomerCode) {
       await storage.updateSubscription(subscription.id, {
         paystackCustomerCode: customer.customer_code,
@@ -4705,10 +5206,10 @@ export async function registerRoutes(
   // verified against the raw request body before any processing occurs.
   app.post("/api/billing/paystack-webhook", asyncHandler(async (req, res) => {
     const { createHmac, timingSafeEqual } = await import("crypto");
-    const secretKey = process.env.PAYSTACK_TEST_API_KEY;
+    const secretKey = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_TEST_API_KEY;
     if (!secretKey) {
       // Config error — fail loudly so operators notice; 500 causes Paystack to retry
-      console.error("[Paystack webhook] PAYSTACK_TEST_API_KEY is not set");
+      console.error("[Paystack webhook] PAYSTACK_SECRET_KEY is not set");
       return res.status(500).json({ error: "Webhook secret not configured" });
     }
 
@@ -4840,6 +5341,23 @@ export async function registerRoutes(
               }
             } catch (emailErr) {
               console.error("[billing] charge receipt email error:", emailErr);
+            }
+
+            // The new subscription is now confirmed active — disable whatever
+            // subscription the org was previously on so it doesn't keep
+            // billing in parallel (see the double-subscribe guard in
+            // POST /api/billing/subscribe).
+            const previousSubscriptionCode: string | undefined = data?.metadata?.previousSubscriptionCode;
+            if (previousSubscriptionCode && previousSubscriptionCode !== incomingSubCode) {
+              try {
+                const { fetchSubscription, disableSubscription } = await import("./paystackService");
+                const previous = await fetchSubscription(previousSubscriptionCode);
+                if (previous.status === "active" || previous.status === "non-renewing") {
+                  await disableSubscription(previousSubscriptionCode, previous.email_token);
+                }
+              } catch (disableErr) {
+                console.error("[billing] failed to disable previous subscription:", disableErr);
+              }
             }
           }
           break;
@@ -5200,6 +5718,7 @@ export async function registerRoutes(
   // These must be registered BEFORE the SPA catch-all in vite.ts / static.ts
   // so that Googlebot receives fully server-rendered HTML.
 
+  const { CANONICAL_ORIGIN } = await import("./ssrShared");
   const { getBlogIndexHtml, getBlogArticleHtml } = await import("./seo/blogPages");
   const { addSubscriber, isValidEmail } = await import("./seo/emailCapture");
   const { getFaqHtml } = await import("./seo/faqPages");
@@ -5310,7 +5829,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update timesheet");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `Timesheet ${status}`,
           details: `Timesheet for ${existing.month}/${existing.year} was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "timesheet",
@@ -5335,7 +5854,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk timesheet ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} timesheets (${summary.failureCount} failed)`,
         entityType: "timesheet",
@@ -5389,7 +5908,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update request");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `OOO request ${status}`,
           details: `Leave request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "ooo_request",
@@ -5413,7 +5932,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk OOO ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} leave requests (${summary.failureCount} failed)`,
         entityType: "ooo_request",
@@ -5473,7 +5992,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update request");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: `Overtime request ${status}`,
           details: `Overtime request was ${status}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "overtime_request",
@@ -5512,7 +6031,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk overtime ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} overtime requests (${summary.failureCount} failed)`,
         entityType: "overtime_request",
@@ -5563,7 +6082,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update expense");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: status === "approved" ? "Expense approved" : "Expense rejected",
           details: `${status === "approved" ? "Approved" : "Rejected"} expense ${expense.id}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "expense",
@@ -5587,7 +6106,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk expense ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} expenses (${summary.failureCount} failed)`,
         entityType: "expense",
@@ -5645,7 +6164,7 @@ export async function registerRoutes(
         if (!row) throw new Error("Failed to update invoice");
         await tx.insert(activityLogsTable).values({
           userId: currentUser.id,
-          organizationId: currentUser.organizationId,
+          organizationId: currentUser.organizationId!,
           action: status === "approved" ? "Invoice approved" : "Invoice rejected",
           details: `${status === "approved" ? "Approved" : "Rejected"} invoice ${invoice.invoiceNumber}${reviewNote ? `: ${reviewNote}` : ""}`,
           entityType: "invoice",
@@ -5685,7 +6204,7 @@ export async function registerRoutes(
               try {
                 await storage.createActivityLog({
                   userId: currentUser.id,
-                  organizationId: currentUser.organizationId,
+                  organizationId: currentUser.organizationId!,
                   action: "Timesheet unlocked for revision",
                   details: `Timesheet unlocked due to invoice rejection`,
                   entityType: "timesheet",
@@ -5704,7 +6223,7 @@ export async function registerRoutes(
     try {
       await storage.createActivityLog({
         userId: currentUser.id,
-        organizationId: currentUser.organizationId,
+        organizationId: currentUser.organizationId!,
         action: `Bulk invoice ${status}`,
         details: `Bulk action by ${currentUser.firstName} ${currentUser.lastName}: ${status} ${summary.successCount} of ${ids.length} invoices (${summary.failureCount} failed)`,
         entityType: "invoice",
@@ -5725,7 +6244,9 @@ export async function registerRoutes(
     requireRole("admin", "owner"),
     asyncHandler(async (req, res) => {
       const { section } = req.params;
-      const orgId = req.authenticatedUser!.organizationId ?? undefined;
+      // Empty string never matches a real org id, so an admin/owner somehow
+      // without an organizationId sees zero rows instead of every org's data.
+      const orgId = req.authenticatedUser!.organizationId ?? "";
       const {
         parseFilters,
         getSpend,
@@ -5915,16 +6436,16 @@ export async function registerRoutes(
 
   app.get("/api/admin/blog-subscribers", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
     const { getSubscribers } = await import("./seo/emailCapture");
-    res.json(getSubscribers());
+    res.json(await getSubscribers());
   }));
 
   app.get("/api/admin/blog", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getBlogArticles());
+    res.json(await getBlogArticles());
   }));
 
   app.get("/api/admin/blog-analytics", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    const articles = getBlogArticles();
-    const viewStats = getAllViewStats();
+    const articles = await getBlogArticles();
+    const viewStats = await getAllViewStats();
     const analytics = articles.map((a) => {
       const stats = viewStats[a.slug] ?? { views: 0, referrers: {} };
       return {
@@ -5944,7 +6465,7 @@ export async function registerRoutes(
     if (validationError) return res.status(400).json({ error: validationError });
     const { slug, title, metaDescription, publishedDate, updatedDate, readingMinutes, excerpt, bodyHtml } = req.body;
     try {
-      const article = createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
+      const article = await createArticle({ slug, title, metaDescription, publishedDate, updatedDate, readingMinutes: Number(readingMinutes), excerpt, bodyHtml });
       res.status(201).json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -5973,7 +6494,7 @@ export async function registerRoutes(
       return res.status(400).json({ error: "metaDescription must be 160 characters or fewer" });
     }
     try {
-      const article = updateArticle(req.params.slug, updates);
+      const article = await updateArticle(req.params.slug, updates);
       res.json(article);
     } catch (err) {
       handleBlogError(err, res as any);
@@ -5982,14 +6503,14 @@ export async function registerRoutes(
 
   app.delete("/api/admin/blog/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     try {
-      deleteArticle(req.params.slug);
+      await deleteArticle(req.params.slug);
       res.json({ success: true });
     } catch (err) {
       handleBlogError(err, res as any);
     }
   }));
 
-  app.post("/api/blog/subscribe", (req, res) => {
+  app.post("/api/blog/subscribe", asyncHandler(async (req, res) => {
     const email = (req.body?.email ?? "").toString().trim();
     const rawReturnTo = (req.body?.returnTo ?? "/blog").toString().trim();
     const returnTo = /^\/blog(\/[a-z0-9-]*)?$/.test(rawReturnTo) ? rawReturnTo : "/blog";
@@ -5997,8 +6518,8 @@ export async function registerRoutes(
     if (!email || !isValidEmail(email)) {
       const opts = { error: "Please enter a valid email address." };
       const html = returnTo.startsWith("/blog/")
-        ? getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
-        : getBlogIndexHtml(opts);
+        ? await getBlogArticleHtml(returnTo.replace("/blog/", ""), opts)
+        : await getBlogIndexHtml(opts);
       if (!html) {
         res.redirect(`${returnTo}?error=invalid`);
         return;
@@ -6009,35 +6530,70 @@ export async function registerRoutes(
       return;
     }
 
-    addSubscriber(email, returnTo);
+    await addSubscriber(email, returnTo);
     res.redirect(`${returnTo}?subscribed=1`);
-  });
+  }));
 
-  app.get("/blog", (req, res) => {
+  // Public, signed one-click unsubscribe — link is safe to click straight
+  // from an email client (GET, no auth) since the token proves possession
+  // of the original subscribe link rather than the user's session.
+  app.get("/api/blog/unsubscribe", asyncHandler(async (req, res) => {
+    const { unsubscribe } = await import("./seo/emailCapture");
+    const email = (req.query.email ?? "").toString();
+    const token = (req.query.token ?? "").toString();
+    const result = await unsubscribe(email, token);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${result.ok ? "Unsubscribed" : "Unsubscribe"} — Axle</title></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background-color:#f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:60px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <tr><td style="padding:40px 32px;text-align:center;">
+          <h1 style="margin:0 0 12px;color:#18181b;font-size:20px;font-weight:600;">${
+            result.ok ? "You're unsubscribed" : "Unsubscribe failed"
+          }</h1>
+          <p style="margin:0;color:#52525b;font-size:14px;line-height:1.6;">${
+            result.ok
+              ? `${email} will no longer receive emails from the Axle blog.`
+              : result.error
+          }</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`);
+  }));
+
+  app.get("/blog", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
-    res.send(getBlogIndexHtml({ subscribed }));
-  });
+    res.send(await getBlogIndexHtml({ subscribed }));
+  }));
 
-  app.get("/blog/:slug", (req, res) => {
+  app.get("/blog/:slug", asyncHandler(async (req, res) => {
     const subscribed = req.query.subscribed === "1";
-    const html = getBlogArticleHtml(req.params.slug, { subscribed });
+    const html = await getBlogArticleHtml(req.params.slug, { subscribed });
     if (!html) {
       res.status(404).send("<h1>Article not found</h1>");
       return;
     }
     if (!subscribed) {
-      recordView(req.params.slug, req.headers.referer);
+      await recordView(req.params.slug, req.headers.referer);
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", subscribed ? "no-store" : BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: industry pages ──
-  app.get("/contractor-management-for-:industry", (req, res) => {
-    const html = getIndustryHtml(req.params.industry);
+  app.get("/contractor-management-for-:industry", asyncHandler(async (req, res) => {
+    const html = await getIndustryHtml(req.params.industry);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -6045,24 +6601,24 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
-  app.get("/industries", (_req, res) => {
+  app.get("/industries", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getIndustriesIndexHtml());
-  });
+    res.send(await getIndustriesIndexHtml());
+  }));
 
   // ── Programmatic SEO: competitor comparison pages ──
-  app.get("/compare", (_req, res) => {
+  app.get("/compare", asyncHandler(async (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
-    res.send(getCompetitorsIndexHtml());
-  });
+    res.send(await getCompetitorsIndexHtml());
+  }));
 
-  app.get(/^\/([a-z0-9-]+-alternative)$/, (req, res) => {
+  app.get(/^\/([a-z0-9-]+-alternative)$/, asyncHandler(async (req, res) => {
     const slug = req.params[0];
-    const html = getCompetitorHtml(slug);
+    const html = await getCompetitorHtml(slug);
     if (!html) {
       res.status(404).send("<h1>Page not found</h1>");
       return;
@@ -6070,7 +6626,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", BLOG_CACHE);
     res.send(html);
-  });
+  }));
 
   // ── Programmatic SEO: admin CRUD ──
   const ALLOWED_STATUSES = new Set(["draft", "published"]);
@@ -6119,37 +6675,37 @@ export async function registerRoutes(
   }
 
   app.get("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getIndustries());
+    res.json(await getIndustries());
   }));
   app.post("/api/admin/seo/industries", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createIndustry(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateIndustryBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateIndustry(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/industries/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteIndustry(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (_req, res) => {
-    res.json(getCompetitors());
+    res.json(await getCompetitors());
   }));
   app.post("/api/admin/seo/competitors", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body);
     if (err) return res.status(400).json({ error: err });
-    try { res.status(201).json(createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.status(201).json(await createCompetitor(req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.put("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
     const err = validateCompetitorBody(req.body, "update");
     if (err) return res.status(400).json({ error: err });
-    try { res.json(updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
+    try { res.json(await updateCompetitor(req.params.slug, req.body)); } catch (e) { handleProgrammaticError(e, res); }
   }));
   app.delete("/api/admin/seo/competitors/:slug", boAuthMiddleware, requirePlatformAdmin, asyncHandler(async (req, res) => {
-    try { deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
+    try { await deleteCompetitor(req.params.slug); res.status(204).end(); } catch (e) { handleProgrammaticError(e, res); }
   }));
 
   app.get("/faq", (_req, res) => {
@@ -6162,16 +6718,16 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(
-      `User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\nSitemap: /sitemap-blog.xml\nSitemap: /sitemap-programmatic.xml\n`
+      `User-agent: *\nAllow: /\nDisallow: /back-office\n\nSitemap: ${CANONICAL_ORIGIN}/sitemap.xml\nSitemap: ${CANONICAL_ORIGIN}/sitemap-blog.xml\nSitemap: ${CANONICAL_ORIGIN}/sitemap-programmatic.xml\n`
     );
   });
 
   app.get("/llms.txt", (_req, res) => {
-    const base = "https://www.axlehq.app";
+    const base = CANONICAL_ORIGIN;
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(
-      `# Axle\n\n> Axle is a multi-tenant SaaS platform for managing independent contractors — timesheets, invoicing, leave tracking, performance evaluations, and compliance in one place.\n\n## Key public sections\n\n- Blog: ${base}/blog\n- FAQ: ${base}/faq\n- Industries: ${base}/industries\n- Compare: ${base}/compare\n\n## Programmatic landing pages\n\n- Industry pages: ${base}/contractor-management-for-[industry]\n- Competitor comparison pages: ${base}/axle-vs-[competitor]\n\n## Sitemaps\n\n- ${base}/sitemap.xml\n- ${base}/sitemap-blog.xml\n- ${base}/sitemap-programmatic.xml\n`
+      `# Axle\n\n> Axle is a multi-tenant SaaS platform for managing independent contractors — timesheets, invoicing, leave tracking, performance evaluations, and compliance in one place.\n\n## Key public sections\n\n- Blog: ${base}/blog\n- FAQ: ${base}/faq\n- Industries: ${base}/industries\n- Compare: ${base}/compare\n\n## Programmatic landing pages\n\n- Industry pages: ${base}/contractor-management-for-[industry]\n- Competitor comparison pages: ${base}/[competitor]-alternative\n\n## Sitemaps\n\n- ${base}/sitemap.xml\n- ${base}/sitemap-blog.xml\n- ${base}/sitemap-programmatic.xml\n`
     );
   });
 
@@ -6185,11 +6741,11 @@ export async function registerRoutes(
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlEntries}\n</urlset>`;
   }
 
-  const BASE_URL = "https://www.axlehq.app";
+  const BASE_URL = CANONICAL_ORIGIN;
 
-  app.get("/sitemap.xml", (_req, res) => {
+  app.get("/sitemap.xml", asyncHandler(async (_req, res) => {
     const today = new Date().toISOString().slice(0, 10);
-    const articles = getBlogArticles();
+    const articles = await getBlogArticles();
     const mostRecentArticleDate = articles.reduce(
       (max, a) => (a.updatedDate > max ? a.updatedDate : max),
       articles[0]?.updatedDate ?? today
@@ -6200,13 +6756,13 @@ export async function registerRoutes(
       changefreq: "monthly" as const,
       priority: "0.7",
     }));
-    const industryUrls = getPublishedIndustries().map((i) => ({
+    const industryUrls = (await getPublishedIndustries()).map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = (await getPublishedCompetitors()).map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -6226,16 +6782,16 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-programmatic.xml", (_req, res) => {
-    const industryUrls = getPublishedIndustries().map((i) => ({
+  app.get("/sitemap-programmatic.xml", asyncHandler(async (_req, res) => {
+    const industryUrls = (await getPublishedIndustries()).map((i) => ({
       loc: `${BASE_URL}/contractor-management-for-${i.slug}`,
       lastmod: i.updatedDate,
       changefreq: "monthly" as const,
       priority: "0.8",
     }));
-    const competitorUrls = getPublishedCompetitors().map((c) => ({
+    const competitorUrls = (await getPublishedCompetitors()).map((c) => ({
       loc: `${BASE_URL}/${c.slug}`,
       lastmod: c.updatedDate,
       changefreq: "monthly" as const,
@@ -6251,10 +6807,10 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
-  app.get("/sitemap-blog.xml", (_req, res) => {
-    const articles = getBlogArticles();
+  app.get("/sitemap-blog.xml", asyncHandler(async (_req, res) => {
+    const articles = await getBlogArticles();
     const articleUrls = articles.map((a) => ({
       loc: `${BASE_URL}/blog/${a.slug}`,
       lastmod: a.updatedDate,
@@ -6268,7 +6824,7 @@ export async function registerRoutes(
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", SEO_CACHE);
     res.send(xml);
-  });
+  }));
 
   return httpServer;
 }

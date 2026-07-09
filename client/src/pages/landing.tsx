@@ -156,22 +156,45 @@ const PLAN_PRICE_OVERRIDES: Record<string, Record<string, { price: string; examp
   },
 };
 
+// Real published per-IC/month prices for the pricing calculator, sourced
+// from the same localized numbers as PLAN_PRICE_OVERRIDES above (not a
+// currency-converted USD figure). Deel doesn't publish localized pricing —
+// it bills contractor-of-record customers in USD regardless of region — so
+// the calculator only ever shows Deel's cost in USD.
+const CALCULATOR_CURRENCIES: Record<string, { symbol: string; label: string; axleProUnit: number }> = {
+  USD: { symbol: "$", label: "USD", axleProUnit: 14 },
+  NGN: { symbol: "₦", label: "NGN", axleProUnit: 14000 },
+  EUR: { symbol: "€", label: "EUR", axleProUnit: 13 },
+};
+const DEEL_USD_UNIT = 49;
+
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const [contractorCount, setContractorCount] = useState(25);
   const [detectedCurrency, setDetectedCurrency] = useState<string>("USD");
+  const [calculatorCurrency, setCalculatorCurrency] = useState<string>("USD");
+  const [calculatorCurrencyTouched, setCalculatorCurrencyTouched] = useState(false);
 
   useEffect(() => {
     fetch("/api/billing/detect-currency")
       .then((r) => r.json())
-      .then((data) => { if (data?.currency) setDetectedCurrency(data.currency); })
+      .then((data) => {
+        if (data?.currency) {
+          setDetectedCurrency(data.currency);
+          // Only auto-apply the detected currency to the calculator before
+          // the visitor has picked one themselves.
+          if (!calculatorCurrencyTouched && CALCULATOR_CURRENCIES[data.currency]) {
+            setCalculatorCurrency(data.currency);
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
   usePageMeta({
     title: "Axle — Contractor Management Platform",
     description: "Axle helps companies manage independent contractors with timesheets, invoices, leave tracking, and performance reviews — all in one place.",
-    canonical: "https://axle.run/",
+    canonical: "https://axlehq.app/",
   });
 
   const scrollToHowItWorks = () => {
@@ -274,7 +297,7 @@ export default function LandingPage() {
                 See how it works
               </Button>
             </div>
-            <p className="text-gray-400 text-xs">7-day free trial · No credit card required · Free for up to 3 contractors.</p>
+            <p className="text-gray-400 text-xs">7-day free trial · No credit card required · Up to 3 contractors during the trial.</p>
           </div>
 
           {/* Right: app screenshot mockup */}
@@ -572,44 +595,80 @@ export default function LandingPage() {
           </div>
 
           {/* Pricing calculator */}
-          <div className="mt-12 max-w-2xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl p-7">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div>
-                <p className="text-gray-900 text-[15px] font-semibold mb-0.5">How much could you save?</p>
-                <p className="text-gray-500 text-[13px]">Compare your cost on Axle vs Deel at your team size.</p>
+          {(() => {
+            const calc = CALCULATOR_CURRENCIES[calculatorCurrency] ?? CALCULATOR_CURRENCIES.USD;
+            const axleTotal = contractorCount * calc.axleProUnit;
+            const deelTotalUsd = contractorCount * DEEL_USD_UNIT;
+            const isUsd = calculatorCurrency === "USD";
+
+            return (
+              <div className="mt-12 max-w-2xl mx-auto bg-gray-50 border border-gray-200 rounded-2xl p-7">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                  <div>
+                    <p className="text-gray-900 text-[15px] font-semibold mb-0.5">How much could you save?</p>
+                    <p className="text-gray-500 text-[13px]">Compare your cost on Axle vs Deel at your team size.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="contractor-count" className="text-gray-600 text-[13px] whitespace-nowrap">Number of contractors:</label>
+                      <input
+                        id="contractor-count"
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={contractorCount}
+                        onChange={(e) => setContractorCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                        className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                        data-testid="input-contractor-count"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="calculator-currency" className="text-gray-600 text-[13px] whitespace-nowrap">Currency:</label>
+                      <select
+                        id="calculator-currency"
+                        value={calculatorCurrency}
+                        onChange={(e) => {
+                          setCalculatorCurrency(e.target.value);
+                          setCalculatorCurrencyTouched(true);
+                        }}
+                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                        data-testid="select-calculator-currency"
+                      >
+                        {Object.entries(CALCULATOR_CURRENCIES).map(([code, c]) => (
+                          <option key={code} value={code}>{c.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Axle Pro</div>
+                    <div className="text-2xl font-bold text-gray-900 mb-0.5">{calc.symbol}{axleTotal.toLocaleString()}<span className="text-sm font-normal text-gray-400"> {calc.label}/mo</span></div>
+                    <div className="text-[12px] text-gray-500">{contractorCount} ICs × {calc.symbol}{calc.axleProUnit.toLocaleString()}</div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Deel</div>
+                    <div className="text-2xl font-bold text-gray-400 mb-0.5">${deelTotalUsd.toLocaleString()}<span className="text-sm font-normal text-gray-400"> USD/mo</span></div>
+                    <div className="text-[12px] text-gray-500">{contractorCount} ICs × $49</div>
+                  </div>
+                </div>
+                {isUsd ? (
+                  <div className="mt-4 bg-emerald-50 rounded-xl border border-emerald-100 px-5 py-3 flex items-center justify-between">
+                    <span className="text-[13px] text-emerald-800 font-medium">Your annual saving with Axle</span>
+                    <span className="text-emerald-700 font-bold text-[17px]">${((deelTotalUsd - axleTotal) * 12).toLocaleString()} USD / year</span>
+                  </div>
+                ) : (
+                  <div className="mt-4 bg-emerald-50 rounded-xl border border-emerald-100 px-5 py-3">
+                    <span className="text-[13px] text-emerald-800 font-medium">Axle's {calc.label} pricing is Axle's real published rate for your region — Deel doesn't publish {calc.label} pricing and bills internationally in USD, so switch to USD above for a direct dollar comparison.</span>
+                  </div>
+                )}
+                <p className="text-[11px] text-gray-400 mt-3 text-center">
+                  Axle pricing shown in {calc.label} is Axle's real published rate, not a currency conversion. Deel figures reflect Deel's published $49/IC/month USD price.
+                </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <label htmlFor="contractor-count" className="text-gray-600 text-[13px] whitespace-nowrap">Number of contractors:</label>
-                <input
-                  id="contractor-count"
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={contractorCount}
-                  onChange={(e) => setContractorCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
-                  className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
-                  data-testid="input-contractor-count"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Axle Pro</div>
-                <div className="text-2xl font-bold text-gray-900 mb-0.5">${(contractorCount * 14).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
-                <div className="text-[12px] text-gray-500">{contractorCount} ICs × $14</div>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Deel</div>
-                <div className="text-2xl font-bold text-gray-400 mb-0.5">${(contractorCount * 49).toLocaleString()}<span className="text-sm font-normal text-gray-400">/mo</span></div>
-                <div className="text-[12px] text-gray-500">{contractorCount} ICs × $49</div>
-              </div>
-            </div>
-            <div className="mt-4 bg-emerald-50 rounded-xl border border-emerald-100 px-5 py-3 flex items-center justify-between">
-              <span className="text-[13px] text-emerald-800 font-medium">Your annual saving with Axle</span>
-              <span className="text-emerald-700 font-bold text-[17px]">${((contractorCount * 49 - contractorCount * 14) * 12).toLocaleString()} / year</span>
-            </div>
-            <p className="text-[11px] text-gray-400 mt-3 text-center">Comparison based on Deel's published contractor management price of $49/IC/month.</p>
-          </div>
+            );
+          })()}
         </div>
       </section>
       {/* CTA dark */}
@@ -650,7 +709,7 @@ export default function LandingPage() {
               Book a demo
             </Button>
           </div>
-          <p className="text-gray-600 text-xs mt-4">No credit card required. Free up to 3 contractors.</p>
+          <p className="text-gray-600 text-xs mt-4">No credit card required. 7-day free trial, up to 3 contractors.</p>
         </div>
       </section>
       {/* Footer */}
@@ -683,28 +742,22 @@ export default function LandingPage() {
             <div>
               <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Resources</div>
               <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  Documentation
-                </a>
                 <a href="/blog" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Blog
                 </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                <a href="mailto:support@axlehq.app" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Support
                 </a>
               </div>
             </div>
             <div>
-              <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Company</div>
+              <div className="text-gray-600 text-[10px] font-bold tracking-widest uppercase mb-3">Legal</div>
               <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  About
-                </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
-                  Careers
-                </a>
-                <a href="#" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                <a href="/privacy" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Privacy
+                </a>
+                <a href="/terms" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                  Terms
                 </a>
               </div>
             </div>

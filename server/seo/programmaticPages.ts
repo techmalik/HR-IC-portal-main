@@ -1,4 +1,4 @@
-import { ssrHtmlShell, escHtml, escAttr } from "../ssrShared";
+import { ssrHtmlShell, escHtml, escAttr, CANONICAL_ORIGIN } from "../ssrShared";
 import {
   getPublishedIndustries as getIndustries,
   getPublishedIndustryBySlug as getIndustryBySlug,
@@ -7,7 +7,7 @@ import {
 } from "./programmaticStorage";
 import type { IndustryPage, CompetitorPage } from "./programmaticData";
 
-const BASE_URL = "https://www.axlehq.app";
+const BASE_URL = CANONICAL_ORIGIN;
 
 function organizationJsonLd() {
   return {
@@ -90,11 +90,11 @@ function ctaHtml(headline: string, sub: string) {
   </div>`;
 }
 
-function internalLinksHtml(currentSlug: string, kind: "industry" | "competitor") {
-  const otherIndustries = getIndustries()
+async function internalLinksHtml(currentSlug: string, kind: "industry" | "competitor") {
+  const otherIndustries = (await getIndustries())
     .filter((i) => kind !== "industry" || i.slug !== currentSlug)
     .slice(0, 6);
-  const otherCompetitors = getCompetitors()
+  const otherCompetitors = (await getCompetitors())
     .filter((c) => kind !== "competitor" || c.slug !== currentSlug)
     .slice(0, 6);
 
@@ -122,13 +122,13 @@ function internalLinksHtml(currentSlug: string, kind: "industry" | "competitor")
   </section>`;
 }
 
-export function getIndustryHtml(slug: string): string | null {
-  const page = getIndustryBySlug(slug);
+export async function getIndustryHtml(slug: string): Promise<string | null> {
+  const page = await getIndustryBySlug(slug);
   if (!page) return null;
   return renderIndustry(page);
 }
 
-function renderIndustry(page: IndustryPage): string {
+async function renderIndustry(page: IndustryPage): Promise<string> {
   const canonicalPath = `/contractor-management-for-${page.slug}`;
   const painPointsHtml = page.painPoints
     .map((p) => `<li>${escHtml(p)}</li>`)
@@ -164,7 +164,7 @@ function renderIndustry(page: IndustryPage): string {
 
       ${faqHtml(page.faqs)}
 
-      ${internalLinksHtml(page.slug, "industry")}
+      ${await internalLinksHtml(page.slug, "industry")}
     </main>`;
 
   const jsonLd = combinedJsonLd([
@@ -188,13 +188,13 @@ function renderIndustry(page: IndustryPage): string {
   });
 }
 
-export function getCompetitorHtml(slug: string): string | null {
-  const page = getCompetitorBySlug(slug);
+export async function getCompetitorHtml(slug: string): Promise<string | null> {
+  const page = await getCompetitorBySlug(slug);
   if (!page) return null;
   return renderCompetitor(page);
 }
 
-function renderCompetitor(page: CompetitorPage): string {
+async function renderCompetitor(page: CompetitorPage): Promise<string> {
   const canonicalPath = `/${page.slug}`;
   const weaknessesHtml = page.competitorWeaknesses
     .map((w) => `<li>${escHtml(w)}</li>`)
@@ -247,7 +247,7 @@ function renderCompetitor(page: CompetitorPage): string {
 
       ${faqHtml(page.faqs)}
 
-      ${internalLinksHtml(page.slug, "competitor")}
+      ${await internalLinksHtml(page.slug, "competitor")}
     </main>`;
 
   const jsonLd = combinedJsonLd([
@@ -273,8 +273,8 @@ function renderCompetitor(page: CompetitorPage): string {
 
 // ── Index pages (lightweight directory pages for crawlers) ──
 
-export function getIndustriesIndexHtml(): string {
-  const items = getIndustries();
+export async function getIndustriesIndexHtml(): Promise<string> {
+  const items = await getIndustries();
   const cardsHtml = items
     .map(
       (i) => `
@@ -298,8 +298,8 @@ export function getIndustriesIndexHtml(): string {
   });
 }
 
-export function getCompetitorsIndexHtml(): string {
-  const items = getCompetitors();
+export async function getCompetitorsIndexHtml(): Promise<string> {
+  const items = await getCompetitors();
   const cardsHtml = items
     .map(
       (c) => `

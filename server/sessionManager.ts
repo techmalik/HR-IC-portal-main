@@ -7,6 +7,14 @@ const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 
 export type SessionContext = "app" | "backoffice";
 
+// Sessions are stored keyed by sha256(token), not the raw token, so a
+// database read (backup leak, SQL injection, etc.) doesn't hand out
+// ready-to-use session cookies — the attacker would still need to invert the
+// hash. The raw token is only ever held in memory and in the client's cookie.
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
 export async function createSession(
   userId: string,
   username: string,
@@ -17,7 +25,7 @@ export async function createSession(
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
 
   await db.insert(sessions).values({
-    token,
+    token: hashToken(token),
     userId,
     username,
     context,
@@ -29,7 +37,8 @@ export async function createSession(
 }
 
 export async function validateSession(token: string): Promise<{ userId: string; username: string } | null> {
-  const result = await db.select().from(sessions).where(eq(sessions.token, token));
+  const tokenHash = hashToken(token);
+  const result = await db.select().from(sessions).where(eq(sessions.token, tokenHash));
   const session = result[0];
 
   if (!session) {
@@ -37,7 +46,7 @@ export async function validateSession(token: string): Promise<{ userId: string; 
   }
 
   if (new Date() > session.expiresAt) {
-    await db.delete(sessions).where(eq(sessions.token, token));
+    await db.delete(sessions).where(eq(sessions.token, tokenHash));
     return null;
   }
 
@@ -48,10 +57,11 @@ export async function validateSessionForContext(
   token: string,
   context: SessionContext,
 ): Promise<{ userId: string; username: string } | null> {
+  const tokenHash = hashToken(token);
   const result = await db
     .select()
     .from(sessions)
-    .where(and(eq(sessions.token, token), eq(sessions.context, context)));
+    .where(and(eq(sessions.token, tokenHash), eq(sessions.context, context)));
   const session = result[0];
 
   if (!session) {
@@ -59,7 +69,7 @@ export async function validateSessionForContext(
   }
 
   if (new Date() > session.expiresAt) {
-    await db.delete(sessions).where(eq(sessions.token, token));
+    await db.delete(sessions).where(eq(sessions.token, tokenHash));
     return null;
   }
 
@@ -67,7 +77,7 @@ export async function validateSessionForContext(
 }
 
 export async function invalidateSession(token: string): Promise<boolean> {
-  const result = await db.delete(sessions).where(eq(sessions.token, token)).returning();
+  const result = await db.delete(sessions).where(eq(sessions.token, hashToken(token))).returning();
   return result.length > 0;
 }
 

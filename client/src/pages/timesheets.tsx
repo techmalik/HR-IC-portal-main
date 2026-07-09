@@ -527,7 +527,10 @@ export default function TimesheetsPage() {
                       const hasOvertimePending = overtime?.status === "pending";
                       const hasOvertimeApproved = overtime?.status === "approved";
                       const isToday = dateStr === format(new Date(), "yyyy-MM-dd");
-                      const isFutureWorkday = !hasEntry && !isWeekend && !isFullDayOOO && !isHalfDayOOO && new Date(dateStr) > new Date();
+                      // Compare using the same local year/month/day components used to build
+                      // dateStr — parsing dateStr back through `new Date()` would read it as
+                      // UTC midnight and misfire near timezone boundaries.
+                      const isFutureWorkday = !hasEntry && !isWeekend && !isFullDayOOO && !isHalfDayOOO && new Date(year, month - 1, day) > new Date();
 
                       return (
                         <button

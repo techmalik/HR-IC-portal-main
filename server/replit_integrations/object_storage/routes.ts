@@ -56,7 +56,15 @@ async function isAuthorizedForObject(
     );
   }
 
-  return isAdmin;
+  const avatarOwner = await storage.getUserByAvatarUrl(callerFileUrl);
+  if (avatarOwner) {
+    if (caller.id === avatarOwner.id) return true;
+    return callerOrgId != null && callerOrgId === avatarOwner.organizationId;
+  }
+
+  // Unlinked object we can't attribute to any org — fail closed rather than
+  // letting any admin (of any org) read it.
+  return false;
 }
 
 export function registerObjectStorageRoutes(
@@ -65,32 +73,6 @@ export function registerObjectStorageRoutes(
   storage: IStorage,
 ): void {
   const getStorageClient = () => new Client();
-
-  app.post("/api/uploads/request-url", async (req, res) => {
-    try {
-      const { name } = req.body;
-
-      if (!name) {
-        return res.status(400).json({
-          error: "Missing required field: name",
-        });
-      }
-
-      const { randomUUID } = await import("crypto");
-      const objectId = randomUUID();
-      const storagePath = `.private/uploads/${objectId}`;
-      const objectPath = `/objects/uploads/${objectId}`;
-
-      res.json({
-        storagePath,
-        objectPath,
-        metadata: { name },
-      });
-    } catch (error) {
-      console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
-    }
-  });
 
   app.get("/objects/:objectPath(*)", authMiddleware, async (req, res) => {
     try {
