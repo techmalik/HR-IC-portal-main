@@ -8,7 +8,7 @@ if (resend) {
 }
 
 const APP_NAME = "Axle";
-const BRAND_COLOR = "#2563EB";
+const BRAND_COLOR = "#059669";
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "notifications@resend.dev";
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "techmaleek@gmail.com";
@@ -508,7 +508,7 @@ export async function sendBillingEmail(
           <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME}</h1>
         </td></tr>
         <tr><td style="padding:32px 32px 0;">
-          <span style="display:inline-block;background-color:#2563EB15;color:${BRAND_COLOR};padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Billing</span>
+          <span style="display:inline-block;background-color:${BRAND_COLOR}15;color:${BRAND_COLOR};padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Billing</span>
         </td></tr>
         <tr><td style="padding:24px 32px;">
           <h2 style="margin:0 0 16px;color:#18181b;font-size:22px;font-weight:600;">${payload.title}</h2>
