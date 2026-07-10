@@ -10,6 +10,33 @@ if (resend) {
 const APP_NAME = "Axle";
 const BRAND_COLOR = "#059669";
 
+// Recreates the ring-and-dot mark from client/public/favicon.svg using nested
+// tables instead of inline SVG, which Outlook and several other email clients
+// strip or fail to render.
+function emailHeaderHtml(label: string): string {
+  return `
+          <tr>
+            <td style="background-color: ${BRAND_COLOR}; padding: 32px; text-align: center;">
+              <table cellpadding="0" cellspacing="0" style="margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                  <td style="padding-right: 10px; vertical-align: middle;">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                      <tr>
+                        <td width="26" height="26" style="width: 26px; height: 26px; border: 2.5px solid #ffffff; border-radius: 50%; text-align: center; vertical-align: middle;">
+                          <div style="width: 8px; height: 8px; border-radius: 50%; background-color: #ffffff; margin: 0 auto; line-height: 0; font-size: 0;">&nbsp;</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.025em;">${label}</h1>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+}
+
 const FROM_EMAIL = process.env.FROM_EMAIL || "notifications@resend.dev";
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "techmaleek@gmail.com";
 
@@ -158,12 +185,8 @@ function generateEmailHtml(payload: EmailPayload): string {
       <td align="center">
         <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
           <!-- Header -->
-          <tr>
-            <td style="background-color: ${BRAND_COLOR}; padding: 32px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.025em;">${APP_NAME}</h1>
-            </td>
-          </tr>
-          
+          ${emailHeaderHtml(APP_NAME)}
+
           <!-- Status Badge -->
           <tr>
             <td style="padding: 32px 32px 0;">
@@ -323,11 +346,7 @@ export async function sendPasswordResetEmail(
     <tr>
       <td align="center">
         <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-          <tr>
-            <td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME}</h1>
-            </td>
-          </tr>
+          ${emailHeaderHtml(APP_NAME)}
           <tr>
             <td style="padding:32px 32px 0;">
               <span style="display:inline-block;background-color:#F59E0B15;color:#F59E0B;padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Action Required</span>
@@ -407,9 +426,7 @@ export async function sendSupportTicketEmail(
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
     <tr><td align="center">
       <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-        <tr><td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME} Support</h1>
-        </td></tr>
+        ${emailHeaderHtml(`${APP_NAME} Support`)}
         <tr><td style="padding:32px 32px 0;">
           <span style="display:inline-block;background-color:#6366F115;color:#6366F1;padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">New Ticket</span>
         </td></tr>
@@ -504,9 +521,7 @@ export async function sendBillingEmail(
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
     <tr><td align="center">
       <table width="100%" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-        <tr><td style="background-color:${BRAND_COLOR};padding:32px;text-align:center;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.025em;">${APP_NAME}</h1>
-        </td></tr>
+        ${emailHeaderHtml(APP_NAME)}
         <tr><td style="padding:32px 32px 0;">
           <span style="display:inline-block;background-color:${BRAND_COLOR}15;color:${BRAND_COLOR};padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Billing</span>
         </td></tr>
