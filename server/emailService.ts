@@ -22,8 +22,8 @@ function emailHeaderHtml(label: string): string {
                   <td style="padding-right: 10px; vertical-align: middle;">
                     <table cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
                       <tr>
-                        <td width="26" height="26" style="width: 26px; height: 26px; border: 2.5px solid #ffffff; border-radius: 50%; text-align: center; vertical-align: middle;">
-                          <div style="width: 8px; height: 8px; border-radius: 50%; background-color: #ffffff; margin: 0 auto; line-height: 0; font-size: 0;">&nbsp;</div>
+                        <td width="26" height="26" style="width: 26px; height: 26px; border: 2.5px solid #ffffff; border-radius: 13px; text-align: center; vertical-align: middle;">
+                          <div style="width: 8px; height: 8px; border-radius: 4px; background-color: #ffffff; margin: 0 auto; line-height: 0; font-size: 0;">&nbsp;</div>
                         </td>
                       </tr>
                     </table>
