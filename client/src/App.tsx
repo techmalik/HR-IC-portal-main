@@ -33,6 +33,9 @@ const SignupPage = lazyWithRetry(() => import("@/pages/signup"));
 const CompetitiveAnalysisPage = lazyWithRetry(() => import("@/pages/competitive-analysis"));
 const PrivacyPolicyPage = lazyWithRetry(() => import("@/pages/legal-privacy"));
 const TermsOfServicePage = lazyWithRetry(() => import("@/pages/legal-terms"));
+const CookiePolicyPage = lazyWithRetry(() => import("@/pages/legal-cookies"));
+const SubprocessorsPage = lazyWithRetry(() => import("@/pages/legal-subprocessors"));
+const DataProcessingAddendumPage = lazyWithRetry(() => import("@/pages/legal-dpa"));
 
 // Authenticated pages — lazy-loaded so the public routes don't pay their cost
 const DashboardIC = lazyWithRetry(() => import("@/pages/dashboard-ic"));
@@ -533,6 +536,9 @@ function PublicRoutes() {
           <Route path="/competitive-analysis" component={CompetitiveAnalysisPage} />
           <Route path="/privacy" component={PrivacyPolicyPage} />
           <Route path="/terms" component={TermsOfServicePage} />
+          <Route path="/cookies" component={CookiePolicyPage} />
+          <Route path="/subprocessors" component={SubprocessorsPage} />
+          <Route path="/dpa" component={DataProcessingAddendumPage} />
           <Route component={LandingPage} />
         </Switch>
       </Suspense>
@@ -632,7 +638,7 @@ function ProtectedRoutes() {
   }
 
   if (!user) {
-    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis", "/privacy", "/terms"];
+    const publicPaths = ["/login", "/signup", "/", "/competitive-analysis", "/privacy", "/terms", "/cookies", "/subprocessors", "/dpa"];
     const isPublicPath = publicPaths.includes(location) || location === "";
     if (!isPublicPath) {
       window.location.replace(`${getMarketingOrigin()}/login?redirect=${encodeURIComponent(location)}`);
@@ -658,6 +664,15 @@ function ProtectedRoutes() {
   }
   if (location === "/terms") {
     return <RouteErrorBoundary><Suspense fallback={pageFallback}><TermsOfServicePage /></Suspense></RouteErrorBoundary>;
+  }
+  if (location === "/cookies") {
+    return <RouteErrorBoundary><Suspense fallback={pageFallback}><CookiePolicyPage /></Suspense></RouteErrorBoundary>;
+  }
+  if (location === "/subprocessors") {
+    return <RouteErrorBoundary><Suspense fallback={pageFallback}><SubprocessorsPage /></Suspense></RouteErrorBoundary>;
+  }
+  if (location === "/dpa") {
+    return <RouteErrorBoundary><Suspense fallback={pageFallback}><DataProcessingAddendumPage /></Suspense></RouteErrorBoundary>;
   }
 
   const sidebarStyle = {

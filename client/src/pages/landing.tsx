@@ -759,6 +759,12 @@ export default function LandingPage() {
                 <a href="/terms" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
                   Terms
                 </a>
+                <a href="/cookies" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                  Cookies
+                </a>
+                <a href="/dpa" className="text-gray-500 text-[13px] no-underline hover:text-gray-300 transition-colors">
+                  DPA
+                </a>
               </div>
             </div>
           </div>
