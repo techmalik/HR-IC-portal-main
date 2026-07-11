@@ -25,7 +25,7 @@ export function LegalPageLayout({ title, updated, children }: LegalPageLayoutPro
       <main className="max-w-2xl mx-auto px-6 py-14">
         <h1 className="font-serif font-normal text-gray-900 text-3xl mb-2">{title}</h1>
         <p className="text-gray-400 text-[13px] mb-10">Last updated {updated}</p>
-        <div className="prose-legal text-gray-600 text-[15px] leading-relaxed [&>h2]:text-gray-900 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mt-8 [&>h2]:mb-2 [&>p]:mb-4 [&_a]:text-gray-900 [&_a]:underline">
+        <div className="prose-legal text-gray-600 text-[15px] leading-relaxed [&>h2]:text-gray-900 [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mt-8 [&>h2]:mb-2 [&>p]:mb-4 [&_a]:text-gray-900 [&_a]:underline [&_h3]:text-gray-900 [&_h3]:text-[15px] [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-4 [&_li]:pl-0.5">
           {children}
         </div>
       </main>
