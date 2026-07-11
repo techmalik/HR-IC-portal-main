@@ -22,6 +22,14 @@ import { Loader2, Check, CreditCard, Users, Calendar, ArrowRight, Tag, AlertTria
 import { PLAN_LIMITS, type SubscriptionPlanType } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { useEffect, useState } from "react";
 
 interface BillingData {
@@ -50,6 +58,7 @@ interface BillingData {
     name: string;
     slug: string;
     billingEmail: string | null;
+    defaultCurrency: string | null;
   };
   billing?: {
     basePrice: number;
@@ -358,6 +367,29 @@ export default function BillingPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
       setEditingBillingEmail(false);
       toast({ title: "Billing email updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const defaultCurrencyMutation = useMutation({
+    mutationFn: async (defaultCurrency: string) => {
+      const res = await fetch("/api/organization", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ defaultCurrency }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update default currency");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing"] });
+      toast({ title: "Default invoice currency updated" });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update", description: error.message, variant: "destructive" });
@@ -916,6 +948,32 @@ export default function BillingPage() {
                     )}
                   </div>
                 )}
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Default Invoice Currency</p>
+                {(user?.role === "owner" || user?.role === "admin") ? (
+                  <Select
+                    value={billing.organization.defaultCurrency || "USD"}
+                    disabled={defaultCurrencyMutation.isPending}
+                    onValueChange={(value) => defaultCurrencyMutation.mutate(value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm w-[220px]" data-testid="select-org-default-currency">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_CURRENCIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code} data-testid={`option-org-currency-${c.code}`}>
+                          {c.code}, {c.name} ({c.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium text-sm">{billing.organization.defaultCurrency || "USD"}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  New contractors default to this currency. Each contractor can still change their own invoice currency on their profile.
+                </p>
               </div>
               {billing.subscription.paystackCustomerCode && (
                 <div>

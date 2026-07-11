@@ -1555,6 +1555,12 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Cannot create a user in a different organization" });
       }
 
+      let orgDefaultCurrency = "USD";
+      if (currentUser.organizationId) {
+        const org = await storage.getOrganization(currentUser.organizationId);
+        orgDefaultCurrency = org?.defaultCurrency || "USD";
+      }
+
       const userData = {
         username,
         password,
@@ -1567,7 +1573,7 @@ export async function registerRoutes(
         managerId,
         hourlyRate,
         monthlyCap,
-        currency: normalizeCurrencyInput(currency) || "USD",
+        currency: normalizeCurrencyInput(currency) || orgDefaultCurrency,
         startDate,
         role,
         isActive: requestedIsActive !== undefined ? requestedIsActive : true,
@@ -1979,6 +1985,12 @@ export async function registerRoutes(
       const validRoles = ["ic", "admin"];
       if (currentUser.role === "owner") validRoles.push("owner");
 
+      let orgDefaultCurrency = "USD";
+      if (callerOrgId) {
+        const org = await storage.getOrganization(callerOrgId);
+        orgDefaultCurrency = org?.defaultCurrency || "USD";
+      }
+
       const existingOrgUsers = await storage.getAllUsers(callerOrgId ?? "");
       const existingEmails = new Set(existingOrgUsers.map(u => u.email?.toLowerCase()));
 
@@ -2049,7 +2061,7 @@ export async function registerRoutes(
             managerId,
             hourlyRate,
             monthlyCap,
-            currency: normalizeCurrencyInput(currency) || "USD",
+            currency: normalizeCurrencyInput(currency) || orgDefaultCurrency,
             startDate,
             role,
             organizationId: callerOrgId,
@@ -4939,13 +4951,20 @@ export async function registerRoutes(
     if (!currentUser.organizationId) {
       return res.status(404).json({ error: "No organization associated with this user" });
     }
-    const { name, logoUrl, billingEmail, address, vatNumber } = req.body;
+    const { name, logoUrl, billingEmail, address, vatNumber, defaultCurrency } = req.body;
     const allowedUpdates: Record<string, any> = {};
     if (name !== undefined) allowedUpdates.name = name;
     if (logoUrl !== undefined) allowedUpdates.logoUrl = logoUrl;
     if (billingEmail !== undefined) allowedUpdates.billingEmail = billingEmail;
     if (address !== undefined) allowedUpdates.address = address;
     if (vatNumber !== undefined) allowedUpdates.vatNumber = vatNumber;
+    if (defaultCurrency !== undefined) {
+      const normalized = normalizeCurrencyInput(defaultCurrency);
+      if (!normalized) {
+        return res.status(400).json({ error: "Unsupported currency code" });
+      }
+      allowedUpdates.defaultCurrency = normalized;
+    }
 
     const updated = await storage.updateOrganization(currentUser.organizationId, allowedUpdates);
     if (!updated) {
@@ -4982,6 +5001,7 @@ export async function registerRoutes(
         name: organization.name,
         slug: organization.slug,
         billingEmail: organization.billingEmail,
+        defaultCurrency: organization.defaultCurrency,
       },
       billing: {
         currency: billingCurrency,
