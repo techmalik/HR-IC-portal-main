@@ -72,6 +72,10 @@ export const organizations = pgTable("organizations", {
   billingEmail: text("billing_email"),
   address: text("address"),
   vatNumber: text("vat_number"),
+  // Default invoice/pay currency for new users created in this org — lets a
+  // tenant (e.g. a Nigerian org) default to NGN while others default to USD.
+  // Individual users can still override this on their own profile.
+  defaultCurrency: text("default_currency").notNull().default("USD"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
